@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sala de proyección</title>
+<style>
+  :root{
+    --bg: #0b0b0f;
+    --panel: #141419;
+    --film: #1c1c22;
+    --accent: #e8c468;
+    --accent-dim: #8a6f2f;
+    --text: #eae6da;
+    --text-dim: #8b8a86;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(ellipse at center, #16161c 0%, var(--bg) 70%);
+    font-family: 'Courier New', ui-monospace, monospace;
+    color: var(--text);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .theater{
+    width: min(920px, 94vw);
+    padding: 28px;
+  }
+  .screen-frame{
+    position:relative;
+    background: var(--film);
+    border-radius: 6px;
+    padding: 10px;
+    box-shadow:
+      0 0 0 1px #2a2a32,
+      0 30px 60px -20px rgba(0,0,0,0.8);
+  }
+  .sprocket-row{
+    display:flex; justify-content:space-between;
+    padding: 0 4px 8px;
+  }
+  .sprocket-row.bottom{ padding: 8px 4px 0; }
+  .sprocket{
+    width: 10px; height: 10px;
+    background: var(--bg);
+    border-radius: 2px;
+  }
+
+  video{
+    display:block;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    border-radius: 2px;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="theater">
+  <div class="screen-frame">
+    <div class="sprocket-row">
+      <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+      <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+      <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+      <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+    </div>
+
+    <video id="player" controls preload="metadata" src="assets/TS5.mp4">
+      Tu navegador no soporta la reproducción de video.
+    </video>
+
+    <div class="sprocket-row bottom">
+      <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+      <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+      <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+      <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const player = document.getElementById('player');
+  player.addEventListener('error', () => {
+    console.error('No se pudo cargar el video. Revisá que assets/TS5.mp4 exista.');
+  });
+</script>
+
+</body>
+</html>
