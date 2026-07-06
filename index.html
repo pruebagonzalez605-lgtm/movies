@@ -157,6 +157,15 @@
     mix-blend-mode: screen;
     pointer-events:none;
   }
+  .poster .saga-tag{
+    position:absolute;
+    top: 30px; left: 10px;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
   .poster h3{
     margin: 0;
     font-family: Georgia, 'Times New Roman', serif;
@@ -178,6 +187,64 @@
     font-size: 12px;
     color: var(--text-dim);
     min-height: 16px;
+  }
+
+  .tabs{
+    display:flex;
+    justify-content:center;
+    gap: 6px;
+    margin: 26px 0 22px;
+  }
+  .tab{
+    background: transparent;
+    border: 1px solid #2a2a32;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .tab:hover{
+    color: var(--text);
+    border-color: #3a3a44;
+  }
+  .tab.active{
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .season-selector{
+    display:flex;
+    justify-content:center;
+    gap: 8px;
+    margin: 4px 0 4px;
+    flex-wrap: wrap;
+  }
+  .season-pill{
+    background: var(--panel);
+    border: 1px solid #2a2a32;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .season-pill:hover{
+    color: var(--text);
+    border-color: #3a3a44;
+  }
+  .season-pill.active{
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
   }
 </style>
 </head>
@@ -209,8 +276,32 @@
     </div>
   </div>
 
-  <div class="carousel-label">Cartelera</div>
-  <div class="carousel" id="carousel"></div>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="movies">Películas</button>
+    <button class="tab" data-tab="series">Series</button>
+    <button class="tab" data-tab="sagas">Sagas</button>
+  </div>
+
+  <div id="moviesSection">
+    <div class="carousel-label">Cartelera</div>
+    <div class="carousel" id="carousel"></div>
+  </div>
+
+  <div id="seriesSection" style="display:none">
+    <div class="carousel-label">Series</div>
+    <div class="carousel" id="seriesCarousel"></div>
+
+    <div class="season-selector" id="seasonSelector" style="display:none"></div>
+    <div class="carousel" id="episodeCarousel" style="display:none"></div>
+  </div>
+
+  <div id="sagasSection" style="display:none">
+    <div class="carousel-label">Sagas</div>
+    <div class="carousel" id="sagaCarousel"></div>
+
+    <div class="carousel-label" id="sagaMoviesLabel" style="display:none">Películas de la saga</div>
+    <div class="carousel" id="sagaMoviesCarousel" style="display:none"></div>
+  </div>
 
   <div class="status" id="status"></div>
 </div>
@@ -267,57 +358,295 @@
       gradient: ['#3d0d1a', '#8a1e4a'],
       poster: 'https://m.media-amazon.com/images/M/MV5BYzZiZjAxODItYzJhNi00ZjgyLThlMWEtMWI4NjM3YjNlN2M4XkEyXkFqcGc@._V1_FMjpg_UX1066_.jpg',
       src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.5/PW.mp4'
+    },
+    {
+      code: '07',
+      title: 'Super Mario Galaxy',
+      gradient: ['#0d1f3d', '#1e5a6d'],
+      poster: 'https://m.media-amazon.com/images/M/MV5BMmY2OWZkOWItNDExMi00YzlhLWJiZmYtNmZmOWNjOGYwNDFiXkEyXkFqcGc@._V1_FMjpg_UY1440_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.6/SPMG.mp4'
+    },
+    {
+      code: '08',
+      title: 'Dragon Ball Z: La Batalla De Los Dioses',
+      gradient: ['#3d1f0d', '#8a5a1e'],
+      poster: 'https://m.media-amazon.com/images/M/MV5BMTEzZTFkNzctZTQ0NC00NWI2LWI3OTEtMWEzOGZhZWFiZjg2XkEyXkFqcGc@._V1_FMjpg_UX700_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.7/DBZLBD.mp4'
+    },
+    {
+      code: '09',
+      title: 'BackRooms',
+      gradient: ['#2d2a12', '#6b6320'],
+      poster: 'https://m.media-amazon.com/images/M/MV5BYzQyYjZmMjctMzIyZi00MDI0LWJhNGQtMzQ3MTFlNDgwNGM5XkEyXkFqcGc@._V1_FMjpg_UY3000_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.8/BROOMS.mp4'
+    },
+    {
+      code: '10',
+      title: 'Cars 3',
+      gradient: ['#3d0d0d', '#8a1e1e'],
+      saga: 'Cars',
+      poster: 'https://m.media-amazon.com/images/M/MV5BZTEyMTJjMzUtYTcyOC00OGVhLWE4YWUtYzM3YWM1Y2JiMzQzXkEyXkFqcGc@._V1_FMjpg_UX770_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.9/CRS3.mp4'
+    },
+    {
+      code: '11',
+      title: 'Joker',
+      gradient: ['#1a1a1a', '#5c1a5c'],
+      poster: 'https://m.media-amazon.com/images/M/MV5BYjliNTJlYWYtYTU2Yy00YzI3LWI3NzgtOTJlMzg3YmQ3ZDRhXkEyXkFqcGc@._V1_FMjpg_UY2880_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.10/JKR.mp4'
+    },
+    {
+      code: '12',
+      title: 'Jack Ryan de Tom Clancy: Guerra Fantasma',
+      gradient: ['#0d1a1f', '#1e4a5c'],
+      poster: 'https://m.media-amazon.com/images/M/MV5BZGY2MDU2Y2YtOTkzNC00MTY4LThkODYtNWIxNmRlZmRjZWJlXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.11/JKGW.mp4'
+    },
+    {
+      code: '13',
+      title: 'Cars 2',
+      gradient: ['#3d0d0d', '#8a1e1e'],
+      saga: 'Cars',
+      poster: 'https://m.media-amazon.com/images/M/MV5BMTUzNTc3MTU3M15BMl5BanBnXkFtZTcwMzIxNTc3NA@@._V1_FMjpg_UX1086_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.12/CRS2.mp4'
+    },
+    {
+      code: '14',
+      title: 'Cars',
+      gradient: ['#3d0d0d', '#8a1e1e'],
+      saga: 'Cars',
+      poster: 'https://m.media-amazon.com/images/M/MV5BMTg5NzY0MzA2MV5BMl5BanBnXkFtZTYwNDc3NTc2._V1_FMjpg_UX450_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.13/CRS1.mp4'
     }
+  ];
+
+  // ------------------------------------------------------------------
+  // Para agregar una SERIE nueva, sumá un objeto acá con:
+  //   title    -> nombre de la serie (se muestra en su portada)
+  //   gradient -> degradado de respaldo si la portada no carga
+  //   poster   -> portada de la serie (se muestra en el carrusel de series)
+  //   seasons  -> array de temporadas: { season: 1, episodes: [ {...} ] }
+  //     cada episodio necesita: code, title, poster (opcional), src
+  // ------------------------------------------------------------------
+  const SERIES = [
+    // Ejemplo:
+    // {
+    //   title: 'Nombre de la serie',
+    //   gradient: ['#101020', '#303060'],
+    //   poster: 'https://.../portada-serie.jpg',
+    //   seasons: [
+    //     {
+    //       season: 1,
+    //       episodes: [
+    //         { code: 'T1E1', title: 'Episodio 1', poster: 'https://.../ep1.jpg', src: 'https://.../ep1.mp4' },
+    //         { code: 'T1E2', title: 'Episodio 2', poster: 'https://.../ep2.jpg', src: 'https://.../ep2.mp4' }
+    //       ]
+    //     }
+    //   ]
+    // }
   ];
 
   const player = document.getElementById('player');
   const carousel = document.getElementById('carousel');
+  const seriesCarousel = document.getElementById('seriesCarousel');
+  const seasonSelector = document.getElementById('seasonSelector');
+  const episodeCarousel = document.getElementById('episodeCarousel');
+  const sagaCarousel = document.getElementById('sagaCarousel');
+  const sagaMoviesLabel = document.getElementById('sagaMoviesLabel');
+  const sagaMoviesCarousel = document.getElementById('sagaMoviesCarousel');
   const titleDisplay = document.getElementById('titleDisplay');
   const status = document.getElementById('status');
+  const moviesSection = document.getElementById('moviesSection');
+  const seriesSection = document.getElementById('seriesSection');
+  const sagasSection = document.getElementById('sagasSection');
+  const tabs = document.getElementById('tabs');
+
+  let currentSeriesIndex = null;
+  let currentSeasonIndex = 0;
+
+  // Crea una tarjeta de "poster" genérica reutilizable para películas, series y episodios
+  function createPosterCard(item, opts = {}){
+    const card = document.createElement('div');
+    card.className = 'poster' + (item.texture ? ' texture-' + item.texture : '');
+    const gradient = item.gradient || ['#1c1c22', '#141419'];
+    const setGradient = () => {
+      card.style.backgroundImage = 'none';
+      card.style.background = `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`;
+    };
+    if(item.poster){
+      card.style.backgroundSize = 'cover';
+      card.style.backgroundPosition = 'center';
+      card.style.backgroundColor = gradient[1];
+      const testImg = new Image();
+      testImg.onload = () => {
+        card.style.backgroundImage =
+          `linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.9) 100%), url('${item.poster}')`;
+      };
+      testImg.onerror = setGradient;
+      testImg.src = item.poster;
+    } else {
+      setGradient();
+    }
+    card.innerHTML = `
+      <span class="code">${item.code || ''}</span>
+      <span class="now-playing">Reproduciendo</span>
+      ${item.saga ? `<span class="saga-tag">Saga: ${item.saga}</span>` : ''}
+      <h3>${item.title}</h3>
+    `;
+    return card;
+  }
+
+  let movieOrder = MOVIES.map((_, i) => i);
 
   function renderCarousel(){
     carousel.innerHTML = '';
-    MOVIES.forEach((movie, i) => {
-      const card = document.createElement('div');
-      card.className = 'poster' + (movie.texture ? ' texture-' + movie.texture : '');
-      const setGradient = () => {
-        card.style.backgroundImage = 'none';
-        card.style.background = `linear-gradient(160deg, ${movie.gradient[0]}, ${movie.gradient[1]})`;
-      };
-      if(movie.poster){
-        card.style.backgroundSize = 'cover';
-        card.style.backgroundPosition = 'center';
-        card.style.backgroundColor = movie.gradient[1];
-        const testImg = new Image();
-        testImg.onload = () => {
-          card.style.backgroundImage =
-            `linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.9) 100%), url('${movie.poster}')`;
-        };
-        testImg.onerror = setGradient;
-        testImg.src = movie.poster;
-      } else {
-        setGradient();
-      }
-      card.innerHTML = `
-        <span class="code">${movie.code}</span>
-        <span class="now-playing">Reproduciendo</span>
-        <h3>${movie.title}</h3>
-      `;
-      card.addEventListener('click', () => selectMovie(i));
+    movieOrder.forEach((movieIdx) => {
+      const movie = MOVIES[movieIdx];
+      const card = createPosterCard(movie);
+      card.addEventListener('click', () => selectMovie(movieIdx));
       carousel.appendChild(card);
     });
   }
 
-  function selectMovie(index){
-    const movie = MOVIES[index];
+  function selectMovie(movieIdx){
+    const movie = MOVIES[movieIdx];
     if(!movie) return;
     player.src = movie.src;
     player.load();
     titleDisplay.textContent = movie.title;
     status.textContent = 'Cargando: ' + movie.title;
-    [...carousel.children].forEach((el, i) => el.classList.toggle('active', i === index));
+
+    if(movie.saga){
+      const sameSaga = MOVIES.map((m, i) => i).filter(i => MOVIES[i].saga === movie.saga && i !== movieIdx);
+      const rest = MOVIES.map((m, i) => i).filter(i => MOVIES[i].saga !== movie.saga && i !== movieIdx);
+      movieOrder = [movieIdx, ...sameSaga, ...rest];
+      renderCarousel();
+    }
+
+    const displayIdx = movieOrder.indexOf(movieIdx);
+    [...carousel.children].forEach((el, i) => el.classList.toggle('active', i === displayIdx));
     player.play().catch(() => {});
   }
+
+  function renderSeriesCarousel(){
+    seriesCarousel.innerHTML = '';
+    SERIES.forEach((serie, i) => {
+      const card = createPosterCard(serie);
+      card.addEventListener('click', () => selectSeries(i));
+      seriesCarousel.appendChild(card);
+    });
+  }
+
+  function selectSeries(index){
+    const serie = SERIES[index];
+    if(!serie) return;
+    currentSeriesIndex = index;
+    currentSeasonIndex = 0;
+    [...seriesCarousel.children].forEach((el, i) => el.classList.toggle('active', i === index));
+    renderSeasonSelector();
+    renderEpisodeCarousel();
+  }
+
+  function renderSeasonSelector(){
+    const serie = SERIES[currentSeriesIndex];
+    if(!serie){ seasonSelector.style.display = 'none'; return; }
+    seasonSelector.innerHTML = '';
+    seasonSelector.style.display = serie.seasons.length > 1 ? 'flex' : 'none';
+    serie.seasons.forEach((s, i) => {
+      const pill = document.createElement('button');
+      pill.className = 'season-pill' + (i === currentSeasonIndex ? ' active' : '');
+      pill.textContent = 'Temporada ' + s.season;
+      pill.addEventListener('click', () => {
+        currentSeasonIndex = i;
+        renderSeasonSelector();
+        renderEpisodeCarousel();
+      });
+      seasonSelector.appendChild(pill);
+    });
+  }
+
+  function renderEpisodeCarousel(){
+    const serie = SERIES[currentSeriesIndex];
+    if(!serie){ episodeCarousel.style.display = 'none'; return; }
+    const season = serie.seasons[currentSeasonIndex];
+    episodeCarousel.innerHTML = '';
+    episodeCarousel.style.display = 'flex';
+    season.episodes.forEach((ep, i) => {
+      const card = createPosterCard(ep);
+      card.addEventListener('click', () => selectEpisode(i));
+      episodeCarousel.appendChild(card);
+    });
+  }
+
+  function selectEpisode(index){
+    const serie = SERIES[currentSeriesIndex];
+    const season = serie.seasons[currentSeasonIndex];
+    const ep = season.episodes[index];
+    if(!ep) return;
+    player.src = ep.src;
+    player.load();
+    titleDisplay.textContent = serie.title + ' — ' + ep.title;
+    status.textContent = 'Cargando: ' + ep.title;
+    [...episodeCarousel.children].forEach((el, i) => el.classList.toggle('active', i === index));
+    player.play().catch(() => {});
+  }
+
+  function getSagas(){
+    const map = new Map();
+    MOVIES.forEach((movie, i) => {
+      if(!movie.saga) return;
+      if(!map.has(movie.saga)) map.set(movie.saga, []);
+      map.get(movie.saga).push(i);
+    });
+    return [...map.entries()].map(([name, indices]) => ({
+      name,
+      poster: MOVIES[indices[0]].poster,
+      gradient: MOVIES[indices[0]].gradient,
+      movieIndices: indices
+    }));
+  }
+
+  function renderSagaCarousel(){
+    const sagas = getSagas();
+    sagaCarousel.innerHTML = '';
+    sagas.forEach((saga, i) => {
+      const card = createPosterCard({ title: saga.name, poster: saga.poster, gradient: saga.gradient });
+      card.addEventListener('click', () => selectSaga(i));
+      sagaCarousel.appendChild(card);
+    });
+  }
+
+  function selectSaga(index){
+    const sagas = getSagas();
+    const saga = sagas[index];
+    if(!saga) return;
+    [...sagaCarousel.children].forEach((el, i) => el.classList.toggle('active', i === index));
+    sagaMoviesLabel.style.display = 'block';
+    sagaMoviesCarousel.style.display = 'flex';
+    sagaMoviesCarousel.innerHTML = '';
+    saga.movieIndices.forEach((movieIdx) => {
+      const movie = MOVIES[movieIdx];
+      const card = createPosterCard(movie);
+      card.addEventListener('click', () => {
+        switchTab('movies');
+        selectMovie(movieIdx);
+      });
+      sagaMoviesCarousel.appendChild(card);
+    });
+  }
+
+  function switchTab(tabName){
+    [...tabs.children].forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
+    moviesSection.style.display = tabName === 'movies' ? 'block' : 'none';
+    seriesSection.style.display = tabName === 'series' ? 'block' : 'none';
+    sagasSection.style.display = tabName === 'sagas' ? 'block' : 'none';
+  }
+
+  tabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab');
+    if(!btn) return;
+    switchTab(btn.dataset.tab);
+  });
 
   player.addEventListener('error', () => {
     status.textContent = 'No se pudo cargar el video. Revisá que el release de GitHub siga disponible.';
@@ -327,6 +656,8 @@
   });
 
   renderCarousel();
+  renderSeriesCarousel();
+  renderSagaCarousel();
   selectMovie(0);
 </script>
 
