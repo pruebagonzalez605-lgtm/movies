@@ -264,8 +264,8 @@
       <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
     </div>
 
-    <video id="player" controls preload="metadata">
-      Tu navegador no soporta la reproducción de video.
+    <video id="player" controls preload="metadata" playsinline webkit-playsinline>
+      <source id="playerSource" src="" type="video/mp4">
     </video>
 
     <div class="sprocket-row bottom">
@@ -417,6 +417,13 @@
       saga: 'Cars',
       poster: 'https://m.media-amazon.com/images/M/MV5BMTg5NzY0MzA2MV5BMl5BanBnXkFtZTYwNDc3NTc2._V1_FMjpg_UX450_.jpg',
       src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.13/CRS1.mp4'
+    },
+    {
+      code: '15',
+      title: 'The Truman Show',
+      gradient: ['#0d2a3d', '#1e6d8a'],
+      poster: 'https://m.media-amazon.com/images/M/MV5BNzA3ZjZlNzYtMTdjMy00NjMzLTk5ZGYtMTkyYzNiOGM1YmM3XkEyXkFqcGc@._V1_FMjpg_UY2500_.jpg',
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.14/TRMSHOW.mp4'
     }
   ];
 
@@ -447,6 +454,7 @@
   ];
 
   const player = document.getElementById('player');
+  const playerSource = document.getElementById('playerSource');
   const carousel = document.getElementById('carousel');
   const seriesCarousel = document.getElementById('seriesCarousel');
   const seasonSelector = document.getElementById('seasonSelector');
@@ -511,7 +519,7 @@
   function selectMovie(movieIdx){
     const movie = MOVIES[movieIdx];
     if(!movie) return;
-    player.src = movie.src;
+    playerSource.src = movie.src;
     player.load();
     titleDisplay.textContent = movie.title;
     status.textContent = 'Cargando: ' + movie.title;
@@ -583,7 +591,7 @@
     const season = serie.seasons[currentSeasonIndex];
     const ep = season.episodes[index];
     if(!ep) return;
-    player.src = ep.src;
+    playerSource.src = ep.src;
     player.load();
     titleDisplay.textContent = serie.title + ' — ' + ep.title;
     status.textContent = 'Cargando: ' + ep.title;
