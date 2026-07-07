@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cartelera</title>
 <style>
   :root{
@@ -21,7 +22,7 @@
     color: var(--text);
   }
   .theater{
-    width: min(920px, 94vw);
+    width: min(1400px, 92vw);
     margin: 0 auto;
     padding: 28px 28px 40px;
   }
@@ -102,8 +103,8 @@
 
   .poster{
     scroll-snap-align: start;
-    flex: 0 0 148px;
-    height: 210px;
+    flex: 0 0 172px;
+    height: 244px;
     border-radius: 6px;
     border: 1px solid #2a2a32;
     cursor: pointer;
@@ -181,6 +182,73 @@
     letter-spacing: 0.05em;
   }
 
+  .episode-card{
+    scroll-snap-align: start;
+    flex: 0 0 268px;
+    display:flex;
+    flex-direction:column;
+    cursor:pointer;
+  }
+  .episode-thumb{
+    position:relative;
+    width:100%;
+    aspect-ratio: 16/9;
+    border-radius: 6px;
+    overflow:hidden;
+    background-size:cover;
+    background-position:center;
+    background-color: var(--film);
+    border: 1px solid #2a2a32;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .episode-card:hover .episode-thumb{
+    transform: translateY(-2px);
+  }
+  .episode-card.active .episode-thumb{
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .episode-thumb .ep-code{
+    position:absolute;
+    top: 6px; left: 6px;
+    background: rgba(0,0,0,0.6);
+    color: var(--accent);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .episode-thumb .ep-playing{
+    display:none;
+    position:absolute;
+    inset:0;
+    align-items:center;
+    justify-content:center;
+    background: rgba(0,0,0,0.45);
+    color: var(--accent);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .episode-card.active .ep-playing{ display:flex; }
+  .episode-title{
+    margin: 8px 0 0;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f4f1ea;
+    line-height: 1.3;
+  }
+  .episode-desc{
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-dim);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   .status{
     text-align:center;
     margin-top: 14px;
@@ -246,6 +314,83 @@
     background: var(--accent);
     border-color: var(--accent);
   }
+
+  /* ---------------------------------------------------------
+     Ajustes para pantallas de celular (hasta 600px de ancho)
+  --------------------------------------------------------- */
+  @media (max-width: 600px){
+    .theater{
+      width: 100%;
+      padding: 16px 12px 32px;
+    }
+
+    .marquee{ margin-bottom: 14px; }
+    .marquee .eyebrow{ font-size: 9px; letter-spacing: 0.28em; }
+    .marquee h1{ font-size: clamp(17px, 5vw, 22px); }
+
+    .screen-frame{ padding: 6px; border-radius: 8px; }
+    .sprocket{ width: 6px; height: 6px; }
+    .sprocket-row{ padding: 0 2px 6px; }
+    .sprocket-row.bottom{ padding: 6px 2px 0; }
+
+    .carousel-label{
+      margin: 22px 0 10px;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+    }
+
+    .carousel{
+      gap: 10px;
+      padding: 4px 2px 12px;
+      margin: 0 -12px;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+
+    .poster{
+      flex: 0 0 132px;
+      height: 188px;
+      padding: 10px 8px;
+      border-radius: 8px;
+    }
+    .poster h3{ font-size: 13px; }
+    .poster p{ font-size: 9px; }
+    .poster .code{ top: 8px; left: 8px; font-size: 9px; }
+    .poster .now-playing{ top: 8px; right: 8px; font-size: 8px; padding: 2px 5px; }
+    .poster .saga-tag{ top: 26px; left: 8px; font-size: 8px; }
+
+    .episode-card{ flex: 0 0 208px; }
+    .episode-title{ font-size: 13px; }
+    .episode-desc{ font-size: 11px; -webkit-line-clamp: 2; }
+
+    .tabs{
+      margin: 20px 0 16px;
+      gap: 8px;
+      overflow-x: auto;
+      justify-content: flex-start;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .tabs::-webkit-scrollbar{ display:none; }
+    .tab{
+      flex: 0 0 auto;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      padding: 9px 16px;
+      white-space: nowrap;
+    }
+
+    .season-selector{ gap: 6px; margin: 2px 0 2px; }
+    .season-pill{ font-size: 10px; padding: 6px 12px; }
+
+    .status{ font-size: 11px; }
+  }
+
+  @media (max-width: 380px){
+    .poster{ flex: 0 0 118px; height: 168px; }
+    .episode-card{ flex: 0 0 188px; }
+  }
 </style>
 </head>
 <body>
@@ -304,9 +449,89 @@
   </div>
 
   <div class="status" id="status"></div>
+
+  <div style="text-align:center; margin-top:24px; font-size:9px; letter-spacing:0.05em; color:#4a4a52;">
+    Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB.
+  </div>
 </div>
 
 <script>
+  // ------------------------------------------------------------------
+  // Integración con TMDB (The Movie Database) — API gratuita.
+  // Si una película/episodio NO tiene "poster" definido a mano, el sitio
+  // busca automáticamente la portada/miniatura en TMDB usando el título
+  // (y el año, si se especifica, para desambiguar remakes/homónimos).
+  // ------------------------------------------------------------------
+  const TMDB_API_KEY = '58dc4e2bb092932970cdd7af79434942';
+  const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p/w500';
+  const TMDB_LANG = 'es-419';
+
+  function tmdbCacheGet(key){
+    try {
+      const raw = localStorage.getItem('tmdb_cache_' + key);
+      return raw ? JSON.parse(raw) : undefined;
+    } catch(e){ return undefined; }
+  }
+  function tmdbCacheSet(key, value){
+    try { localStorage.setItem('tmdb_cache_' + key, JSON.stringify(value)); } catch(e){}
+  }
+
+  async function tmdbSearchMoviePoster(title, year){
+    const cacheKey = 'movie_' + title + '_' + (year || '');
+    const cached = tmdbCacheGet(cacheKey);
+    if(cached !== undefined) return cached;
+    try {
+      let url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=${TMDB_LANG}&query=${encodeURIComponent(title)}`;
+      if(year) url += `&year=${year}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const result = data.results && data.results[0];
+      const posterUrl = result && result.poster_path ? TMDB_IMG_BASE + result.poster_path : null;
+      tmdbCacheSet(cacheKey, posterUrl);
+      return posterUrl;
+    } catch(e){
+      return null;
+    }
+  }
+
+  async function tmdbFindTvId(title, year){
+    const cacheKey = 'tvid_' + title + '_' + (year || '');
+    const cached = tmdbCacheGet(cacheKey);
+    if(cached !== undefined) return cached;
+    try {
+      let url = `https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&language=${TMDB_LANG}&query=${encodeURIComponent(title)}`;
+      if(year) url += `&first_air_date_year=${year}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const result = data.results && data.results[0];
+      const id = result ? result.id : null;
+      tmdbCacheSet(cacheKey, id);
+      return id;
+    } catch(e){
+      return null;
+    }
+  }
+
+  async function tmdbGetSeasonEpisodes(tvId, seasonNumber){
+    const cacheKey = 'season_' + tvId + '_' + seasonNumber;
+    const cached = tmdbCacheGet(cacheKey);
+    if(cached !== undefined) return cached;
+    try {
+      const url = `https://api.themoviedb.org/3/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=${TMDB_LANG}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const episodes = (data.episodes || []).map(ep => ({
+        title: ep.name,
+        description: ep.overview,
+        poster: ep.still_path ? TMDB_IMG_BASE + ep.still_path : null
+      }));
+      tmdbCacheSet(cacheKey, episodes);
+      return episodes;
+    } catch(e){
+      return [];
+    }
+  }
+
   // ------------------------------------------------------------------
   // Para agregar una película nueva, sumá un objeto acá con:
   //   code    -> número o etiqueta corta que aparece arriba a la izquierda
@@ -314,6 +539,9 @@
   //   gradient-> degradado de fondo de la tarjeta (2 colores hex)
   //   texture -> (opcional) 'slasher' aplica la textura de salpicaduras en CSS
   //   src     -> URL directa del archivo de video (release de GitHub, etc.)
+  //   poster  -> (opcional) si se omite, se busca automáticamente en TMDB
+  //              usando "title" (y "tmdbYear" si se especifica)
+  //   tmdbYear-> (opcional) año de estreno, para desambiguar en TMDB
   // ------------------------------------------------------------------
   const MOVIES = [
     {
@@ -424,33 +652,138 @@
       gradient: ['#0d2a3d', '#1e6d8a'],
       poster: 'https://m.media-amazon.com/images/M/MV5BNzA3ZjZlNzYtMTdjMy00NjMzLTk5ZGYtMTkyYzNiOGM1YmM3XkEyXkFqcGc@._V1_FMjpg_UY2500_.jpg',
       src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.14/TRMSHOW.mp4'
+    },
+    {
+      code: '16',
+      title: 'Monsters, Inc.',
+      gradient: ['#0d3d1f', '#1e8a5a'],
+      saga: "Monsters, Inc.",
+      tmdbYear: 2001,
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.16/MSINC.mp4'
+    },
+    {
+      code: '17',
+      title: 'Monsters University',
+      gradient: ['#0d3d1f', '#1e8a5a'],
+      saga: "Monsters, Inc.",
+      tmdbYear: 2013,
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.17/MSU.mp4'
     }
   ];
 
   // ------------------------------------------------------------------
   // Para agregar una SERIE nueva, sumá un objeto acá con:
-  //   title    -> nombre de la serie (se muestra en su portada)
+  //   title    -> nombre de la serie
   //   gradient -> degradado de respaldo si la portada no carga
-  //   poster   -> portada de la serie (se muestra en el carrusel de series)
-  //   seasons  -> array de temporadas: { season: 1, episodes: [ {...} ] }
-  //     cada episodio necesita: code, title, poster (opcional), src
+  //   poster   -> (opcional) portada de la serie; si se omite, se busca en TMDB
+  //   tmdbShow -> (opcional) nombre exacto para buscar en TMDB si difiere de "title"
+  //   tmdbYear -> (opcional) año de estreno, para desambiguar en TMDB
+  //   seasons  -> array de temporadas, con DOS formas posibles:
+  //
+  //     MODO AUTOMÁTICO (recomendado): solo pasás los links de video en orden
+  //     y el título/descripción/miniatura de cada episodio se buscan solos en TMDB
+  //       { season: 1, srcs: ['link_ep1.mp4', 'link_ep2.mp4', ...] }
+  //
+  //     MODO MANUAL: control total, útil si la serie no está en TMDB
+  //       { season: 1, episodes: [
+  //           { title: 'Nombre', description: 'Resumen', poster: 'link.jpg', src: 'link.mp4' }
+  //       ]}
   // ------------------------------------------------------------------
   const SERIES = [
-    // Ejemplo:
-    // {
-    //   title: 'Nombre de la serie',
-    //   gradient: ['#101020', '#303060'],
-    //   poster: 'https://.../portada-serie.jpg',
-    //   seasons: [
-    //     {
-    //       season: 1,
-    //       episodes: [
-    //         { code: 'T1E1', title: 'Episodio 1', poster: 'https://.../ep1.jpg', src: 'https://.../ep1.mp4' },
-    //         { code: 'T1E2', title: 'Episodio 2', poster: 'https://.../ep2.jpg', src: 'https://.../ep2.mp4' }
-    //       ]
-    //     }
-    //   ]
-    // }
+    {
+      title: 'Ted',
+      gradient: ['#8a1e1e', '#3d0d0d'],
+      poster: 'https://m.media-amazon.com/images/M/MV5BMGJiN2ZhNTktYzllYS00MzQyLTg0OTYtZjA5N2M2MDE2NTFiXkEyXkFqcGc@._V1_FMjpg_UY711_.jpg',
+      tmdbShow: 'Ted',
+      tmdbYear: 2024,
+      seasons: [
+        {
+          season: 1,
+          episodes: [
+            {
+              title: 'Sólo di que sí',
+              description: 'El intento de Ted de ser expulsado de la escuela secundaria lo lleva a comprar drogas de una fuente no confiable.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS1x1.mp4'
+            },
+            {
+              title: 'Mis dos padres',
+              description: 'El plan de Ted y John para vengarse del bully de la escuela los coloca sin darse cuenta en un papel de padres. Matty acepta hacerse una colonoscopia... con una condición.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS1x2.mp4'
+            },
+            {
+              title: 'Disfunción Eyectil',
+              description: 'Ted y John llegan a extremos insospechados para que John pueda ver su primera película para adultos.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS1x3.mp4'
+            },
+            {
+              title: 'Metro, bicicletas y automóviles',
+              description: 'Los planes de Ted para Halloween se frustran cuando Blaire lo obliga a ser su conductor designado.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS1x4.mp4'
+            },
+            {
+              title: 'Desesperadamente buscando a Susan',
+              description: 'Blaire les pide a Matty y Susan que le permitan a Ted ser su terapeuta de pareja; Susan sigue una carrera del pasado.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS1x5.mp4'
+            },
+            {
+              title: 'Noche ruidosa',
+              description: 'El deseo poco ortodoxo de Matty para Navidad es concedido, cambiando drásticamente la dinámica de la familia Bennett.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS1x6.mp4'
+            },
+            {
+              title: 'Tiene que tenerlo',
+              description: 'A medida que se acerca el fin del año escolar, Ted conspira para ayudar a John a perder su virginidad.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS1x7.mp4'
+            }
+          ]
+        },
+        {
+          season: 2,
+          episodes: [
+            {
+              title: 'Dime cosas obscenas',
+              description: 'John y Ted usan un teléfono en el sótano de la escuela para llamar a una línea erótica.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS2x1.mp4'
+            },
+            {
+              title: 'Sra. Robichek',
+              description: 'Ted comienza una arriesgada aventura con una mujer casada, mientras que Matty se enfrenta a problemas de disfunción eréctil.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS2x2.mp4'
+            },
+            {
+              title: 'Mazmorras y traficantes',
+              description: 'John, Ted y Blaire deben completar la campaña de Dungeons and Dragons de un traficante de drogas para conseguir marihuana.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS2x3.mp4'
+            },
+            {
+              title: 'La comedia romántica de mamá',
+              description: 'La maratón de películas románticas de Blaire molesta a Matty. Ted y John tienen una cita doble con su vecina mayor.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS2x4.mp4'
+            },
+            {
+              title: 'La espada en la piedra',
+              description: "John y Ted hacen una audición para la obra de teatro del colegio. Matty y Susan consiguen trabajos a tiempo parcial en Dunkin' Donuts.",
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS2x5.mp4'
+            },
+            {
+              title: 'Roe contra Marihuana',
+              description: 'Blaire se enfrenta a un embarazo inesperado, lo que provoca reacciones encontradas en la familia.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS2x6.mp4'
+            },
+            {
+              title: 'Susan es la nueva sensación',
+              description: 'Susan asume la culpa por John y Ted cuando un policía encuentra su marihuana durante una parada de tráfico.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS2x7.mp4'
+            },
+            {
+              title: 'Noticias fraudalentas',
+              description: 'John y Ted crean un periódico falso para evitar que Matty se entere del veredicto del caso O.J.',
+              src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.15/TDS2x8.mp4'
+            }
+          ]
+        }
+      ]
+    }
   ];
 
   const player = document.getElementById('player');
@@ -473,27 +806,44 @@
   let currentSeasonIndex = 0;
 
   // Crea una tarjeta de "poster" genérica reutilizable para películas, series y episodios
-  function createPosterCard(item, opts = {}){
-    const card = document.createElement('div');
-    card.className = 'poster' + (item.texture ? ' texture-' + item.texture : '');
-    const gradient = item.gradient || ['#1c1c22', '#141419'];
+  function applyPosterImage(card, url, gradient){
     const setGradient = () => {
       card.style.backgroundImage = 'none';
       card.style.background = `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`;
     };
-    if(item.poster){
+    if(url){
       card.style.backgroundSize = 'cover';
       card.style.backgroundPosition = 'center';
       card.style.backgroundColor = gradient[1];
       const testImg = new Image();
       testImg.onload = () => {
         card.style.backgroundImage =
-          `linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.9) 100%), url('${item.poster}')`;
+          `linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.9) 100%), url('${url}')`;
       };
       testImg.onerror = setGradient;
-      testImg.src = item.poster;
+      testImg.src = url;
     } else {
       setGradient();
+    }
+  }
+
+  function createPosterCard(item, opts = {}){
+    const card = document.createElement('div');
+    card.className = 'poster' + (item.texture ? ' texture-' + item.texture : '');
+    const gradient = item.gradient || ['#1c1c22', '#141419'];
+    if(item.poster){
+      applyPosterImage(card, item.poster, gradient);
+    } else if(!opts.noAutoFetch) {
+      // Sin portada manual: la buscamos sola en TMDB
+      applyPosterImage(card, null, gradient);
+      tmdbSearchMoviePoster(item.title, item.tmdbYear).then(url => {
+        if(url){
+          item.poster = url; // cachea en el objeto para no re-buscar
+          applyPosterImage(card, url, gradient);
+        }
+      });
+    } else {
+      applyPosterImage(card, null, gradient);
     }
     card.innerHTML = `
       <span class="code">${item.code || ''}</span>
@@ -573,14 +923,93 @@
     });
   }
 
-  function renderEpisodeCarousel(){
+  async function ensureSeasonEpisodes(serie, season){
+    if(season.episodes){
+      // Modo manual: título/descripción los puso el usuario, pero si falta la miniatura
+      // la buscamos igual en TMDB por posición (sin tocar título ni descripción).
+      const missingPoster = season.episodes.some(ep => !ep.poster);
+      if(missingPoster && !season._posterFetchAttempted){
+        season._posterFetchAttempted = true;
+        const tvId = await tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
+        if(tvId){
+          const tmdbEpisodes = await tmdbGetSeasonEpisodes(tvId, season.season);
+          season.episodes.forEach((ep, i) => {
+            if(!ep.poster && tmdbEpisodes[i] && tmdbEpisodes[i].poster){
+              ep.poster = tmdbEpisodes[i].poster;
+            }
+          });
+        }
+      }
+      return season.episodes;
+    }
+    if(!season.srcs || !season.srcs.length){ season.episodes = []; return season.episodes; }
+    const tvId = await tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
+    let tmdbEpisodes = [];
+    if(tvId) tmdbEpisodes = await tmdbGetSeasonEpisodes(tvId, season.season);
+    season.episodes = season.srcs.map((src, i) => {
+      const tmdbEp = tmdbEpisodes[i] || {};
+      return {
+        title: tmdbEp.title || ('Episodio ' + (i + 1)),
+        description: tmdbEp.description || '',
+        poster: tmdbEp.poster || null,
+        src
+      };
+    });
+    return season.episodes;
+  }
+
+  function createEpisodeCard(ep, index){
+    const card = document.createElement('div');
+    card.className = 'episode-card';
+    const thumb = document.createElement('div');
+    thumb.className = 'episode-thumb';
+    if(ep.poster) thumb.style.backgroundImage = `url('${ep.poster}')`;
+    thumb.innerHTML = `
+      <span class="ep-code">${index + 1}</span>
+      <span class="ep-playing">Reproduciendo</span>
+    `;
+    const title = document.createElement('div');
+    title.className = 'episode-title';
+    title.textContent = `${index + 1}. ${ep.title}`;
+    card.appendChild(thumb);
+    card.appendChild(title);
+    if(ep.description){
+      const desc = document.createElement('div');
+      desc.className = 'episode-desc';
+      desc.textContent = ep.description;
+      card.appendChild(desc);
+    }
+    return card;
+  }
+
+  async function renderEpisodeCarousel(){
     const serie = SERIES[currentSeriesIndex];
     if(!serie){ episodeCarousel.style.display = 'none'; return; }
     const season = serie.seasons[currentSeasonIndex];
-    episodeCarousel.innerHTML = '';
     episodeCarousel.style.display = 'flex';
-    season.episodes.forEach((ep, i) => {
-      const card = createPosterCard(ep);
+
+    if(!season.episodes && season.srcs && season.srcs.length){
+      episodeCarousel.innerHTML = `<div style="color:var(--text-dim);font-size:12px;letter-spacing:0.1em;padding:20px 10px;">Buscando episodios en TMDB...</div>`;
+    }
+
+    const episodes = await ensureSeasonEpisodes(serie, season);
+
+    // Si el usuario cambió de temporada/serie mientras esperábamos la respuesta, no pisamos la vista actual
+    if(SERIES[currentSeriesIndex] !== serie || serie.seasons[currentSeasonIndex] !== season) return;
+
+    episodeCarousel.innerHTML = '';
+    if(!episodes.length){
+      const soon = document.createElement('div');
+      soon.style.color = 'var(--text-dim)';
+      soon.style.fontSize = '12px';
+      soon.style.letterSpacing = '0.1em';
+      soon.style.padding = '20px 10px';
+      soon.textContent = 'Próximamente...';
+      episodeCarousel.appendChild(soon);
+      return;
+    }
+    episodes.forEach((ep, i) => {
+      const card = createEpisodeCard(ep, i);
       card.addEventListener('click', () => selectEpisode(i));
       episodeCarousel.appendChild(card);
     });
