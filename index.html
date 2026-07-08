@@ -470,9 +470,110 @@
     .poster{ flex: 0 0 118px; height: 168px; }
     .episode-card{ flex: 0 0 188px; }
   }
+
+  /* ---------------------------------------------------------
+     Login con Kick — barra fija arriba a la derecha
+  --------------------------------------------------------- */
+  .kick-corner{
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+  }
+
+  .kick-login-btn{
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: bold;
+    white-space: nowrap;
+    box-shadow: 0 8px 20px -8px rgba(0,0,0,0.7);
+    transition: opacity 0.15s ease;
+  }
+  .kick-login-btn:hover{ opacity: 0.88; }
+  .kick-login-btn[disabled]{ opacity: 0.6; cursor: default; }
+
+  .kick-gate-error{
+    position: fixed;
+    top: 58px;
+    right: 16px;
+    z-index: 2000;
+    font-size: 11px;
+    color: #d9756f;
+    background: var(--panel);
+    border: 1px solid #2a2a32;
+    padding: 8px 12px;
+    border-radius: 6px;
+    max-width: 240px;
+    text-align: right;
+    display: none;
+  }
+
+  .kick-user-badge{
+    display:none;
+    align-items:center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid #2a2a32;
+    border-radius: 999px;
+    padding: 6px 14px 6px 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    box-shadow: 0 8px 20px -8px rgba(0,0,0,0.7);
+  }
+  .kick-user-avatar{
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--film);
+    border: 1px solid #2a2a32;
+    display: none;
+    flex: 0 0 auto;
+  }
+  .kick-user-name{ color: var(--text); font-weight: bold; }
+  .kick-logout-btn{
+    background:none;
+    border:none;
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    cursor:pointer;
+    text-decoration: underline;
+    padding: 0;
+    margin-left: 2px;
+  }
+
+  @media (max-width: 600px){
+    .kick-corner{ top: 10px; right: 10px; }
+    .kick-login-btn{ padding: 8px 12px; font-size: 10px; }
+    .kick-user-badge{ padding: 4px 10px 4px 4px; }
+    .kick-user-avatar{ width: 22px; height: 22px; }
+    .kick-user-name{ display: none; }
+    .kick-gate-error{ top: 52px; }
+  }
 </style>
 </head>
 <body>
+
+<div class="kick-corner">
+  <button class="kick-login-btn" id="kickLoginBtn">Ingresar con Kick</button>
+  <div class="kick-user-badge" id="kickUserBadge">
+    <div class="kick-user-avatar" id="kickUserAvatar"></div>
+    <span class="kick-user-name" id="kickUserName"></span>
+    <button class="kick-logout-btn" id="kickLogoutBtn">Salir</button>
+  </div>
+</div>
+<div class="kick-gate-error" id="kickGateError">No se pudo iniciar sesión con Kick. Probá de nuevo.</div>
 
 <div class="resume-overlay" id="resumeOverlay">
   <div class="resume-modal">
@@ -893,6 +994,167 @@
   const seriesSection = document.getElementById('seriesSection');
   const sagasSection = document.getElementById('sagasSection');
   const tabs = document.getElementById('tabs');
+  const kickGateError = document.getElementById('kickGateError');
+  const kickLoginBtn = document.getElementById('kickLoginBtn');
+  const kickUserBadge = document.getElementById('kickUserBadge');
+  const kickUserAvatar = document.getElementById('kickUserAvatar');
+  const kickUserName = document.getElementById('kickUserName');
+  const kickLogoutBtn = document.getElementById('kickLogoutBtn');
+
+  // ------------------------------------------------------------------
+  // Login con Kick (OAuth 2.0 Authorization Code + PKCE)
+  //
+  // Flujo:
+  // 1) Generamos un "state" aleatorio y lo usamos TAMBIÉN como code_verifier
+  //    (Kick exige PKCE siempre). Como el mismo "state" vuelve intacto en el
+  //    redirect de Kick hacia nuestra función de Supabase, esa función puede
+  //    reconstruir el code_verifier sin necesidad de guardar nada en una base
+  //    de datos intermedia.
+  // 2) Mandamos al usuario a id.kick.com/oauth/authorize.
+  // 3) Kick redirige a la función kick-oauth-callback (Supabase), que
+  //    intercambia el code por un access_token usando el client_secret
+  //    (eso vive del lado del servidor, nunca acá) y arma una sesión firmada.
+  // 4) La función redirige de vuelta acá con "#session=<token>" en el hash
+  //    (nunca se manda al server ni queda en logs). La leemos, la guardamos
+  //    en localStorage y listo.
+  // ------------------------------------------------------------------
+  const KICK_CLIENT_ID = '01KX013P9HAMCVKK0JHVJP53QV';
+  const KICK_REDIRECT_URI = 'https://iqmxbmodzdtjdfepggae.supabase.co/functions/v1/kick-oauth-callback';
+  const KICK_AUTHORIZE_URL = 'https://id.kick.com/oauth/authorize';
+  const KICK_SESSION_KEY = 'kick_session';
+
+  function base64UrlEncodeBytes(bytes){
+    let binary = '';
+    bytes.forEach(b => { binary += String.fromCharCode(b); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function randomUrlSafeString(byteLength = 64){
+    const arr = new Uint8Array(byteLength);
+    crypto.getRandomValues(arr);
+    return base64UrlEncodeBytes(arr);
+  }
+
+  async function sha256Base64Url(input){
+    const data = new TextEncoder().encode(input);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return base64UrlEncodeBytes(new Uint8Array(digest));
+  }
+
+  async function startKickLogin(){
+    kickLoginBtn.disabled = true;
+    kickLoginBtn.textContent = 'Redirigiendo…';
+    try {
+      const state = randomUrlSafeString(); // duplica como code_verifier
+      const codeChallenge = await sha256Base64Url(state);
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: KICK_CLIENT_ID,
+        redirect_uri: KICK_REDIRECT_URI,
+        scope: 'user:read',
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+        state
+      });
+      window.location.href = `${KICK_AUTHORIZE_URL}?${params.toString()}`;
+    } catch(e){
+      kickLoginBtn.disabled = false;
+      kickLoginBtn.textContent = 'Ingresar con Kick';
+      kickGateError.textContent = 'No se pudo iniciar el login. Probá de nuevo.';
+      kickGateError.style.display = 'block';
+    }
+  }
+
+  function decodeSessionToken(token){
+    try {
+      const payloadPart = token.split('.')[0];
+      const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+      const binary = atob(normalized);
+      const percentEncoded = binary.split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+      return JSON.parse(decodeURIComponent(percentEncoded));
+    } catch(e){
+      return null;
+    }
+  }
+
+  function getKickSession(){
+    try {
+      const raw = localStorage.getItem(KICK_SESSION_KEY);
+      if(!raw) return null;
+      const session = JSON.parse(raw);
+      if(!session || !session.exp || (Date.now() / 1000) > session.exp){
+        localStorage.removeItem(KICK_SESSION_KEY);
+        return null;
+      }
+      return session;
+    } catch(e){
+      return null;
+    }
+  }
+
+  function showKickGate(errorMsg){
+    kickLoginBtn.style.display = 'inline-block';
+    kickUserBadge.style.display = 'none';
+    kickLoginBtn.disabled = false;
+    kickLoginBtn.textContent = 'Ingresar con Kick';
+    if(errorMsg){
+      kickGateError.textContent = errorMsg;
+      kickGateError.style.display = 'block';
+    } else {
+      kickGateError.style.display = 'none';
+    }
+  }
+
+  function applyKickSession(session){
+    kickLoginBtn.style.display = 'none';
+    kickUserBadge.style.display = 'flex';
+    kickUserName.textContent = session.username || 'Usuario de Kick';
+    if(session.avatar){
+      kickUserAvatar.style.backgroundImage = `url('${session.avatar}')`;
+      kickUserAvatar.style.display = 'block';
+    } else {
+      kickUserAvatar.style.display = 'none';
+    }
+  }
+
+  function logoutKick(){
+    localStorage.removeItem(KICK_SESSION_KEY);
+    showKickGate();
+  }
+
+  // Lee el resultado del login que viene en el hash de la URL (#session=... o #error=...)
+  function consumeAuthRedirect(){
+    const hash = window.location.hash;
+    if(!hash || hash.length < 2) return { handled: false };
+    const hashParams = new URLSearchParams(hash.slice(1));
+    const token = hashParams.get('session');
+    const error = hashParams.get('error');
+    if(!token && !error) return { handled: false };
+    // Limpiamos el hash de la URL para no dejar el token en el historial
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    if(error) return { handled: true, error };
+    const payload = decodeSessionToken(token);
+    if(!payload) return { handled: true, error: 'invalid_token' };
+    localStorage.setItem(KICK_SESSION_KEY, JSON.stringify(payload));
+    return { handled: true, session: payload };
+  }
+
+  kickLoginBtn.addEventListener('click', startKickLogin);
+  kickLogoutBtn.addEventListener('click', logoutKick);
+
+  (function initKickAuth(){
+    const redirectResult = consumeAuthRedirect();
+    if(redirectResult.error){
+      showKickGate('No se pudo iniciar sesión con Kick. Probá de nuevo.');
+      return;
+    }
+    const session = redirectResult.session || getKickSession();
+    if(session){
+      applyKickSession(session);
+    } else {
+      showKickGate();
+    }
+  })();
 
   let currentSeriesIndex = null;
   let currentSeasonIndex = 0;
