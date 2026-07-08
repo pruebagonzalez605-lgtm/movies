@@ -561,6 +561,109 @@
     .kick-user-name{ font-size: 12px; }
     .kick-gate-error{ top: 58px; }
   }
+
+  /* ---------------------------------------------------------
+     Calificaciones (estrellas) y sugerencias
+  --------------------------------------------------------- */
+  .rating-panel{
+    background: var(--panel);
+    border: 1px solid #2a2a32;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-top: 14px;
+    display:flex;
+    flex-wrap: wrap;
+    align-items:center;
+    gap: 18px;
+  }
+  .rating-global, .rating-user{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .rating-user-label, .rating-global-text{
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .rating-login-hint{
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .stars{ display:flex; gap:3px; }
+  .star{
+    position:relative;
+    display:inline-block;
+    width:18px; height:18px;
+    font-size:18px; line-height:1;
+    user-select:none;
+  }
+  .star-bg{ position:absolute; inset:0; color:#3a3a44; }
+  .star-fill{ position:absolute; inset:0; color:var(--accent); overflow:hidden; white-space:nowrap; }
+  .stars.interactive .star{ cursor:pointer; }
+  .stars.interactive:hover .star .star-fill{ filter:brightness(1.15); }
+
+  .suggestions-panel{
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .suggestion-form{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom: 22px;
+  }
+  .suggestion-form textarea{
+    width:100%;
+    resize: vertical;
+    min-height: 70px;
+    background: var(--panel);
+    border: 1px solid #2a2a32;
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 12px;
+  }
+  .suggestion-form textarea:focus{ outline:none; border-color: var(--accent-dim); }
+  .suggestion-form button{
+    align-self:flex-end;
+  }
+  .suggestion-login-hint{
+    text-align:center;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 22px;
+  }
+  .suggestion-list{
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+  }
+  .suggestion-item{
+    background: var(--panel);
+    border: 1px solid #2a2a32;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .suggestion-meta{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom: 4px;
+  }
+  .suggestion-user{ color: var(--accent); font-size: 12px; font-weight:bold; letter-spacing:0.05em; }
+  .suggestion-date{ color: var(--text-dim); font-size: 11px; }
+  .suggestion-text{ font-size: 13px; color: var(--text); line-height:1.45; white-space: pre-wrap; }
+  .suggestion-empty{ text-align:center; color: var(--text-dim); font-size: 12px; padding: 20px 0; }
+
+  @media (max-width: 600px){
+    .rating-panel{ padding: 12px 14px; gap: 12px; }
+    .star{ width:16px; height:16px; font-size:16px; }
+  }
 </style>
 </head>
 <body>
@@ -614,10 +717,23 @@
     </div>
   </div>
 
+  <div class="rating-panel" id="ratingPanel">
+    <div class="rating-global">
+      <div class="stars" id="globalStars"></div>
+      <span class="rating-global-text" id="ratingGlobalText">Sin calificaciones aún</span>
+    </div>
+    <div class="rating-user" id="ratingUserBlock" style="display:none">
+      <span class="rating-user-label">Tu calificación:</span>
+      <div class="stars" id="userStars"></div>
+    </div>
+    <span class="rating-login-hint" id="ratingLoginHint">Iniciá sesión con Kick para calificar</span>
+  </div>
+
   <div class="tabs" id="tabs">
     <button class="tab active" data-tab="movies">Películas</button>
     <button class="tab" data-tab="series">Series</button>
     <button class="tab" data-tab="sagas">Sagas</button>
+    <button class="tab" data-tab="sugerencias">Sugerencias</button>
   </div>
 
   <div id="moviesSection">
@@ -641,6 +757,18 @@
     <div class="carousel" id="sagaMoviesCarousel" style="display:none"></div>
   </div>
 
+  <div id="sugerenciasSection" style="display:none">
+    <div class="carousel-label">Sugerencias</div>
+    <div class="suggestions-panel">
+      <div class="suggestion-form" id="suggestionForm" style="display:none">
+        <textarea id="suggestionInput" maxlength="300" rows="3" placeholder="¿Qué película o serie querés que subamos?"></textarea>
+        <button class="resume-btn primary" id="suggestionSubmitBtn" style="width:auto; padding:10px 22px;">Enviar sugerencia</button>
+      </div>
+      <div class="suggestion-login-hint" id="suggestionLoginHint">Iniciá sesión con Kick para dejar una sugerencia.</div>
+      <div class="suggestion-list" id="suggestionList"></div>
+    </div>
+  </div>
+
   <div class="status" id="status"></div>
 
   <div style="text-align:center; margin-top:24px; font-size:9px; letter-spacing:0.05em; color:#4a4a52;">
@@ -658,6 +786,68 @@
   const TMDB_API_KEY = '58dc4e2bb092932970cdd7af79434942';
   const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p/w500';
   const TMDB_LANG = 'es-419';
+
+  // ------------------------------------------------------------------
+  // Supabase (mismo proyecto que ya usás para el login de Kick)
+  // Acá se guardan las calificaciones (1 a 5, con medias estrellas) y
+  // las sugerencias de cada usuario, para que el promedio se vea igual
+  // para todos los visitantes del sitio (no solo en tu navegador).
+  //
+  // PASO PENDIENTE: pegá tu "anon public key" de Supabase acá abajo.
+  // La sacás en: Project Settings > API > Project API keys > anon/public.
+  // Es una key pensada para usarse en el frontend (no es secreta), pero
+  // hace falta para que el sitio pueda leer/escribir en las tablas.
+  //
+  // También hay que crear las tablas "ratings" y "suggestions" una sola
+  // vez desde el SQL Editor de Supabase. El script SQL para crearlas
+  // te lo paso aparte.
+  // ------------------------------------------------------------------
+  const SUPABASE_URL = 'https://iqmxbmodzdtjdfepggae.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxbXhibW9kemR0amRmZXBnZ2FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxOTMxNTgsImV4cCI6MjA5ODc2OTE1OH0.Gl_nKq0rnFcC2MrFSF6_SV4ihbrhl2DRGgnCNoJ2ITw';
+  const SUPABASE_REST = SUPABASE_URL + '/rest/v1';
+
+  function supabaseHeaders(extra){
+    return Object.assign({
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+    }, extra || {});
+  }
+
+  function slugify(str){
+    return (str || '')
+      .toString()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+  }
+
+  // Dibuja una fila de 5 estrellas para un valor 0..5 (admite medias estrellas)
+  function renderStarRow(container, value, interactive){
+    if(!container) return;
+    container.innerHTML = '';
+    container.classList.toggle('interactive', !!interactive);
+    for(let i = 0; i < 5; i++){
+      const star = document.createElement('span');
+      star.className = 'star';
+      const frac = Math.max(0, Math.min(1, (value || 0) - i));
+      star.innerHTML = '<span class="star-bg">★</span><span class="star-fill" style="width:' + (frac * 100) + '%">★</span>';
+      container.appendChild(star);
+    }
+  }
+
+  // Qué película/temporada está activa ahora mismo (se usa para saber a qué
+  // "content_key" corresponden las calificaciones que se muestran/envían).
+  // Se declara temprano porque la UI de login puede intentar refrescar la
+  // calificación antes de que se seleccione contenido.
+  let currentContentKey = null;
+  let currentContentTitle = null;
 
   function tmdbCacheGet(key){
     try {
@@ -1000,6 +1190,17 @@
   const kickUserAvatar = document.getElementById('kickUserAvatar');
   const kickUserName = document.getElementById('kickUserName');
   const kickLogoutBtn = document.getElementById('kickLogoutBtn');
+  const globalStarsEl = document.getElementById('globalStars');
+  const ratingGlobalText = document.getElementById('ratingGlobalText');
+  const ratingUserBlock = document.getElementById('ratingUserBlock');
+  const userStarsEl = document.getElementById('userStars');
+  const ratingLoginHint = document.getElementById('ratingLoginHint');
+  const sugerenciasSection = document.getElementById('sugerenciasSection');
+  const suggestionForm = document.getElementById('suggestionForm');
+  const suggestionLoginHint = document.getElementById('suggestionLoginHint');
+  const suggestionInput = document.getElementById('suggestionInput');
+  const suggestionSubmitBtn = document.getElementById('suggestionSubmitBtn');
+  const suggestionList = document.getElementById('suggestionList');
 
   // ------------------------------------------------------------------
   // Login con Kick (OAuth 2.0 Authorization Code + PKCE)
@@ -1115,11 +1316,24 @@
     } else {
       kickUserAvatar.style.display = 'none';
     }
+    refreshAuthDependentUI();
   }
 
   function logoutKick(){
     localStorage.removeItem(KICK_SESSION_KEY);
     showKickGate();
+    refreshAuthDependentUI();
+  }
+
+  // Actualiza las partes de la UI que dependen de si hay sesión de Kick
+  // (el formulario de sugerencias y el bloque de "tu calificación").
+  function refreshAuthDependentUI(){
+    const session = getKickSession();
+    if(suggestionForm && suggestionLoginHint){
+      suggestionForm.style.display = session ? 'flex' : 'none';
+      suggestionLoginHint.style.display = session ? 'none' : 'block';
+    }
+    if(currentContentKey) loadRatingsFor(currentContentKey);
   }
 
   // Lee el resultado del login que viene en el hash de la URL (#session=... o #error=...)
@@ -1155,6 +1369,148 @@
       showKickGate();
     }
   })();
+
+  // ------------------------------------------------------------------
+  // Calificaciones (1 a 5 estrellas, medias estrellas permitidas)
+  // Guardadas en Supabase, tabla "ratings", una fila por (content_key,
+  // usuario de Kick). El promedio que se ve es el de TODOS los votos.
+  // ------------------------------------------------------------------
+  async function loadRatingsFor(contentKey){
+    if(!contentKey) return;
+    ratingGlobalText.textContent = 'Cargando…';
+    renderStarRow(globalStarsEl, 0, false);
+    try {
+      const url = SUPABASE_REST + '/ratings?content_key=eq.' + encodeURIComponent(contentKey) + '&select=rating,kick_username';
+      const res = await fetch(url, { headers: supabaseHeaders() });
+      if(!res.ok) throw new Error('fetch_failed');
+      const rows = await res.json();
+      if(!Array.isArray(rows)) throw new Error('bad_response');
+
+      const count = rows.length;
+      const avg = count ? rows.reduce((sum, r) => sum + Number(r.rating), 0) / count : 0;
+      renderStarRow(globalStarsEl, avg, false);
+      ratingGlobalText.textContent = count
+        ? avg.toFixed(1) + ' ★ (' + count + (count === 1 ? ' voto' : ' votos') + ')'
+        : 'Sin calificaciones aún — ¡sé el primero en calificar!';
+
+      const session = getKickSession();
+      if(session){
+        const mine = rows.find(r => r.kick_username === session.username);
+        renderStarRow(userStarsEl, mine ? Number(mine.rating) : 0, true);
+        ratingUserBlock.style.display = 'flex';
+        ratingLoginHint.style.display = 'none';
+      } else {
+        ratingUserBlock.style.display = 'none';
+        ratingLoginHint.style.display = 'inline';
+      }
+    } catch(e){
+      ratingGlobalText.textContent = 'No se pudo cargar la calificación.';
+    }
+  }
+
+  async function submitRating(contentKey, contentTitle, value){
+    const session = getKickSession();
+    if(!session || !contentKey) return;
+    renderStarRow(userStarsEl, value, true); // UI optimista
+    try {
+      const res = await fetch(SUPABASE_REST + '/ratings?on_conflict=content_key,kick_username', {
+        method: 'POST',
+        headers: supabaseHeaders({
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        }),
+        body: JSON.stringify({
+          content_key: contentKey,
+          content_title: contentTitle,
+          kick_username: session.username,
+          rating: value,
+          updated_at: new Date().toISOString()
+        })
+      });
+      if(!res.ok) throw new Error('rating_failed');
+      if(contentKey === currentContentKey) await loadRatingsFor(contentKey);
+    } catch(e){
+      ratingGlobalText.textContent = 'No se pudo guardar tu calificación. Probá de nuevo.';
+    }
+  }
+
+  if(userStarsEl){
+    userStarsEl.addEventListener('click', (e) => {
+      const session = getKickSession();
+      if(!session || !currentContentKey) return;
+      const starEl = e.target.closest('.star');
+      if(!starEl) return;
+      const stars = [...userStarsEl.children];
+      const idx = stars.indexOf(starEl);
+      const rect = starEl.getBoundingClientRect();
+      const isHalf = (e.clientX - rect.left) < rect.width / 2;
+      const value = idx + (isHalf ? 0.5 : 1);
+      submitRating(currentContentKey, currentContentTitle, value);
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Sugerencias — cualquier usuario logueado con Kick puede sugerir
+  // una película/serie; se guardan en Supabase, tabla "suggestions",
+  // y se listan todas (de todos los usuarios), más recientes primero.
+  // ------------------------------------------------------------------
+  async function loadSuggestions(){
+    suggestionList.innerHTML = '<div class="suggestion-empty">Cargando…</div>';
+    try {
+      const url = SUPABASE_REST + '/suggestions?select=kick_username,message,created_at&order=created_at.desc&limit=200';
+      const res = await fetch(url, { headers: supabaseHeaders() });
+      if(!res.ok) throw new Error('fetch_failed');
+      const rows = await res.json();
+      if(!Array.isArray(rows)) throw new Error('bad_response');
+
+      suggestionList.innerHTML = '';
+      if(!rows.length){
+        suggestionList.innerHTML = '<div class="suggestion-empty">Todavía no hay sugerencias. ¡Sé el primero!</div>';
+        return;
+      }
+      rows.forEach(row => {
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        const date = new Date(row.created_at);
+        const dateStr = isNaN(date.getTime()) ? '' : date.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+        item.innerHTML =
+          '<div class="suggestion-meta">' +
+            '<span class="suggestion-user">' + escapeHtml(row.kick_username) + '</span>' +
+            '<span class="suggestion-date">' + dateStr + '</span>' +
+          '</div>' +
+          '<div class="suggestion-text">' + escapeHtml(row.message) + '</div>';
+        suggestionList.appendChild(item);
+      });
+    } catch(e){
+      suggestionList.innerHTML = '<div class="suggestion-empty">No se pudieron cargar las sugerencias.</div>';
+    }
+  }
+
+  if(suggestionSubmitBtn){
+    suggestionSubmitBtn.addEventListener('click', async () => {
+      const session = getKickSession();
+      if(!session) return;
+      const text = suggestionInput.value.trim();
+      if(!text) return;
+      suggestionSubmitBtn.disabled = true;
+      suggestionSubmitBtn.textContent = 'Enviando…';
+      try {
+        const res = await fetch(SUPABASE_REST + '/suggestions', {
+          method: 'POST',
+          headers: supabaseHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+          body: JSON.stringify({ kick_username: session.username, message: text })
+        });
+        if(!res.ok) throw new Error('insert_failed');
+        suggestionInput.value = '';
+        await loadSuggestions();
+      } catch(e){
+        alert('No se pudo enviar la sugerencia. Probá de nuevo.');
+      } finally {
+        suggestionSubmitBtn.disabled = false;
+        suggestionSubmitBtn.textContent = 'Enviar sugerencia';
+      }
+    });
+  }
 
   let currentSeriesIndex = null;
   let currentSeasonIndex = 0;
@@ -1229,6 +1585,10 @@
     titleDisplay.textContent = movie.title;
     status.textContent = 'Cargando: ' + movie.title;
     if(typeof startWatchdog === 'function') startWatchdog();
+
+    currentContentKey = 'movie:' + slugify(movie.title);
+    currentContentTitle = movie.title;
+    loadRatingsFor(currentContentKey);
 
     if(movie.saga){
       const sameSaga = MOVIES.map((m, i) => i).filter(i => MOVIES[i].saga === movie.saga && i !== movieIdx);
@@ -1382,6 +1742,12 @@
     titleDisplay.textContent = serie.title + ' — ' + ep.title;
     status.textContent = 'Cargando: ' + ep.title;
     if(typeof startWatchdog === 'function') startWatchdog();
+
+    // La calificación es por temporada (no por episodio individual)
+    currentContentKey = 'series:' + slugify(serie.title) + ':s' + season.season;
+    currentContentTitle = serie.title + ' — Temporada ' + season.season;
+    loadRatingsFor(currentContentKey);
+
     [...episodeCarousel.children].forEach((el, i) => el.classList.toggle('active', i === index));
     player.play().catch(() => {});
   }
@@ -1435,6 +1801,8 @@
     moviesSection.style.display = tabName === 'movies' ? 'block' : 'none';
     seriesSection.style.display = tabName === 'series' ? 'block' : 'none';
     sagasSection.style.display = tabName === 'sagas' ? 'block' : 'none';
+    sugerenciasSection.style.display = tabName === 'sugerencias' ? 'block' : 'none';
+    if(tabName === 'sugerencias') loadSuggestions();
   }
 
   tabs.addEventListener('click', (e) => {
