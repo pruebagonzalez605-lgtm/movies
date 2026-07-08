@@ -257,6 +257,85 @@
     min-height: 16px;
   }
 
+  .resume-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background: rgba(5,5,8,0.78);
+    backdrop-filter: blur(3px);
+    align-items:center;
+    justify-content:center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .resume-modal{
+    width: min(380px, 100%);
+    background: var(--panel);
+    border: 1px solid #2a2a32;
+    border-radius: 10px;
+    padding: 26px 24px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.8);
+    text-align:center;
+  }
+  .resume-modal .eyebrow{
+    letter-spacing: 0.3em;
+    font-size: 10px;
+    color: var(--accent-dim);
+    text-transform: uppercase;
+  }
+  .resume-modal h2{
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 19px;
+    color: var(--accent);
+    margin: 8px 0 4px;
+  }
+  .resume-modal .resume-time{
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+  .resume-modal .resume-time span{
+    color: var(--text);
+    font-weight: bold;
+  }
+  .resume-actions{
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+  }
+  .resume-btn{
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 12px;
+    border-radius: 8px;
+    cursor:pointer;
+    border: 1px solid #2a2a32;
+    background: transparent;
+    color: var(--text);
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .resume-btn.primary{
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: bold;
+  }
+  .resume-btn:hover{
+    border-color: var(--accent-dim);
+  }
+  .resume-dismiss{
+    margin-top: 14px;
+    background:none;
+    border:none;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor:pointer;
+    text-decoration: underline;
+  }
+
   .tabs{
     display:flex;
     justify-content:center;
@@ -394,6 +473,19 @@
 </style>
 </head>
 <body>
+
+<div class="resume-overlay" id="resumeOverlay">
+  <div class="resume-modal">
+    <div class="eyebrow">Retomando</div>
+    <h2 id="resumeModalTitle">—</h2>
+    <div class="resume-time">Quedaste en <span id="resumeModalTime">0:00</span></div>
+    <div class="resume-actions">
+      <button class="resume-btn primary" id="resumeContinueBtn">Continuar viendo</button>
+      <button class="resume-btn" id="resumeRestartBtn">Empezar de nuevo</button>
+    </div>
+    <button class="resume-dismiss" id="resumeCloseBtn">Ahora no</button>
+  </div>
+</div>
 
 <div class="theater">
   <div class="marquee">
@@ -870,9 +962,11 @@
     const movie = MOVIES[movieIdx];
     if(!movie) return;
     playerSource.src = movie.src;
+    playerSource.dataset.baseSrc = movie.src;
     player.load();
     titleDisplay.textContent = movie.title;
     status.textContent = 'Cargando: ' + movie.title;
+    if(typeof startWatchdog === 'function') startWatchdog();
 
     if(movie.saga){
       const sameSaga = MOVIES.map((m, i) => i).filter(i => MOVIES[i].saga === movie.saga && i !== movieIdx);
@@ -1021,9 +1115,11 @@
     const ep = season.episodes[index];
     if(!ep) return;
     playerSource.src = ep.src;
+    playerSource.dataset.baseSrc = ep.src;
     player.load();
     titleDisplay.textContent = serie.title + ' — ' + ep.title;
     status.textContent = 'Cargando: ' + ep.title;
+    if(typeof startWatchdog === 'function') startWatchdog();
     [...episodeCarousel.children].forEach((el, i) => el.classList.toggle('active', i === index));
     player.play().catch(() => {});
   }
@@ -1092,10 +1188,206 @@
     status.textContent = '';
   });
 
+  // ------------------------------------------------------------------
+  // Watchdog anti-congelamiento
+  // Los archivos se sirven directos desde un link (sin streaming adaptativo),
+  // así que después de un rato la conexión al archivo se puede "colgar" y el
+  // video se queda pegado en el mismo punto sin disparar un error real.
+  // Este vigilante chequea cada 8s si el tiempo avanza mientras se supone
+  // que está reproduciendo; si detecta 2 chequeos seguidos sin avance,
+  // recarga el mismo video en el mismo punto exacto para reconectar solo.
+  // ------------------------------------------------------------------
+  let watchdogInterval = null;
+  let watchdogLastTime = 0;
+  let watchdogStallCount = 0;
+  let isRecovering = false;
+
+  function withCacheBust(url){
+    if(!url) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return url + sep + '_r=' + Date.now();
+  }
+
+  function recoverPlayback(){
+    if(isRecovering) return;
+    isRecovering = true;
+    const resumeAt = player.currentTime;
+    const baseSrc = playerSource.dataset.baseSrc || playerSource.src;
+    status.textContent = 'El video se trabó, reconectando...';
+    playerSource.dataset.baseSrc = baseSrc;
+    playerSource.src = withCacheBust(baseSrc);
+    player.load();
+    const onReady = () => {
+      player.currentTime = resumeAt;
+      player.play().catch(() => {});
+      status.textContent = '';
+      isRecovering = false;
+      player.removeEventListener('loadedmetadata', onReady);
+    };
+    player.addEventListener('loadedmetadata', onReady);
+  }
+
+  function startWatchdog(){
+    if(watchdogInterval) clearInterval(watchdogInterval);
+    watchdogLastTime = player.currentTime;
+    watchdogStallCount = 0;
+    watchdogInterval = setInterval(() => {
+      if(isRecovering || player.paused || player.ended){
+        watchdogLastTime = player.currentTime;
+        watchdogStallCount = 0;
+        return;
+      }
+      if(Math.abs(player.currentTime - watchdogLastTime) < 0.15){
+        watchdogStallCount++;
+        if(watchdogStallCount >= 2){
+          watchdogStallCount = 0;
+          recoverPlayback();
+        }
+      } else {
+        watchdogStallCount = 0;
+      }
+      watchdogLastTime = player.currentTime;
+    }, 8000);
+  }
+
+  startWatchdog();
+
+  // ------------------------------------------------------------------
+  // Historial de reproducción (localStorage)
+  // Guarda cada pocos segundos por dónde va cada video (identificado por
+  // su link, que es único). Al recargar la página, si había algo
+  // reproduciéndose, se ofrece continuar desde ese punto con un modal.
+  // ------------------------------------------------------------------
+  function saveProgress(src, time, duration){
+    if(!src) return;
+    try {
+      const map = JSON.parse(localStorage.getItem('playback_progress') || '{}');
+      map[src] = { time, duration, updatedAt: Date.now() };
+      localStorage.setItem('playback_progress', JSON.stringify(map));
+      localStorage.setItem('last_watched_src', src);
+    } catch(e){}
+  }
+  function getProgress(src){
+    try {
+      const map = JSON.parse(localStorage.getItem('playback_progress') || '{}');
+      return map[src] || null;
+    } catch(e){ return null; }
+  }
+  function clearProgress(src){
+    try {
+      const map = JSON.parse(localStorage.getItem('playback_progress') || '{}');
+      delete map[src];
+      localStorage.setItem('playback_progress', JSON.stringify(map));
+    } catch(e){}
+  }
+
+  function findContentLocation(src){
+    const movieIdx = MOVIES.findIndex(m => m.src === src);
+    if(movieIdx !== -1) return { kind: 'movie', movieIdx, title: MOVIES[movieIdx].title };
+    for(let si = 0; si < SERIES.length; si++){
+      const serie = SERIES[si];
+      for(let sj = 0; sj < serie.seasons.length; sj++){
+        const season = serie.seasons[sj];
+        if(season.srcs){
+          const epIdx = season.srcs.indexOf(src);
+          if(epIdx !== -1) return { kind: 'episode', seriesIndex: si, seasonIndex: sj, episodeIndex: epIdx, title: serie.title + ' — T' + serie.seasons[sj].season + 'E' + (epIdx + 1) };
+        }
+        if(season.episodes){
+          const epIdx = season.episodes.findIndex(e => e.src === src);
+          if(epIdx !== -1) return { kind: 'episode', seriesIndex: si, seasonIndex: sj, episodeIndex: epIdx, title: serie.title + ' — ' + season.episodes[epIdx].title };
+        }
+      }
+    }
+    return null;
+  }
+
+  function formatTime(seconds){
+    seconds = Math.max(0, Math.floor(seconds));
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    const pad = n => n.toString().padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  }
+
+  async function goToLocation(location, seekTime){
+    if(location.kind === 'movie'){
+      switchTab('movies');
+      selectMovie(location.movieIdx);
+    } else {
+      switchTab('series');
+      currentSeriesIndex = location.seriesIndex;
+      currentSeasonIndex = location.seasonIndex;
+      [...seriesCarousel.children].forEach((el, i) => el.classList.toggle('active', i === location.seriesIndex));
+      renderSeasonSelector();
+      await renderEpisodeCarousel();
+      selectEpisode(location.episodeIndex);
+    }
+    if(seekTime > 0){
+      const onReady = () => {
+        player.currentTime = seekTime;
+        player.removeEventListener('loadedmetadata', onReady);
+      };
+      player.addEventListener('loadedmetadata', onReady);
+    }
+  }
+
+  function showResumeModal(location, progress){
+    document.getElementById('resumeModalTitle').textContent = location.title;
+    document.getElementById('resumeModalTime').textContent = formatTime(progress.time);
+    const overlay = document.getElementById('resumeOverlay');
+    overlay.style.display = 'flex';
+
+    document.getElementById('resumeContinueBtn').onclick = () => {
+      overlay.style.display = 'none';
+      goToLocation(location, progress.time);
+    };
+    document.getElementById('resumeRestartBtn').onclick = () => {
+      overlay.style.display = 'none';
+      clearProgress(location.src);
+      goToLocation(location, 0);
+    };
+    document.getElementById('resumeCloseBtn').onclick = () => {
+      overlay.style.display = 'none';
+    };
+  }
+
+  // Guarda progreso periódicamente mientras se reproduce
+  let lastProgressSave = 0;
+  player.addEventListener('timeupdate', () => {
+    const src = playerSource.dataset.baseSrc;
+    if(!src || !player.duration) return;
+    const now = Date.now();
+    if(now - lastProgressSave < 5000) return;
+    lastProgressSave = now;
+    // No guardamos si está muy al principio o muy cerca del final (ya lo vio)
+    if(player.currentTime > 10 && (player.duration - player.currentTime) > 15){
+      saveProgress(src, player.currentTime, player.duration);
+    }
+  });
+  player.addEventListener('ended', () => {
+    const src = playerSource.dataset.baseSrc;
+    if(src) clearProgress(src);
+  });
+
   renderCarousel();
   renderSeriesCarousel();
   renderSagaCarousel();
   selectMovie(0);
+
+  // Al cargar la página, si había algo reproduciéndose, ofrecemos continuar
+  (function checkResume(){
+    try {
+      const lastSrc = localStorage.getItem('last_watched_src');
+      if(!lastSrc) return;
+      const progress = getProgress(lastSrc);
+      if(!progress || progress.time <= 15) return;
+      const location = findContentLocation(lastSrc);
+      if(!location) return;
+      location.src = lastSrc;
+      showResumeModal(location, progress);
+    } catch(e){}
+  })();
 </script>
 
 </body>
