@@ -1516,7 +1516,23 @@
   let currentSeasonIndex = 0;
 
   // Crea una tarjeta de "poster" genérica reutilizable para películas, series y episodios
-  function applyPosterImage(card, url, gradient){
+  // ------------------------------------------------------------------
+  // Lazy loading de portadas: en vez de pedir las ~20 imágenes de golpe
+  // al cargar la página (lo cual satura la conexión y hace que TODO
+  // ande lento, video incluido), solo se piden cuando la tarjeta está
+  // por entrar en pantalla al hacer scroll en el carrusel.
+  // ------------------------------------------------------------------
+  const lazyPosterObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        const card = entry.target;
+        lazyPosterObserver.unobserve(card);
+        loadPosterImageNow(card, card.dataset.lazyUrl, JSON.parse(card.dataset.lazyGradient));
+      }
+    });
+  }, { root: null, rootMargin: '400px', threshold: 0.01 });
+
+  function loadPosterImageNow(card, url, gradient){
     const setGradient = () => {
       card.style.backgroundImage = 'none';
       card.style.background = `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`;
@@ -1524,7 +1540,6 @@
     if(url){
       card.style.backgroundSize = 'cover';
       card.style.backgroundPosition = 'center';
-      card.style.backgroundColor = gradient[1];
       const testImg = new Image();
       testImg.onload = () => {
         card.style.backgroundImage =
@@ -1535,6 +1550,18 @@
     } else {
       setGradient();
     }
+  }
+
+  function applyPosterImage(card, url, gradient){
+    card.style.backgroundColor = gradient[1];
+    if(!url){
+      card.style.backgroundImage = 'none';
+      card.style.background = `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`;
+      return;
+    }
+    card.dataset.lazyUrl = url;
+    card.dataset.lazyGradient = JSON.stringify(gradient);
+    lazyPosterObserver.observe(card);
   }
 
   function createPosterCard(item, opts = {}){
@@ -1679,7 +1706,11 @@
     card.className = 'episode-card';
     const thumb = document.createElement('div');
     thumb.className = 'episode-thumb';
-    if(ep.poster) thumb.style.backgroundImage = `url('${ep.poster}')`;
+    if(ep.poster){
+      thumb.dataset.lazyUrl = ep.poster;
+      thumb.dataset.lazyGradient = JSON.stringify(['#1c1c22', '#141419']);
+      lazyPosterObserver.observe(thumb);
+    }
     thumb.innerHTML = `
       <span class="ep-code">${index + 1}</span>
       <span class="ep-playing">Reproduciendo</span>
