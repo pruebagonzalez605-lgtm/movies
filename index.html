@@ -877,6 +877,29 @@
     }
   }
 
+  // Igual que tmdbSearchMoviePoster, pero busca en el catálogo de SERIES de
+  // TMDB (search/tv) en vez del de películas. Se usa para la portada de las
+  // series que no tienen "poster" manual, para no traer pósters de películas
+  // que coincidan de casualidad por nombre (p. ej. "From" traía el póster de
+  // una película de Spider-Man que también tiene "From" en el título).
+  async function tmdbSearchTvPoster(title, year){
+    const cacheKey = 'tvposter_' + title + '_' + (year || '');
+    const cached = tmdbCacheGet(cacheKey);
+    if(cached !== undefined) return cached;
+    try {
+      let url = `https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&language=${TMDB_LANG}&query=${encodeURIComponent(title)}`;
+      if(year) url += `&first_air_date_year=${year}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const result = data.results && data.results[0];
+      const posterUrl = result && result.poster_path ? TMDB_IMG_BASE + result.poster_path : null;
+      tmdbCacheSet(cacheKey, posterUrl);
+      return posterUrl;
+    } catch(e){
+      return null;
+    }
+  }
+
   async function tmdbFindTvId(title, year){
     const cacheKey = 'tvid_' + title + '_' + (year || '');
     const cached = tmdbCacheGet(cacheKey);
@@ -1051,6 +1074,13 @@
       saga: "Monsters, Inc.",
       tmdbYear: 2013,
       src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.17/MSU.mp4'
+    },
+    {
+      code: '18',
+      title: 'Oppenheimer',
+      gradient: ['#1a1408', '#5c4a13'],
+      tmdbYear: 2023,
+      src: 'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.19/OPPHMR.mp4'
     }
   ];
 
@@ -1165,6 +1195,46 @@
             }
           ]
         }
+      ]
+    },
+    {
+      title: 'From',
+      gradient: ['#1a0d08', '#5c3a1e'],
+      tmdbShow: 'From',
+      tmdbYear: 2022,
+      seasons: [
+        {
+          season: 1,
+          srcs: [
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X1.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X2.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X3.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X4.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X5.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X6.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X7.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X8.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X9.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM1X10.mp4'
+          ]
+        },
+        {
+          season: 2,
+          srcs: [
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X1.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X2.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X3.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X4.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X5.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X6.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X7.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X8.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X9.mp4',
+            'https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM2X10.mp4'
+          ]
+        },
+        { season: 3, srcs: [] },
+        { season: 4, srcs: [] }
       ]
     }
   ];
@@ -1573,7 +1643,11 @@
     } else if(!opts.noAutoFetch) {
       // Sin portada manual: la buscamos sola en TMDB
       applyPosterImage(card, null, gradient);
-      tmdbSearchMoviePoster(item.title, item.tmdbYear).then(url => {
+      const searchTitle = item.tmdbShow || item.title;
+      const posterSearch = opts.mediaType === 'tv'
+        ? tmdbSearchTvPoster(searchTitle, item.tmdbYear)
+        : tmdbSearchMoviePoster(searchTitle, item.tmdbYear);
+      posterSearch.then(url => {
         if(url){
           item.poster = url; // cachea en el objeto para no re-buscar
           applyPosterImage(card, url, gradient);
@@ -1632,7 +1706,7 @@
   function renderSeriesCarousel(){
     seriesCarousel.innerHTML = '';
     SERIES.forEach((serie, i) => {
-      const card = createPosterCard(serie);
+      const card = createPosterCard(serie, { mediaType: 'tv' });
       card.addEventListener('click', () => selectSeries(i));
       seriesCarousel.appendChild(card);
     });
