@@ -25,6 +25,16 @@ function normalizeText(str) {
     .toLowerCase();
 }
 
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function queryMatches(haystack, normalizedQuery) {
+  if (!normalizedQuery) return false;
+  const pattern = new RegExp(`\\b${escapeRegExp(normalizedQuery)}\\b`, "i");
+  return pattern.test(haystack);
+}
+
 export function getMovies() {
   return MOVIES;
 }
@@ -75,6 +85,13 @@ export function buildEpisodePlayerUrl(serie, seasonNumber, episodeNumber) {
 
 export async function resolveMovieCardPoster(movie) {
   return resolveMoviePoster(movie);
+}
+
+export async function resolveSagaCardPoster(saga) {
+  const firstMovie = saga.movies && saga.movies[0];
+  if (!firstMovie) return saga.poster || null;
+  const resolved = await resolveMovieCardPoster(firstMovie);
+  return resolved || saga.poster || null;
 }
 
 export async function resolveSeriesCardPoster(serie) {
@@ -138,15 +155,15 @@ export async function searchSite(query, options = {}) {
   for (const movie of MOVIES) {
     if (results.length >= limit) break;
     const haystack = normalizeText(`${movie.title} ${movie.saga || ""}`);
-    if (!haystack.includes(normalizedQuery)) continue;
-    const poster = await resolveMoviePoster(movie);
+    if (!queryMatches(haystack, normalizedQuery)) continue;
+    const moviePoster = await resolveMovieCardPoster(movie);
     pushResult({
       kind: "movie",
       title: movie.title,
       subtitle: movie.saga ? `Saga ${movie.saga}` : "Pelicula",
       description: "Abrir esta pelicula en el reproductor.",
       href: buildMoviePlayerUrl(movie),
-      poster: poster || null,
+      poster: moviePoster,
       gradient: movie.gradient || ["#1c1c22", "#141419"],
       code: movie.code || "Movie",
     });
@@ -155,56 +172,61 @@ export async function searchSite(query, options = {}) {
   for (const serie of SERIES) {
     if (results.length >= limit) break;
     const haystack = normalizeText(`${serie.title} ${serie.tmdbShow || ""}`);
-    if (!haystack.includes(normalizedQuery)) continue;
-    const poster = await tmdbSearchTvPoster(serie.tmdbShow || serie.title, serie.tmdbYear);
+    if (!queryMatches(haystack, normalizedQuery)) continue;
+    const seriePoster = await resolveSeriesCardPoster(serie);
     pushResult({
       kind: "series",
       title: serie.title,
       subtitle: `${serie.seasons.length} temporadas`,
       description: "Abrir esta serie y explorar sus capitulos.",
       href: "./series.html",
-      poster: poster || serie.poster || null,
+      poster: seriePoster,
       gradient: serie.gradient || ["#1c1c22", "#141419"],
       code: "Serie",
     });
   }
 
-  sagas.forEach((saga) => {
-    if (results.length >= limit) return;
+  for (const saga of sagas) {
+    if (results.length >= limit) break;
     const haystack = normalizeText(`${saga.name} ${saga.movies.map((movie) => movie.title).join(" ")}`);
-    if (!haystack.includes(normalizedQuery)) return;
+    if (!queryMatches(haystack, normalizedQuery)) continue;
+    const sagaPoster = await resolveSagaCardPoster(saga);
     pushResult({
       kind: "saga",
       title: saga.name,
       subtitle: `${saga.movies.length} peliculas`,
       description: "Abrir esta saga y elegir una pelicula.",
       href: "./sagas.html",
-      poster: saga.poster || null,
+      poster: sagaPoster,
       gradient: saga.gradient || ["#1c1c22", "#141419"],
       code: "Saga",
     });
-  });
+  }
 
   for (const serie of SERIES) {
     if (results.length >= limit) break;
+    let serieFallbackPoster;
     for (const season of serie.seasons) {
       if (results.length >= limit) break;
       const episodes = await ensureSeasonEpisodes(serie, season);
-      episodes.forEach((episode, index) => {
-        if (results.length >= limit) return;
-        const haystack = normalizeText(`${serie.title} ${episode.title || ""} ${episode.description || ""}`);
-        if (!haystack.includes(normalizedQuery)) return;
+      for (const [index, episode] of episodes.entries()) {
+        if (results.length >= limit) break;
+        const haystack = normalizeText(episode.title || "");
+        if (!queryMatches(haystack, normalizedQuery)) continue;
+        if (!episode.poster && serieFallbackPoster === undefined) {
+          serieFallbackPoster = await resolveSeriesCardPoster(serie);
+        }
         pushResult({
           kind: "episode",
           title: `${serie.title} - ${episode.title || `Episodio ${index + 1}`}`,
           subtitle: `Temporada ${season.season} - Episodio ${index + 1}`,
           description: episode.description || "Abrir este episodio en el reproductor.",
           href: buildEpisodePlayerUrl(serie, season.season, index + 1),
-          poster: episode.poster || serie.poster || null,
+          poster: episode.poster || serieFallbackPoster || null,
           gradient: serie.gradient || ["#1c1c22", "#141419"],
           code: `E${index + 1}`,
         });
-      });
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import {
   getSagas,
   getSeries,
   resolveMovieCardPoster,
+  resolveSagaCardPoster,
   resolveSeriesCardPoster,
 } from "./shared/catalog-data.js";
 import { initKickAuthUI } from "./shared/kick-auth-ui.js";
@@ -278,11 +279,14 @@ async function renderSeriesPage() {
 }
 
 async function renderSagasPage() {
-  const sagas = await getSagas();
-  const sagaSpotlight = sagas.slice(0, 3).map((saga) => ({
+  const sagas = getSagas();
+  const sagaPosters = await Promise.all(sagas.map((saga) => resolveSagaCardPoster(saga)));
+  const sagaPosterMap = new Map(sagas.map((saga, index) => [saga.name, sagaPosters[index]]));
+
+  const sagaSpotlight = sagas.slice(0, 3).map((saga, index) => ({
     label: `${saga.movies.length} peliculas`,
     title: saga.name,
-    poster: saga.poster,
+    poster: sagaPosters[index],
     gradient: saga.gradient,
   }));
   setHeroContent({
@@ -314,7 +318,7 @@ async function renderSagasPage() {
         <span class="catalog-link catalog-link-ghost">Ver peliculas</span>
       </div>
     `;
-    applyPosterImage(card.querySelector(".catalog-card-art"), saga.poster, saga.gradient);
+    applyPosterImage(card.querySelector(".catalog-card-art"), sagaPosterMap.get(saga.name), saga.gradient);
     card.addEventListener("click", () => {
       [...primaryGrid.children].forEach((node) => node.classList.remove("is-selected"));
       card.classList.add("is-selected");
