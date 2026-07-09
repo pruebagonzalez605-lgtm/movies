@@ -131,4 +131,10 @@ export const MOVIES = [
     tmdbYear: 2023,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.19/OPPHMR.mp4",
   },
+  {
+    code: "19",
+    title: "Con Todos Menos Contigo",
+    gradient: ["#1a0d1f", "#4a1e52"],
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CTMC.mp4",
+  },
 ];
