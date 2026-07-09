@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
+    rel="stylesheet">
+  <title>Player</title>
+  <link rel="stylesheet" href="./src/styles/app.css">
+</head>
+
+<body data-page="player">
+  <header class="site-header">
+    <a class="brand" href="./index.html">COLEVANA</a>
+    <button class="nav-toggle" type="button" aria-label="Abrir menu" aria-controls="site-nav-player"
+      aria-expanded="false" data-nav-toggle>
+      <span class="nav-toggle-lines">
+        <span class="nav-toggle-line"></span>
+        <span class="nav-toggle-line"></span>
+        <span class="nav-toggle-line"></span>
+      </span>
+    </button>
+    <nav class="site-nav" id="site-nav-player" aria-label="Secciones principales">
+      <a class="nav-link" href="./movies.html">Movies</a>
+      <a class="nav-link" href="./series.html">Series</a>
+      <a class="nav-link" href="./sagas.html">Sagas</a>
+      <a class="nav-link" href="./sugerencias.html">Sugerencias</a>
+      <form class="site-search" action="./search.html" method="get">
+        <input class="site-search-input" type="search" name="q" placeholder="Buscar peliculas, series..." aria-label="Buscar en el sitio">
+        <button class="site-search-btn" type="submit">Buscar</button>
+        <div class="site-search-dropdown"></div>
+      </form>
+      <div class="kick-corner">
+        <button class="kick-login-btn" id="kickLoginBtn">Ingresar con Kick</button>
+        <div class="kick-user-badge" id="kickUserBadge">
+          <div class="kick-user-avatar" id="kickUserAvatar"></div>
+          <span class="kick-user-name" id="kickUserName"></span>
+          <button class="kick-logout-btn" id="kickLogoutBtn">Salir</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <div class="kick-gate-error" id="kickGateError">No se pudo iniciar sesion con Kick. Proba de nuevo.</div>
+
+  <main class="player-page">
+    <section class="player-shell">
+      <div class="player-copy">
+        <a class="player-back-link" id="playerBackLink" href="./movies.html">Volver al catalogo</a>
+        <span class="catalog-kicker">Reproductor</span>
+        <h1 id="playerTitle">Cargando contenido...</h1>
+        <p id="playerSubtitle">Preparando la vista dinamica.</p>
+        <div class="player-meta" id="playerMeta"></div>
+        <div class="rating-panel" id="ratingPanel">
+          <div class="rating-global">
+            <div class="stars" id="globalStars"></div>
+            <span class="rating-global-text" id="ratingGlobalText">Sin calificaciones aun</span>
+          </div>
+          <div class="rating-user" id="ratingUserBlock" style="display:none;">
+            <span class="rating-user-label">Tu calificacion:</span>
+            <div class="stars" id="userStars"></div>
+          </div>
+          <span class="rating-login-hint" id="ratingLoginHint">Inicia sesion con Kick para calificar</span>
+        </div>
+      </div>
+      <div class="player-poster" id="playerPoster"></div>
+    </section>
+
+    <section class="theater">
+      <div class="screen-frame">
+        <div class="sprocket-row">
+          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+        </div>
+        <video id="player" controls preload="metadata" playsinline webkit-playsinline>
+          <source id="playerSource" src="" type="video/mp4">
+        </video>
+        <div class="sprocket-row bottom">
+          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+        </div>
+      </div>
+      <div class="status" id="playerStatus"></div>
+    </section>
+
+    <section class="catalog-section">
+      <div class="carousel-label" id="playerCollectionTitle">Seguir explorando</div>
+      <div class="player-story-grid" id="playerRelated"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./src/scripts/nav.js"></script>
+  <script type="module" src="./src/scripts/search-ui.js"></script>
+  <script type="module" src="./src/scripts/player-page.js"></script>
+</body>
+
+</html>

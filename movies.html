@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
+    rel="stylesheet">
+  <title>Movies</title>
+  <link rel="stylesheet" href="./src/styles/app.css">
+</head>
+
+<body data-page="movies">
+  <header class="site-header">
+    <a class="brand" href="./index.html">COLEVANA</a>
+    <button class="nav-toggle" type="button" aria-label="Abrir menu" aria-controls="site-nav-movies"
+      aria-expanded="false" data-nav-toggle>
+      <span class="nav-toggle-lines">
+        <span class="nav-toggle-line"></span>
+        <span class="nav-toggle-line"></span>
+        <span class="nav-toggle-line"></span>
+      </span>
+    </button>
+    <nav class="site-nav" id="site-nav-movies" aria-label="Secciones principales">
+      <a class="nav-link" data-nav-page="movies" href="./movies.html">Movies</a>
+      <a class="nav-link" data-nav-page="series" href="./series.html">Series</a>
+      <a class="nav-link" data-nav-page="sagas" href="./sagas.html">Sagas</a>
+      <a class="nav-link" data-nav-page="sugerencias" href="./sugerencias.html">Sugerencias</a>
+      <form class="site-search" action="./search.html" method="get">
+        <input class="site-search-input" type="search" name="q" placeholder="Buscar peliculas, series..." aria-label="Buscar en el sitio">
+        <button class="site-search-btn" type="submit">Buscar</button>
+        <div class="site-search-dropdown"></div>
+      </form>
+      <div class="kick-corner">
+        <button class="kick-login-btn" id="kickLoginBtn">Ingresar con Kick</button>
+        <div class="kick-user-badge" id="kickUserBadge">
+          <div class="kick-user-avatar" id="kickUserAvatar"></div>
+          <span class="kick-user-name" id="kickUserName"></span>
+          <button class="kick-logout-btn" id="kickLogoutBtn">Salir</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <div class="kick-gate-error" id="kickGateError">No se pudo iniciar sesion con Kick. Proba de nuevo.</div>
+
+  <main class="catalog-main">
+    <section class="catalog-hero">
+      <div class="catalog-hero-copy">
+        <span class="catalog-kicker" id="catalogHeroKicker">Movies</span>
+        <h1 id="catalogHeroTitle">Explora la cartelera antes de entrar a reproducir.</h1>
+        <p id="catalogHeroIntro"></p>
+      </div>
+      <div class="catalog-spotlight" id="catalogSpotlight"></div>
+    </section>
+
+    <section class="catalog-section">
+      <div class="carousel-label">Catalogo principal</div>
+      <div class="catalog-grid" id="catalogPrimaryGrid"></div>
+    </section>
+
+    <section class="catalog-section" id="catalogSecondarySection" style="display:none;">
+      <div class="carousel-label" id="catalogSecondaryTitle">Explorar mas</div>
+      <div class="catalog-detail-grid" id="catalogSecondaryGrid"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./src/scripts/nav.js"></script>
+  <script type="module" src="./src/scripts/search-ui.js"></script>
+  <script type="module" src="./src/scripts/catalog.js"></script>
+</body>
+
+</html>
