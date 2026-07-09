@@ -135,37 +135,39 @@ export async function searchSite(query, options = {}) {
     return results.length < limit;
   }
 
-  MOVIES.forEach((movie) => {
-    if (results.length >= limit) return;
+  for (const movie of MOVIES) {
+    if (results.length >= limit) break;
     const haystack = normalizeText(`${movie.title} ${movie.saga || ""}`);
-    if (!haystack.includes(normalizedQuery)) return;
+    if (!haystack.includes(normalizedQuery)) continue;
+    const poster = await resolveMoviePoster(movie);
     pushResult({
       kind: "movie",
       title: movie.title,
       subtitle: movie.saga ? `Saga ${movie.saga}` : "Pelicula",
       description: "Abrir esta pelicula en el reproductor.",
       href: buildMoviePlayerUrl(movie),
-      poster: movie.poster || null,
+      poster: poster || null,
       gradient: movie.gradient || ["#1c1c22", "#141419"],
       code: movie.code || "Movie",
     });
-  });
+  }
 
-  SERIES.forEach((serie) => {
-    if (results.length >= limit) return;
+  for (const serie of SERIES) {
+    if (results.length >= limit) break;
     const haystack = normalizeText(`${serie.title} ${serie.tmdbShow || ""}`);
-    if (!haystack.includes(normalizedQuery)) return;
+    if (!haystack.includes(normalizedQuery)) continue;
+    const poster = await tmdbSearchTvPoster(serie.tmdbShow || serie.title, serie.tmdbYear);
     pushResult({
       kind: "series",
       title: serie.title,
       subtitle: `${serie.seasons.length} temporadas`,
       description: "Abrir esta serie y explorar sus capitulos.",
       href: "./series.html",
-      poster: serie.poster || null,
+      poster: poster || serie.poster || null,
       gradient: serie.gradient || ["#1c1c22", "#141419"],
       code: "Serie",
     });
-  });
+  }
 
   sagas.forEach((saga) => {
     if (results.length >= limit) return;

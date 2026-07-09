@@ -278,7 +278,7 @@ async function renderSeriesPage() {
 }
 
 async function renderSagasPage() {
-  const sagas = getSagas();
+  const sagas = await getSagas();
   const sagaSpotlight = sagas.slice(0, 3).map((saga) => ({
     label: `${saga.movies.length} peliculas`,
     title: saga.name,

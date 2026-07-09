@@ -17,8 +17,9 @@ export const MOVIES = [
   {
     code: "03",
     title: "Michael Jackson",
+    tmdbTitle: "Michael",
+    tmdbYear: 2026,
     gradient: ["#1a1408", "#5c4a13"],
-    poster: "https://m.media-amazon.com/images/M/MV5BNzllNmRlN2EtMDQyOC00ODJjLTg4OWQtZDNmNGU3YzlkNjc1XkEyXkFqcGc@._V1_FMjpg_UY3000_.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.2/MJU.mp4",
   },
   {

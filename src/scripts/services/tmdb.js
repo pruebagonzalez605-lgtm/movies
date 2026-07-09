@@ -2,10 +2,25 @@ export const TMDB_API_KEY = "58dc4e2bb092932970cdd7af79434942";
 export const TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w500";
 export const TMDB_LANG = "es-419";
 
+// Successful lookups rarely change, so they can be cached for a long time.
+const CACHE_TTL_SUCCESS_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
+// Empty/failed lookups (no match, network hiccup, rate limit) should be
+// retried after a short while instead of being stuck forever as "no poster".
+const CACHE_TTL_EMPTY_MS = 60 * 60 * 1000; // 1 hora
+
 function tmdbCacheGet(key) {
   try {
     const raw = localStorage.getItem(`tmdb_cache_${key}`);
-    return raw ? JSON.parse(raw) : undefined;
+    if (!raw) return undefined;
+    const entry = JSON.parse(raw);
+    // Backward compatibility: old cache entries were the raw value itself
+    // (no expiry), which could permanently "poison" a lookup as null.
+    // Treat that legacy shape as expired so it gets refreshed.
+    if (!entry || typeof entry !== "object" || !("value" in entry) || !("expiresAt" in entry)) {
+      return undefined;
+    }
+    if (Date.now() > entry.expiresAt) return undefined;
+    return entry.value;
   } catch {
     return undefined;
   }
@@ -13,7 +28,10 @@ function tmdbCacheGet(key) {
 
 function tmdbCacheSet(key, value) {
   try {
-    localStorage.setItem(`tmdb_cache_${key}`, JSON.stringify(value));
+    const ttl = value === null || value === undefined || (Array.isArray(value) && value.length === 0)
+      ? CACHE_TTL_EMPTY_MS
+      : CACHE_TTL_SUCCESS_MS;
+    localStorage.setItem(`tmdb_cache_${key}`, JSON.stringify({ value, expiresAt: Date.now() + ttl }));
   } catch {
     // Ignore storage quota issues.
   }
@@ -101,6 +119,6 @@ export async function tmdbGetSeasonEpisodes(tvId, seasonNumber) {
 }
 
 export async function resolveMoviePoster(movie) {
-  const poster = await tmdbSearchMoviePoster(movie.title, movie.tmdbYear);
+  const poster = await tmdbSearchMoviePoster(movie.tmdbTitle || movie.title, movie.tmdbYear);
   return poster || movie.poster || null;
 }
