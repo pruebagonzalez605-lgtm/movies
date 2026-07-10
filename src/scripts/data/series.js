@@ -45,4 +45,13 @@ export const SERIES = [
       { season: 4, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.18/FRM4X10.mp4"] },
     ],
   },
+  {
+    title: "American Horror Story",
+    gradient: ["#1a0808", "#5c0d0d"],
+    tmdbShow: "American Horror Story",
+    tmdbYear: 2011,
+    seasons: [
+      { season: 1, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X10.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X11.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS1X12.mp4"] },
+    ],
+  },
 ];

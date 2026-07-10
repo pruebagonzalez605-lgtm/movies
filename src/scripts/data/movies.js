@@ -147,4 +147,13 @@ export const MOVIES = [
     tmdbYear: 1999,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.21/AP1.mp4",
   },
+  {
+    code: "21",
+    title: "American Pie 2: Tu segunda vez es mejor",
+    tmdbTitle: "American Pie 2",
+    gradient: ["#3d2a0d", "#8a6a1e"],
+    saga: "American Pie",
+    tmdbYear: 2001,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.21/AP2.mp4",
+  },
 ];
