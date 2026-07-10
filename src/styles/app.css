@@ -622,12 +622,18 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
   padding: 34px 28px 48px;
 }
 
-.catalog-hero,
-.player-shell {
+.catalog-hero {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 24px;
   align-items: stretch;
+}
+
+.player-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 22px;
 }
 
 .catalog-hero {
@@ -638,8 +644,7 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
   grid-template-columns: 1fr;
 }
 
-.catalog-hero-copy,
-.player-copy {
+.catalog-hero-copy {
   background: linear-gradient(160deg, rgba(28, 28, 34, 0.96), rgba(20, 20, 25, 0.96));
   border: 1px solid #2a2a32;
   border-radius: 18px;
@@ -655,7 +660,7 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
 }
 
 .catalog-hero-copy h1,
-.player-copy h1 {
+.player-shell h1 {
   font-family: "Montserrat", sans-serif;
   font-size: clamp(32px, 4vw, 56px);
   line-height: 0.98;
@@ -667,7 +672,7 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
 }
 
 .catalog-hero-copy p,
-.player-copy p {
+.player-shell p {
   margin: 0;
   color: var(--text-dim);
   line-height: 1.7;
@@ -1094,20 +1099,8 @@ body.modal-open {
   padding-top: 26px;
 }
 
-.player-poster {
-  min-height: 100%;
-  border-radius: 18px;
-  border: 1px solid #2a2a32;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8);
-}
-
 .player-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 18px;
+  display: none;
 }
 
 .player-back-link {
@@ -1122,13 +1115,14 @@ body.modal-open {
   overflow-wrap: anywhere;
 }
 
-.player-copy .rating-panel {
-  margin-top: 18px;
+.theater .rating-panel {
+  margin-top: 20px;
 }
 
 .player-story-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 172px));
+  justify-content: start;
   gap: 16px;
 }
 
@@ -1155,7 +1149,7 @@ body.modal-open {
 
 .player-story-art {
   position: relative;
-  min-height: 170px;
+  aspect-ratio: 2 / 3;
   background-size: cover;
   background-position: center;
 }
@@ -1201,9 +1195,7 @@ body.modal-open {
   overflow: hidden;
 }
 
-.player-copy,
 .catalog-hero-copy,
-.player-poster,
 .screen-frame,
 .rating-panel,
 .catalog-card,
@@ -1294,8 +1286,7 @@ body.modal-open {
   }
   .hero-home,
   .catalog-spotlight,
-  .catalog-hero,
-  .player-shell {
+  .catalog-hero {
     grid-template-columns: 1fr;
   }
   .home-grid,
@@ -1325,11 +1316,10 @@ body.modal-open {
   .hero-panel p,
   .page-intro,
   .catalog-hero-copy p,
-  .player-copy p {
+  .player-shell p {
     font-size: 14px;
   }
-  .catalog-hero-copy,
-  .player-copy {
+  .catalog-hero-copy {
     padding: 24px 20px;
   }
   .catalog-modal-dialog {
@@ -1351,11 +1341,8 @@ body.modal-open {
   .catalog-inline-thumb {
     min-height: 146px;
   }
-  .player-poster {
-    min-height: 260px;
-  }
   .player-story-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 140px));
   }
   .theater { width: 100%; padding: 16px 16px 32px; }
   .marquee { margin-bottom: 14px; }
@@ -1415,9 +1402,6 @@ body.modal-open {
   .home-poster-art {
     min-height: 220px;
   }
-  .player-poster {
-    min-height: 220px;
-  }
   .theater {
     padding: 16px 12px 32px;
   }
@@ -1433,8 +1417,7 @@ body.modal-open {
     width: min(280px, calc(100vw - 24px));
   }
   .hero-panel,
-  .catalog-hero-copy,
-  .player-copy {
+  .catalog-hero-copy {
     padding: 22px 16px;
   }
   .catalog-modal {
@@ -1446,7 +1429,7 @@ body.modal-open {
   }
   .hero-panel h1,
   .catalog-hero-copy h1,
-  .player-copy h1 {
+  .player-shell h1 {
     font-size: clamp(28px, 10vw, 42px);
   }
   .catalog-inline-card {

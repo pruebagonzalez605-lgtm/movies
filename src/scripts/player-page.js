@@ -24,7 +24,6 @@ const dom = {
   status: document.getElementById("playerStatus"),
   video: document.getElementById("player"),
   source: document.getElementById("playerSource"),
-  poster: document.getElementById("playerPoster"),
   meta: document.getElementById("playerMeta"),
   related: document.getElementById("playerRelated"),
   collectionTitle: document.getElementById("playerCollectionTitle"),
@@ -137,14 +136,6 @@ function clearProgress(src) {
   }
 }
 
-function setPoster(node, posterUrl, gradient) {
-  node.style.background = `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`;
-  if (!posterUrl) return;
-  node.style.backgroundImage = `linear-gradient(180deg, rgba(8,8,12,0.08), rgba(8,8,12,0.82)), url('${posterUrl}')`;
-  node.style.backgroundSize = "cover";
-  node.style.backgroundPosition = "center";
-}
-
 function createStoryCard({ href, poster, gradient, code, title, description, active = false }) {
   return `
     <a class="player-story-card${active ? " is-active" : ""}" href="${href}">
@@ -170,7 +161,6 @@ function mountPlayer({ src, title, subtitle, poster, gradient, meta, backHref, c
   dom.related.innerHTML = relatedHtml;
   dom.collectionTitle.textContent = collectionTitle;
 
-  setPoster(dom.poster, poster, gradient);
   dom.source.src = src;
   dom.source.dataset.baseSrc = src;
   dom.video.load();

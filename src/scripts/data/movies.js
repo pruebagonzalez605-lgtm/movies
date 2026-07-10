@@ -138,4 +138,12 @@ export const MOVIES = [
     gradient: ["#1a0d1f", "#4a1e52"],
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CTMC.mp4",
   },
+  {
+    code: "20",
+    title: "American Pie",
+    gradient: ["#3d2a0d", "#8a6a1e"],
+    saga: "American Pie",
+    tmdbYear: 1999,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.21/AP1.mp4",
+  },
 ];

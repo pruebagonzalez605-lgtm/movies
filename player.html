@@ -46,26 +46,13 @@
   <div class="kick-gate-error" id="kickGateError">No se pudo iniciar sesion con Kick. Proba de nuevo.</div>
 
   <main class="player-page">
+    <a class="player-back-link" id="playerBackLink" href="./movies.html">Volver al catalogo</a>
+
     <section class="player-shell">
-      <div class="player-copy">
-        <a class="player-back-link" id="playerBackLink" href="./movies.html">Volver al catalogo</a>
-        <span class="catalog-kicker">Reproductor</span>
-        <h1 id="playerTitle">Cargando contenido...</h1>
-        <p id="playerSubtitle">Preparando la vista dinamica.</p>
-        <div class="player-meta" id="playerMeta"></div>
-        <div class="rating-panel" id="ratingPanel">
-          <div class="rating-global">
-            <div class="stars" id="globalStars"></div>
-            <span class="rating-global-text" id="ratingGlobalText">Sin calificaciones aun</span>
-          </div>
-          <div class="rating-user" id="ratingUserBlock" style="display:none;">
-            <span class="rating-user-label">Tu calificacion:</span>
-            <div class="stars" id="userStars"></div>
-          </div>
-          <span class="rating-login-hint" id="ratingLoginHint">Inicia sesion con Kick para calificar</span>
-        </div>
-      </div>
-      <div class="player-poster" id="playerPoster"></div>
+      <span class="catalog-kicker">Reproductor</span>
+      <h1 id="playerTitle">Cargando contenido...</h1>
+      <p id="playerSubtitle">Preparando la vista dinamica.</p>
+      <div class="player-meta" id="playerMeta"></div>
     </section>
 
     <section class="theater">
@@ -85,6 +72,18 @@
         </div>
       </div>
       <div class="status" id="playerStatus"></div>
+
+      <div class="rating-panel" id="ratingPanel">
+        <div class="rating-global">
+          <div class="stars" id="globalStars"></div>
+          <span class="rating-global-text" id="ratingGlobalText">Sin calificaciones aun</span>
+        </div>
+        <div class="rating-user" id="ratingUserBlock" style="display:none;">
+          <span class="rating-user-label">Tu calificacion:</span>
+          <div class="stars" id="userStars"></div>
+        </div>
+        <span class="rating-login-hint" id="ratingLoginHint">Inicia sesion con Kick para calificar</span>
+      </div>
     </section>
 
     <section class="catalog-section">
