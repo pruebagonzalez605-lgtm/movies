@@ -19,12 +19,9 @@ const supabase = createSupabaseService({
 const supabaseRest = `${supabase.config.url}/rest/v1`;
 
 const dom = {
-  title: document.getElementById("playerTitle"),
-  subtitle: document.getElementById("playerSubtitle"),
   status: document.getElementById("playerStatus"),
   video: document.getElementById("player"),
   source: document.getElementById("playerSource"),
-  meta: document.getElementById("playerMeta"),
   related: document.getElementById("playerRelated"),
   collectionTitle: document.getElementById("playerCollectionTitle"),
   backLink: document.getElementById("playerBackLink"),
@@ -153,11 +150,9 @@ function createStoryCard({ href, poster, gradient, code, title, description, act
 }
 
 function mountPlayer({ src, title, subtitle, poster, gradient, meta, backHref, contentKey, relatedHtml, collectionTitle }) {
-  dom.title.textContent = title;
-  dom.subtitle.textContent = subtitle;
+  document.title = title ? `${title} - Player` : "Player";
   dom.backLink.href = backHref;
   dom.backLink.textContent = "Volver al catalogo";
-  dom.meta.innerHTML = meta.map((item) => `<span>${item}</span>`).join("");
   dom.related.innerHTML = relatedHtml;
   dom.collectionTitle.textContent = collectionTitle;
 
@@ -312,10 +307,8 @@ async function init() {
 
     throw new Error("missing_query");
   } catch {
-    dom.title.textContent = "Contenido no encontrado";
-    dom.subtitle.textContent = "Revisa el enlace y vuelve al catalogo.";
-    dom.status.textContent = "";
-    dom.meta.innerHTML = "<span>Sin coincidencias</span>";
+    document.title = "Contenido no encontrado - Player";
+    dom.status.textContent = "Contenido no encontrado. Revisa el enlace y vuelve al catalogo.";
     dom.related.innerHTML = `
       ${createStoryCard({
         href: "./movies.html",

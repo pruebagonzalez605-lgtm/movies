@@ -8,11 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
     rel="stylesheet">
-  <title>Cartelera Home</title>
+  <title>Colevana</title>
   <link rel="stylesheet" href="./src/styles/app.css">
 </head>
 
-<body>
+<body data-page="home">
   <header class="site-header">
     <a class="brand" href="./index.html">COLEVANA</a>
     <button class="nav-toggle" type="button" aria-label="Abrir menu" aria-controls="site-nav-home" aria-expanded="false" data-nav-toggle>
@@ -44,64 +44,23 @@
   </header>
   <div class="kick-gate-error" id="kickGateError">No se pudo iniciar sesion con Kick. Proba de nuevo.</div>
 
-  <main class="home-main">
-    <section class="hero-home">
-      <div class="hero-panel" id="homeHeroPanel">
-        <div class="hero-kicker">Movie Project</div>
-        <h1>Tu cartelera, ahora con una home de verdad.</h1>
-        <p>
-          Entra por una portada principal y navega directo a peliculas, series, sagas o sugerencias.
-          Ahora la home tambien se alimenta con carteles reales para darle una presencia mas cinematica.
-        </p>
-        <div class="hero-actions">
-          <a class="hero-btn primary" href="./movies.html">Entrar a Movies</a>
-          <a class="hero-btn secondary" href="./series.html">Ver Series</a>
-        </div>
-        <div class="featured-poster-strip" id="featuredPosterStrip"></div>
-      </div>
-
-      <div class="hero-side">
-        <div class="hero-panel hero-stat hero-backdrop-panel">
-          <span class="hero-stat-label">Carteles destacados</span>
-          <span class="hero-stat-value">Selecciones visuales</span>
-          <div class="hero-backdrop-grid" id="homeHeroBackdrop"></div>
-        </div>
-        <div class="hero-panel hero-stat">
-          <span class="hero-stat-label">Look & Feel</span>
-          <span class="hero-stat-value">Portada cinematica</span>
-        </div>
-      </div>
+  <main class="catalog-main">
+    <section class="catalog-section">
+      <div class="carousel-label">Peliculas</div>
+      <div class="catalog-grid" id="homeMoviesGrid"></div>
+      <a class="catalog-link" id="homeMoviesMore" href="./movies.html">Ver todas las peliculas</a>
     </section>
 
-    <section class="home-grid">
-      <a class="home-card" href="./movies.html">
-        <div class="home-card-label">01</div>
-        <h2>Movies</h2>
-        <p>Entra directo a la cartelera principal y reproduce tus peliculas desde una pagina dedicada.</p>
-      </a>
-
-      <a class="home-card" href="./series.html">
-        <div class="home-card-label">02</div>
-        <h2>Series</h2>
-        <p>Explora temporadas y episodios en una vista propia, separada del resto del contenido.</p>
-      </a>
-
-      <a class="home-card" href="./sagas.html">
-        <div class="home-card-label">03</div>
-        <h2>Sagas</h2>
-        <p>Reune franquicias y colecciones en una seccion especializada para verlas mejor agrupadas.</p>
-      </a>
-
-      <a class="home-card" href="./sugerencias.html">
-        <div class="home-card-label">04</div>
-        <h2>Sugerencias</h2>
-        <p>Dale a tu comunidad un punto de entrada claro para pedir nuevas peliculas y series.</p>
-      </a>
+    <section class="catalog-section">
+      <div class="carousel-label">Series</div>
+      <div class="catalog-grid" id="homeSeriesGrid"></div>
+      <a class="catalog-link" id="homeSeriesMore" href="./series.html">Ver todas las series</a>
     </section>
 
-    <section class="home-poster-showcase">
-      <div class="carousel-label">Carteles destacados</div>
-      <div class="home-poster-grid" id="featuredPosterGrid"></div>
+    <section class="catalog-section">
+      <div class="carousel-label">Sagas</div>
+      <div class="catalog-grid" id="homeSagasGrid"></div>
+      <a class="catalog-link" id="homeSagasMore" href="./sagas.html">Ver todas las sagas</a>
     </section>
   </main>
 

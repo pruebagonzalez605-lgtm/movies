@@ -171,10 +171,10 @@ function createEpisodeLink(serie, seasonNumber, episode, index) {
 
 function createMovieInlineCard(movie, posterUrl, secondaryText) {
   const item = document.createElement("a");
-  item.className = "catalog-inline-card";
+  item.className = "catalog-inline-card catalog-inline-card-poster";
   item.href = buildMoviePlayerUrl(movie);
   item.innerHTML = `
-    <div class="catalog-inline-thumb">
+    <div class="catalog-inline-thumb catalog-inline-thumb-poster">
       <span class="catalog-inline-index">${movie.code || "Movie"}</span>
     </div>
     <div class="catalog-inline-copy">
@@ -328,7 +328,7 @@ async function renderSagasPage() {
         intro: "Selecciona la pelicula de la franquicia que quieres abrir.",
         buildContent(content) {
           const grid = document.createElement("div");
-          grid.className = "catalog-inline-grid";
+          grid.className = "catalog-inline-grid catalog-inline-grid-posters";
           saga.movies.forEach((movie) => {
             grid.appendChild(
               createMovieInlineCard(
