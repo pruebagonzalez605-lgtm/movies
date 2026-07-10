@@ -21,12 +21,13 @@ const secondarySection = document.getElementById("catalogSecondarySection");
 
 let modalElements = null;
 
-function applyPosterImage(node, posterUrl, gradient) {
+function applyPosterImage(node, posterUrl, gradient, options = {}) {
+  const overlay = options.overlay || "linear-gradient(180deg, rgba(8,8,12,0.12), rgba(8,8,12,0.85))";
   node.style.background = `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`;
   if (!posterUrl) return;
   const img = new Image();
   img.onload = () => {
-    node.style.backgroundImage = `linear-gradient(180deg, rgba(8,8,12,0.12), rgba(8,8,12,0.85)), url('${posterUrl}')`;
+    node.style.backgroundImage = `${overlay}, url('${posterUrl}')`;
     node.style.backgroundSize = "cover";
     node.style.backgroundPosition = "center";
   };
@@ -50,7 +51,10 @@ function setHeroContent(config) {
         <strong>${item.title || item}</strong>
       `;
       if (item.poster) {
-        applyPosterImage(card, item.poster, item.gradient || ["#1c1c22", "#141419"]);
+        applyPosterImage(card, item.poster, item.gradient || ["#1c1c22", "#141419"], {
+          overlay:
+            "linear-gradient(180deg, rgba(8,8,12,0.1) 0%, rgba(8,8,12,0.18) 35%, rgba(8,8,12,0.55) 62%, rgba(8,8,12,0.95) 100%)",
+        });
       }
     } else {
       card.innerHTML = `<span>Vista</span><strong>${item}</strong>`;
