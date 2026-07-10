@@ -140,7 +140,8 @@ export const MOVIES = [
   },
   {
     code: "20",
-    title: "American Pie",
+    title: "American Pie: Tu primera vez",
+    tmdbTitle: "American Pie",
     gradient: ["#3d2a0d", "#8a6a1e"],
     saga: "American Pie",
     tmdbYear: 1999,
