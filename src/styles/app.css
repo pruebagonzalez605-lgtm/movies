@@ -60,6 +60,9 @@ a {
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: "Montserrat", sans-serif;
   font-size: 24px;
   font-weight: 800;
@@ -69,6 +72,13 @@ a {
   flex-shrink: 0;
   white-space: nowrap;
   overflow-wrap: normal;
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .nav-toggle {
@@ -758,7 +768,7 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
 
 .catalog-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 14px;
 }
 
@@ -1272,7 +1282,7 @@ body.modal-open {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .catalog-grid {
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
   .catalog-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1303,6 +1313,10 @@ body.modal-open {
   }
   .brand {
     font-size: 20px;
+  }
+  .brand-mark {
+    width: 26px;
+    height: 26px;
   }
   .nav-toggle {
     display: inline-flex;
@@ -1366,7 +1380,7 @@ body.modal-open {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .catalog-grid {
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   }
   .catalog-detail-grid {
     grid-template-columns: 1fr;
@@ -1476,7 +1490,7 @@ body.modal-open {
     grid-template-columns: 1fr;
   }
   .catalog-grid {
-    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
     gap: 10px;
   }
   .hero-backdrop-grid,
