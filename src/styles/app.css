@@ -558,6 +558,151 @@ body[data-page="sugerencias"] .nav-link[data-nav-page="sugerencias"] {
 .sprocket-row.bottom { padding: 8px 4px 0; }
 .sprocket { width: 10px; height: 10px; background: var(--bg); border-radius: 2px; }
 video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 2px; }
+
+.screen-frame .plyr {
+  --plyr-color-main: var(--accent);
+  --plyr-video-background: #000;
+  --plyr-menu-background: rgba(20, 20, 25, 0.98);
+  --plyr-menu-color: var(--text);
+  --plyr-video-control-color: #fff;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.screen-frame .plyr.plyr--menu-open {
+  z-index: 5;
+  overflow: visible;
+}
+
+.screen-frame .plyr__video-wrapper {
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.screen-frame .plyr video {
+  aspect-ratio: auto;
+}
+
+.native-ios-player .screen-frame video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #000;
+}
+
+.screen-frame .plyr__menu__container,
+.screen-frame .plyr__control--overlaid {
+  border: 1px solid rgba(232, 196, 104, 0.24);
+}
+
+.screen-frame .plyr__volume {
+  position: relative;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.screen-frame .plyr__volume::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 44px;
+  width: 38px;
+  height: 108px;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(8px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.screen-frame .plyr__volume input[data-plyr="volume"] {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 55px;
+  display: block;
+  width: 84px;
+  min-width: 84px;
+  margin-bottom: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) rotate(-90deg);
+  transform-origin: center;
+  transition: opacity 0.16s ease;
+  -webkit-transform: translateX(-50%) rotate(-90deg);
+  -moz-transform: translateX(-50%) rotate(-90deg);
+  -ms-transform: translateX(-50%) rotate(-90deg);
+  -o-transform: translateX(-50%) rotate(-90deg);
+}
+
+.screen-frame .plyr__volume:hover::before,
+.screen-frame .plyr__volume:focus-within::before,
+.screen-frame .plyr__volume:hover input[data-plyr="volume"],
+.screen-frame .plyr__volume:focus-within input[data-plyr="volume"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform-origin: center;
+}
+
+.screen-frame .plyr__volume:hover::before,
+.screen-frame .plyr__volume:focus-within::before {
+  transform: translateX(-50%) translateY(0);
+}
+
+.player-native-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.player-quick-settings {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.player-quick-settings[hidden] {
+  display: none;
+}
+
+.player-quality-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px 5px 12px;
+  border: 1px solid #2a2a32;
+  border-radius: 999px;
+  background: rgba(20, 20, 25, 0.94);
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.player-quality-control select {
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 28px 0 12px;
+  background: var(--accent);
+  color: var(--bg);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.player-quality-hint {
+  color: var(--text-dim);
+  font-size: 11px;
+}
 .carousel-label { display: flex; align-items: center; gap: 10px; margin: 28px 0 12px; color: var(--text-dim); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; }
 .carousel-label::before, .carousel-label::after { content: ""; flex: 1; height: 1px; background: #2a2a32; }
 .carousel { display: flex; gap: 14px; overflow-x: auto; padding: 6px 4px 16px; scroll-snap-type: x proximity; }
@@ -592,6 +737,13 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
 .resume-btn { font-family: inherit; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; padding: 12px; border-radius: 8px; cursor: pointer; border: 1px solid #2a2a32; background: transparent; color: var(--text); transition: border-color 0.15s ease, background 0.15s ease; }
 .resume-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: bold; }
 .resume-dismiss { margin-top: 14px; background: none; border: none; color: var(--text-dim); font-size: 11px; letter-spacing: 0.1em; cursor: pointer; text-decoration: underline; }
+body.resume-open { overflow: hidden; }
+
+.plyr__preview-thumb {
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.72);
+}
 .tabs { display: flex; justify-content: center; gap: 6px; margin: 26px 0 22px; }
 .tab { background: transparent; border: 1px solid #2a2a32; color: var(--text-dim); font-family: inherit; font-size: 11px; font-weight: bold; letter-spacing: 0.2em; text-transform: uppercase; padding: 8px 18px; border-radius: 999px; cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease; }
 .tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
@@ -1503,6 +1655,139 @@ body.modal-open {
   .carousel {
     padding: 4px 12px 12px;
     margin: 0 -12px;
+  }
+
+  .screen-frame .plyr__controls {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 6px 7px;
+    gap: 2px;
+  }
+
+  .screen-frame .plyr__controls > .plyr__control,
+  .screen-frame .plyr__controls > .plyr__volume > .plyr__control,
+  .screen-frame .plyr__controls > .plyr__menu > .plyr__control {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    padding: 8px;
+  }
+
+  .screen-frame .plyr__progress__container {
+    order: -10;
+    min-width: 0;
+    width: 100%;
+    flex: 1 0 100%;
+    margin: 0 1px 2px;
+  }
+
+  .screen-frame .plyr__time {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 34px;
+    padding-inline: 1px;
+    font-size: 10px;
+  }
+
+  .screen-frame .plyr__control--overlaid {
+    width: 46px;
+    height: 46px;
+    padding: 13px;
+  }
+
+  .screen-frame .plyr__volume::before {
+    bottom: 36px;
+    width: 30px;
+    height: 82px;
+  }
+
+  .screen-frame .plyr__volume input[data-plyr="volume"] {
+    bottom: 43px;
+    width: 64px;
+    min-width: 64px;
+  }
+
+  .player-quick-settings {
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .player-quality-control {
+    padding-left: 10px;
+  }
+
+  .player-quality-control select {
+    min-height: 30px;
+    padding-inline: 10px 24px;
+  }
+
+  .player-quality-hint {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 600px), (max-height: 500px) {
+  .screen-frame .plyr__menu__container {
+    right: 0;
+    z-index: 20;
+    width: min(230px, calc(100vw - 64px));
+    max-width: calc(100vw - 64px);
+    white-space: normal;
+  }
+
+  .screen-frame .plyr__menu__container > div {
+    max-width: 100%;
+  }
+
+  .screen-frame .plyr__menu__container .plyr__control {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    min-height: 34px;
+    padding: 7px 10px;
+  }
+
+  .screen-frame .plyr__menu__container .plyr__control > span {
+    min-width: 0;
+  }
+
+  .screen-frame .plyr__menu__container .plyr__menu__value {
+    min-width: 0;
+    padding-left: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .screen-frame .plyr__menu__container [id$="-quality"] [role="menu"],
+  .screen-frame .plyr__menu__container [id$="-captions"] [role="menu"],
+  .screen-frame .plyr__menu__container [id$="-speed"] [role="menu"] {
+    max-height: clamp(96px, 42dvh, 180px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 380px) {
+  .screen-frame .plyr__controls {
+    padding: 6px;
+  }
+
+  .screen-frame .plyr__controls > .plyr__control,
+  .screen-frame .plyr__controls > .plyr__volume > .plyr__control,
+  .screen-frame .plyr__controls > .plyr__menu > .plyr__control {
+    flex-basis: 30px;
+    width: 30px;
+    height: 30px;
+    padding: 7px;
+  }
+
+  .screen-frame .plyr__time {
+    min-width: 34px;
+    font-size: 10px;
   }
 }
 
