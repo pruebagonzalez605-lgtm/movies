@@ -21,6 +21,11 @@ export const MOVIES = [
     tmdbYear: 2026,
     gradient: ["#1a1408", "#5c4a13"],
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.2/MJU.mp4",
+    sources: [
+      { src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.2/MJU.mp4", size: 1080 },
+      { src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.2/MJU-720p.mp4", size: 720 },
+      { src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.2/MJU-480p.mp4", size: 480 },
+    ],
   },
   {
     code: "04",

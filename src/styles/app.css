@@ -571,6 +571,16 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
   overflow: hidden;
 }
 
+.screen-frame .plyr.plyr--menu-open {
+  z-index: 5;
+  overflow: visible;
+}
+
+.screen-frame .plyr__video-wrapper {
+  overflow: hidden;
+  border-radius: inherit;
+}
+
 .screen-frame .plyr video {
   aspect-ratio: auto;
 }
@@ -1654,7 +1664,9 @@ body.modal-open {
     gap: 2px;
   }
 
-  .screen-frame .plyr__controls .plyr__control {
+  .screen-frame .plyr__controls > .plyr__control,
+  .screen-frame .plyr__controls > .plyr__volume > .plyr__control,
+  .screen-frame .plyr__controls > .plyr__menu > .plyr__control {
     flex: 0 0 32px;
     width: 32px;
     height: 32px;
@@ -1715,12 +1727,58 @@ body.modal-open {
   }
 }
 
+@media (max-width: 600px), (max-height: 500px) {
+  .screen-frame .plyr__menu__container {
+    right: 0;
+    z-index: 20;
+    width: min(230px, calc(100vw - 64px));
+    max-width: calc(100vw - 64px);
+    white-space: normal;
+  }
+
+  .screen-frame .plyr__menu__container > div {
+    max-width: 100%;
+  }
+
+  .screen-frame .plyr__menu__container .plyr__control {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    min-height: 34px;
+    padding: 7px 10px;
+  }
+
+  .screen-frame .plyr__menu__container .plyr__control > span {
+    min-width: 0;
+  }
+
+  .screen-frame .plyr__menu__container .plyr__menu__value {
+    min-width: 0;
+    padding-left: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .screen-frame .plyr__menu__container [id$="-quality"] [role="menu"],
+  .screen-frame .plyr__menu__container [id$="-captions"] [role="menu"],
+  .screen-frame .plyr__menu__container [id$="-speed"] [role="menu"] {
+    max-height: clamp(96px, 42dvh, 180px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+}
+
 @media (max-width: 380px) {
   .screen-frame .plyr__controls {
     padding: 6px;
   }
 
-  .screen-frame .plyr__controls .plyr__control {
+  .screen-frame .plyr__controls > .plyr__control,
+  .screen-frame .plyr__controls > .plyr__volume > .plyr__control,
+  .screen-frame .plyr__controls > .plyr__menu > .plyr__control {
     flex-basis: 30px;
     width: 30px;
     height: 30px;

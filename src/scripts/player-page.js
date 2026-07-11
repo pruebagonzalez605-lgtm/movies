@@ -20,6 +20,7 @@ const supabase = createSupabaseService({
 const supabaseRest = `${supabase.config.url}/rest/v1`;
 const MIN_RESUME_SECONDS = 3;
 const END_PROGRESS_MARGIN_SECONDS = 15;
+const QUALITY_SWITCH_TIMEOUT_MS = 20000;
 
 const dom = {
   status: document.getElementById("playerStatus"),
@@ -60,7 +61,23 @@ const state = {
   availableSources: [],
   currentQuality: 1080,
   autoQuality: true,
+  qualityChangeOrigin: null,
 };
+
+const boundVideoElements = new WeakSet();
+let globalEventsBound = false;
+
+function getActiveVideo() {
+  const playerMedia = state.playerUi?.media;
+  if (playerMedia?.isConnected) return playerMedia;
+  return document.querySelector(".plyr video, video#player, video") || dom.video;
+}
+
+function syncActiveVideo() {
+  const activeVideo = getActiveVideo();
+  if (activeVideo) dom.video = activeVideo;
+  return activeVideo;
+}
 
 function normalizeSources(media) {
   if (Array.isArray(media.sources) && media.sources.length) {
@@ -151,6 +168,34 @@ function normalizeTracks(media) {
     }));
 }
 
+function configureVideoElement(video, sources, tracks, initialQuality, poster) {
+  const orderedSources = [...sources].sort(
+    (a, b) => Number(Number(a.size) !== Number(initialQuality))
+      - Number(Number(b.size) !== Number(initialQuality)),
+  );
+  const sourceElements = orderedSources.map((source) => {
+    const element = document.createElement("source");
+    element.src = source.src;
+    element.type = source.type;
+    if (Number.isFinite(Number(source.size))) element.setAttribute("size", String(source.size));
+    return element;
+  });
+  const trackElements = tracks.map((track) => {
+    const element = document.createElement("track");
+    element.kind = track.kind;
+    element.label = track.label;
+    element.srclang = track.srcLang;
+    element.src = track.src;
+    element.default = track.default;
+    return element;
+  });
+
+  video.removeAttribute("src");
+  video.replaceChildren(...sourceElements, ...trackElements);
+  video.poster = poster || "";
+  video.load();
+}
+
 function isAppleMobileDevice() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -168,7 +213,7 @@ function chooseInitialQuality(sources) {
   return qualities.length ? Math.max(...qualities) : 1080;
 }
 
-function mountPlayerUi(media, defaultQuality) {
+function mountPlayerUi(media, defaultQuality, qualityOptions) {
   if (!window.Plyr || isAppleMobileDevice()) {
     document.documentElement.classList.add("native-ios-player");
     return;
@@ -183,10 +228,10 @@ function mountPlayerUi(media, defaultQuality) {
     ];
   state.playerUi = new window.Plyr(dom.video, {
     controls,
-    settings: ["captions", "speed"],
+    settings: ["captions", "quality", "speed"],
     quality: {
       default: defaultQuality,
-      options: [1080, 720, 480, 360],
+      options: qualityOptions,
     },
     seekTime: 10,
     speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
@@ -209,6 +254,7 @@ function mountPlayerUi(media, defaultQuality) {
       },
     },
   });
+  bindVideoEvents(syncActiveVideo());
 }
 
 function withCacheBust(url) {
@@ -219,60 +265,82 @@ function withCacheBust(url) {
 
 function recoverPlayback() {
   if (state.isRecovering || !state.currentBaseSrc) return;
+  const video = syncActiveVideo();
+  if (!video) return;
   state.isRecovering = true;
-  const resumeAt = dom.video.currentTime || 0;
-  const wasPlaying = !dom.video.paused;
+  const resumeAt = video.currentTime || 0;
+  const wasPlaying = !video.paused;
   dom.status.textContent = "La conexion se interrumpio. Reconectando el video...";
 
-  const recoveryTimeout = window.setTimeout(() => {
-    state.isRecovering = false;
-  }, 10000);
+  let recoveryTimeout;
   const ready = () => {
     window.clearTimeout(recoveryTimeout);
-    dom.video.currentTime = Math.min(resumeAt, Number.isFinite(dom.video.duration) ? dom.video.duration : resumeAt);
-    if (wasPlaying) dom.video.play().catch(() => {});
+    video.removeEventListener("loadedmetadata", ready);
+    video.currentTime = Math.min(resumeAt, Number.isFinite(video.duration) ? video.duration : resumeAt);
+    if (wasPlaying) video.play().catch(() => {});
     dom.status.textContent = "Video reconectado.";
     state.isRecovering = false;
     window.setTimeout(() => {
       if (dom.status.textContent === "Video reconectado.") dom.status.textContent = "";
     }, 2500);
   };
+  recoveryTimeout = window.setTimeout(() => {
+    video.removeEventListener("loadedmetadata", ready);
+    state.isRecovering = false;
+  }, 10000);
 
-  dom.video.addEventListener("loadedmetadata", ready, { once: true });
+  video.addEventListener("loadedmetadata", ready);
   const activeSource = state.availableSources.find((source) => Number(source.size) === state.currentQuality)?.src
-    || dom.video.currentSrc
+    || video.currentSrc
     || state.currentBaseSrc;
-  dom.video.src = withCacheBust(activeSource);
-  dom.video.load();
+  video.src = withCacheBust(activeSource);
+  video.load();
 }
 
 function switchPlaybackQuality(quality, reason = "") {
   const target = state.availableSources.find((source) => Number(source.size) === Number(quality));
   if (!target || state.isRecovering || Number(quality) === Number(state.currentQuality)) return false;
 
+  const video = syncActiveVideo();
+  if (!video) return false;
+
+  const usingPlyr = Boolean(state.playerUi);
   state.isRecovering = true;
-  const resumeAt = dom.video.currentTime || 0;
-  const wasPlaying = !dom.video.paused;
+  state.qualityChangeOrigin = state.autoQuality ? "auto" : "manual";
+  const resumeAt = video.currentTime || 0;
+  const wasPlaying = !video.paused;
+  if (state.waitingTimer) window.clearTimeout(state.waitingTimer);
+  state.waitingTimer = null;
   if (reason) dom.status.textContent = reason;
 
-  const recoveryTimeout = window.setTimeout(() => {
-    state.isRecovering = false;
-  }, 8000);
+  let recoveryTimeout;
   const ready = () => {
     window.clearTimeout(recoveryTimeout);
-    dom.video.currentTime = Math.min(resumeAt, Number.isFinite(dom.video.duration) ? dom.video.duration : resumeAt);
+    video.removeEventListener("loadedmetadata", ready);
+    if (!usingPlyr) {
+      video.currentTime = Math.min(resumeAt, Number.isFinite(video.duration) ? video.duration : resumeAt);
+    }
     state.currentQuality = Number(quality);
     state.isRecovering = false;
+    state.qualityChangeOrigin = null;
     updateQualityControls();
-    if (wasPlaying) dom.video.play().catch(() => {});
+    if (!usingPlyr && wasPlaying) video.play().catch(() => {});
   };
-  dom.video.addEventListener("loadedmetadata", ready, { once: true });
+  recoveryTimeout = window.setTimeout(() => {
+    video.removeEventListener("loadedmetadata", ready);
+    state.isRecovering = false;
+    state.qualityChangeOrigin = null;
+    updateQualityControls();
+  }, QUALITY_SWITCH_TIMEOUT_MS);
+  video.addEventListener("loadedmetadata", ready);
 
-  if (state.playerUi) {
+  if (usingPlyr) {
+    // Plyr conserva el tiempo, estado y seleccion visible de su menu interno.
     state.playerUi.quality = Number(quality);
   } else {
-    dom.video.src = target.src;
-    dom.video.load();
+    // Safari iOS usa el reproductor nativo y necesita cambiar el recurso directo.
+    video.src = target.src;
+    video.load();
   }
   return true;
 }
@@ -294,14 +362,16 @@ function handlePlaybackStall() {
 function updateQualityControls() {
   if (!dom.qualitySelect || !dom.qualityHint) return;
   dom.qualitySelect.value = state.autoQuality ? "auto" : String(state.currentQuality);
-  dom.qualityHint.textContent = state.autoQuality ? `Actual: ${state.currentQuality}p` : "Seleccion manual";
+  dom.qualityHint.textContent = `Actual: ${state.currentQuality}p${state.autoQuality ? "" : " · Manual"}`;
 }
 
 function renderQualityControls(sources) {
   if (!dom.quickSettings || !dom.qualitySelect) return;
   const qualities = [...new Set(sources.map((source) => Number(source.size)).filter(Number.isFinite))]
     .sort((a, b) => b - a);
-  dom.quickSettings.hidden = qualities.length < 2;
+  // Plyr muestra las calidades dentro del engranaje. El selector externo queda
+  // como respaldo para iPhone/iPad, donde se usa el reproductor nativo.
+  dom.quickSettings.hidden = qualities.length < 2 || Boolean(state.playerUi);
   dom.qualitySelect.replaceChildren(
     Object.assign(document.createElement("option"), { value: "auto", textContent: "Automatica" }),
     ...qualities.map((quality) => Object.assign(document.createElement("option"), {
@@ -314,17 +384,21 @@ function renderQualityControls(sources) {
 
 function startWatchdog() {
   if (state.watchdogInterval) window.clearInterval(state.watchdogInterval);
-  state.watchdogLastTime = dom.video.currentTime;
+  const video = syncActiveVideo();
+  if (!video) return;
+  state.watchdogLastTime = video.currentTime;
   state.watchdogStallCount = 0;
   state.watchdogInterval = window.setInterval(() => {
-    if (state.isRecovering || dom.video.paused || dom.video.ended) {
-      state.watchdogLastTime = dom.video.currentTime;
+    const activeVideo = syncActiveVideo();
+    if (!activeVideo) return;
+    if (state.isRecovering || activeVideo.paused || activeVideo.ended) {
+      state.watchdogLastTime = activeVideo.currentTime;
       state.watchdogStallCount = 0;
       return;
     }
-    const advanced = Math.abs(dom.video.currentTime - state.watchdogLastTime) >= 0.15;
+    const advanced = Math.abs(activeVideo.currentTime - state.watchdogLastTime) >= 0.15;
     state.watchdogStallCount = advanced ? 0 : state.watchdogStallCount + 1;
-    state.watchdogLastTime = dom.video.currentTime;
+    state.watchdogLastTime = activeVideo.currentTime;
     if (state.watchdogStallCount >= 2) handlePlaybackStall();
   }, 8000);
 }
@@ -450,15 +524,19 @@ function showResumeModal(progress) {
   document.body.classList.add("resume-open");
 
   dom.resumeContinue.onclick = () => {
+    const video = syncActiveVideo();
     closeResumeModal();
-    dom.video.currentTime = Math.min(Number(progress.time), Math.max(0, dom.video.duration - 1));
-    dom.video.play().catch(() => {});
+    if (!video) return;
+    video.currentTime = Math.min(Number(progress.time), Math.max(0, video.duration - 1));
+    video.play().catch(() => {});
   };
   dom.resumeRestart.onclick = () => {
+    const video = syncActiveVideo();
     clearProgress(state.currentProgressKey);
     closeResumeModal();
-    dom.video.currentTime = 0;
-    dom.video.play().catch(() => {});
+    if (!video) return;
+    video.currentTime = 0;
+    video.play().catch(() => {});
   };
   dom.resumeClose.onclick = closeResumeModal;
 }
@@ -466,7 +544,7 @@ function showResumeModal(progress) {
 function offerSavedProgress() {
   const progress = getProgress(state.currentProgressKey);
   if (!progress) return;
-  const duration = Number(dom.video.duration) || Number(progress.duration) || 0;
+  const duration = Number(syncActiveVideo()?.duration) || Number(progress.duration) || 0;
   const resumeAt = Number(progress.time) || 0;
   if (resumeAt >= MIN_RESUME_SECONDS && (!duration || duration - resumeAt > END_PROGRESS_MARGIN_SECONDS)) {
     showResumeModal(progress);
@@ -524,26 +602,13 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   state.resumePrompted = false;
   window.setTimeout(offerSavedProgress, 0);
 
-  if (!state.playerUi) mountPlayerUi(media, initialQuality);
-  if (state.playerUi) {
-    state.playerUi.source = { type: "video", title, poster, sources, tracks };
-  } else {
-    const orderedSources = [...sources].sort((a, b) => Number(a.size !== initialQuality) - Number(b.size !== initialQuality));
-    dom.video.replaceChildren(
-      ...orderedSources.map((source) => Object.assign(document.createElement("source"), source)),
-      ...tracks.map((track) => {
-        const element = document.createElement("track");
-        element.kind = track.kind;
-        element.label = track.label;
-        element.srclang = track.srcLang;
-        element.src = track.src;
-        element.default = track.default;
-        return element;
-      }),
-    );
-    dom.video.poster = poster || "";
-    dom.video.load();
+  configureVideoElement(dom.video, sources, tracks, initialQuality, poster);
+  if (!state.playerUi) {
+    const qualityOptions = [...new Set(sources.map((source) => Number(source.size)).filter(Number.isFinite))]
+      .sort((a, b) => b - a);
+    mountPlayerUi(media, initialQuality, qualityOptions);
   }
+  bindVideoEvents(syncActiveVideo());
   renderQualityControls(sources);
   dom.status.textContent = `Listo para reproducir: ${title}`;
 
@@ -622,10 +687,43 @@ async function renderEpisodePlayer(serie, seasonNumber, episodeNumber) {
   });
 }
 
-function bindEvents() {
-  dom.video.addEventListener("loadedmetadata", offerSavedProgress);
+function normalizeComparableMediaUrl(value) {
+  try {
+    const url = new URL(value, window.location.href);
+    url.searchParams.delete("_reconnect");
+    return url.href;
+  } catch {
+    return value || "";
+  }
+}
 
-  dom.video.addEventListener("error", () => {
+function syncQualityFromVideo(video, markAsManual, explicitQuality) {
+  const currentUrl = normalizeComparableMediaUrl(video.currentSrc);
+  const currentSource = state.availableSources.find(
+    (source) => normalizeComparableMediaUrl(source.src) === currentUrl,
+  );
+  const selected = Number(explicitQuality || currentSource?.size || state.playerUi?.quality);
+  if (!Number.isFinite(selected)) return;
+
+  const qualityChanged = selected !== Number(state.currentQuality);
+  state.currentQuality = selected;
+  if (qualityChanged && markAsManual) {
+    state.autoQuality = false;
+    dom.status.textContent = `Calidad seleccionada: ${selected}p`;
+  }
+  updateQualityControls();
+}
+
+function bindVideoEvents(video) {
+  if (!video || boundVideoElements.has(video)) return;
+  boundVideoElements.add(video);
+
+  video.addEventListener("loadedmetadata", () => {
+    syncQualityFromVideo(video, !state.isRecovering);
+    offerSavedProgress();
+  });
+
+  video.addEventListener("error", () => {
     dom.status.replaceChildren();
     const message = document.createElement("span");
     message.textContent = "No se pudo reproducir este archivo. ";
@@ -638,30 +736,67 @@ function bindEvents() {
     dom.status.append(message, retry);
   });
 
-  dom.video.addEventListener("playing", () => {
+  video.addEventListener("playing", () => {
     if (state.waitingTimer) window.clearTimeout(state.waitingTimer);
     state.waitingTimer = null;
     dom.status.textContent = "";
     startWatchdog();
   });
 
-  dom.video.addEventListener("stalled", () => {
-    if (!dom.video.paused && dom.video.readyState < 3) dom.status.textContent = "Cargando mas video...";
+  video.addEventListener("stalled", () => {
+    if (!video.paused && video.readyState < 3) dom.status.textContent = "Cargando mas video...";
   });
 
-  dom.video.addEventListener("waiting", () => {
-    if (!dom.video.paused) dom.status.textContent = "Ajustando la reproduccion a tu conexion...";
+  video.addEventListener("waiting", () => {
+    if (!video.paused) dom.status.textContent = "Ajustando la reproduccion a tu conexion...";
     if (state.waitingTimer) window.clearTimeout(state.waitingTimer);
     state.waitingTimer = window.setTimeout(() => {
-      if (!dom.video.paused && !dom.video.ended && dom.video.readyState < 3) handlePlaybackStall();
+      if (!video.paused && !video.ended && video.readyState < 3) handlePlaybackStall();
     }, 10000);
   });
 
-  dom.video.addEventListener("qualitychange", () => {
-    const selected = Number(state.playerUi?.quality);
-    if (Number.isFinite(selected)) state.currentQuality = selected;
-    updateQualityControls();
+  video.addEventListener("qualitychange", (event) => {
+    const pendingOrigin = state.qualityChangeOrigin;
+    syncQualityFromVideo(video, pendingOrigin ? pendingOrigin === "manual" : true, event.detail?.quality);
   });
+
+  video.addEventListener("timeupdate", () => {
+    if (!state.currentBaseSrc || !video.duration) return;
+    const now = Date.now();
+    if (now - state.lastProgressSave < 5000) return;
+    state.lastProgressSave = now;
+    if (video.currentTime >= MIN_RESUME_SECONDS
+      && video.duration - video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
+      saveProgress(state.currentProgressKey, video.currentTime, video.duration);
+    }
+  });
+
+  video.addEventListener("seeked", () => {
+    if (!state.currentBaseSrc || !video.duration) return;
+    if (video.currentTime >= MIN_RESUME_SECONDS
+      && video.duration - video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
+      saveProgress(state.currentProgressKey, video.currentTime, video.duration);
+    }
+  });
+
+  video.addEventListener("ended", () => {
+    if (state.currentProgressKey) clearProgress(state.currentProgressKey);
+  });
+}
+
+function persistCurrentProgress() {
+  const video = syncActiveVideo();
+  if (!video || !state.currentProgressKey || !video.duration) return;
+  if (video.currentTime >= MIN_RESUME_SECONDS
+    && video.duration - video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
+    saveProgress(state.currentProgressKey, video.currentTime, video.duration);
+  }
+}
+
+function bindEvents() {
+  bindVideoEvents(syncActiveVideo());
+  if (globalEventsBound) return;
+  globalEventsBound = true;
 
   dom.qualitySelect?.addEventListener("change", () => {
     if (dom.qualitySelect.value === "auto") {
@@ -676,37 +811,6 @@ function bindEvents() {
     state.autoQuality = false;
     if (!switchPlaybackQuality(selected, `Calidad seleccionada: ${selected}p`)) updateQualityControls();
   });
-
-  dom.video.addEventListener("timeupdate", () => {
-    if (!state.currentBaseSrc || !dom.video.duration) return;
-    const now = Date.now();
-    if (now - state.lastProgressSave < 5000) return;
-    state.lastProgressSave = now;
-    if (dom.video.currentTime >= MIN_RESUME_SECONDS
-      && dom.video.duration - dom.video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
-      saveProgress(state.currentProgressKey, dom.video.currentTime, dom.video.duration);
-    }
-  });
-
-  dom.video.addEventListener("seeked", () => {
-    if (!state.currentBaseSrc || !dom.video.duration) return;
-    if (dom.video.currentTime >= MIN_RESUME_SECONDS
-      && dom.video.duration - dom.video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
-      saveProgress(state.currentProgressKey, dom.video.currentTime, dom.video.duration);
-    }
-  });
-
-  dom.video.addEventListener("ended", () => {
-    if (state.currentProgressKey) clearProgress(state.currentProgressKey);
-  });
-
-  const persistCurrentProgress = () => {
-    if (!state.currentProgressKey || !dom.video.duration) return;
-    if (dom.video.currentTime >= MIN_RESUME_SECONDS
-      && dom.video.duration - dom.video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
-      saveProgress(state.currentProgressKey, dom.video.currentTime, dom.video.duration);
-    }
-  };
 
   window.addEventListener("pagehide", persistCurrentProgress);
   window.addEventListener("beforeunload", persistCurrentProgress);
