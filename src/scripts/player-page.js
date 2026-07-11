@@ -17,11 +17,12 @@ const supabase = createSupabaseService({
   anonKey: "sb_publishable_w2GCzCqZJcYMHi8yyCN23Q_IthBqvhF",
 });
 const supabaseRest = `${supabase.config.url}/rest/v1`;
+const MIN_RESUME_SECONDS = 3;
+const END_PROGRESS_MARGIN_SECONDS = 15;
 
 const dom = {
   status: document.getElementById("playerStatus"),
   video: document.getElementById("player"),
-  source: document.getElementById("playerSource"),
   related: document.getElementById("playerRelated"),
   collectionTitle: document.getElementById("playerCollectionTitle"),
   backLink: document.getElementById("playerBackLink"),
@@ -30,14 +31,142 @@ const dom = {
   ratingUserBlock: document.getElementById("ratingUserBlock"),
   userStars: document.getElementById("userStars"),
   ratingLoginHint: document.getElementById("ratingLoginHint"),
+  resumeOverlay: document.getElementById("resumeOverlay"),
+  resumeTitle: document.getElementById("resumeModalTitle"),
+  resumeTime: document.getElementById("resumeModalTime"),
+  resumeContinue: document.getElementById("resumeContinueBtn"),
+  resumeRestart: document.getElementById("resumeRestartBtn"),
+  resumeClose: document.getElementById("resumeCloseBtn"),
 };
 
 const state = {
   currentContentKey: null,
+  currentProgressKey: null,
   currentContentTitle: null,
   currentBaseSrc: null,
   lastProgressSave: 0,
+  isRecovering: false,
+  watchdogInterval: null,
+  watchdogLastTime: 0,
+  watchdogStallCount: 0,
+  playerUi: null,
+  resumePrompted: false,
 };
+
+function normalizeSources(media) {
+  if (Array.isArray(media.sources) && media.sources.length) {
+    return media.sources
+      .filter((source) => source?.src)
+      .map((source) => ({
+        src: source.src,
+        type: source.type || (source.src.includes(".m3u8") ? "application/x-mpegURL" : "video/mp4"),
+        size: Number(source.size || source.quality) || undefined,
+      }));
+  }
+  return media.src ? [{
+    src: media.src,
+    type: media.type || (media.src.includes(".m3u8") ? "application/x-mpegURL" : "video/mp4"),
+    size: Number(media.quality) || 1080,
+  }] : [];
+}
+
+function normalizeTracks(media) {
+  const tracks = media.tracks || media.subtitles || [];
+  return tracks
+    .filter((track) => track?.src)
+    .map((track, index) => ({
+      kind: track.kind || "subtitles",
+      label: track.label || track.language || `Subtitulos ${index + 1}`,
+      srcLang: track.srcLang || track.srclang || track.language || "es",
+      src: track.src,
+      default: Boolean(track.default),
+    }));
+}
+
+function getPrimarySource(media) {
+  return normalizeSources(media)[0]?.src || "";
+}
+
+function mountPlayerUi(media) {
+  if (!window.Plyr) return;
+  const previewSrc = media.previewThumbnails || media.previewVtt;
+  state.playerUi = new window.Plyr(dom.video, {
+    controls: [
+      "play-large", "rewind", "play", "fast-forward", "progress", "current-time",
+      "duration", "mute", "volume", "captions", "settings", "pip", "fullscreen",
+    ],
+    settings: ["captions", "quality", "speed"],
+    quality: {
+      default: 1080,
+      options: [1080, 720, 480, 360],
+    },
+    seekTime: 10,
+    speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+    captions: { active: false, language: "auto", update: true },
+    previewThumbnails: {
+      enabled: Boolean(previewSrc),
+      src: previewSrc || "",
+    },
+    i18n: {
+      restart: "Reiniciar", rewind: "Retroceder {seektime}s", play: "Reproducir",
+      pause: "Pausar", fastForward: "Adelantar {seektime}s", seek: "Buscar",
+      seekLabel: "{currentTime} de {duration}", played: "Reproducido", buffered: "Cargado",
+      currentTime: "Tiempo actual", duration: "Duracion", volume: "Volumen", mute: "Silenciar",
+      unmute: "Activar sonido", enableCaptions: "Activar subtitulos",
+      disableCaptions: "Desactivar subtitulos", settings: "Ajustes", speed: "Velocidad",
+      normal: "Normal", quality: "Calidad", loop: "Repetir", start: "Iniciar",
+      end: "Fin", all: "Todo", reset: "Restablecer", disabled: "Desactivado",
+      enabled: "Activado", advertisement: "Anuncio", qualityBadge: {
+        2160: "4K", 1440: "HD", 1080: "HD", 720: "HD", 576: "SD", 480: "SD",
+      },
+    },
+  });
+}
+
+function withCacheBust(url) {
+  if (!url) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}_reconnect=${Date.now()}`;
+}
+
+function recoverPlayback() {
+  if (state.isRecovering || !state.currentBaseSrc) return;
+  state.isRecovering = true;
+  const resumeAt = dom.video.currentTime || 0;
+  const wasPlaying = !dom.video.paused;
+  dom.status.textContent = "La conexion se interrumpio. Reconectando el video...";
+
+  const ready = () => {
+    dom.video.currentTime = Math.min(resumeAt, Number.isFinite(dom.video.duration) ? dom.video.duration : resumeAt);
+    if (wasPlaying) dom.video.play().catch(() => {});
+    dom.status.textContent = "Video reconectado.";
+    state.isRecovering = false;
+    window.setTimeout(() => {
+      if (dom.status.textContent === "Video reconectado.") dom.status.textContent = "";
+    }, 2500);
+  };
+
+  dom.video.addEventListener("loadedmetadata", ready, { once: true });
+  dom.video.src = withCacheBust(state.currentBaseSrc);
+  dom.video.load();
+}
+
+function startWatchdog() {
+  if (state.watchdogInterval) window.clearInterval(state.watchdogInterval);
+  state.watchdogLastTime = dom.video.currentTime;
+  state.watchdogStallCount = 0;
+  state.watchdogInterval = window.setInterval(() => {
+    if (state.isRecovering || dom.video.paused || dom.video.ended || dom.video.readyState < 2) {
+      state.watchdogLastTime = dom.video.currentTime;
+      state.watchdogStallCount = 0;
+      return;
+    }
+    const advanced = Math.abs(dom.video.currentTime - state.watchdogLastTime) >= 0.15;
+    state.watchdogStallCount = advanced ? 0 : state.watchdogStallCount + 1;
+    state.watchdogLastTime = dom.video.currentTime;
+    if (state.watchdogStallCount >= 2) recoverPlayback();
+  }, 8000);
+}
 
 function renderStarRow(container, value, interactive) {
   if (!container) return;
@@ -111,22 +240,81 @@ async function submitRating(value) {
   }
 }
 
-function saveProgress(src, time, duration) {
-  if (!src) return;
+function saveProgress(key, time, duration) {
+  if (!key) return;
   try {
     const map = JSON.parse(localStorage.getItem("playback_progress") || "{}");
-    map[src] = { time, duration, updatedAt: Date.now() };
+    map[key] = { time, duration, updatedAt: Date.now() };
     localStorage.setItem("playback_progress", JSON.stringify(map));
-    localStorage.setItem("last_watched_src", src);
+    localStorage.setItem("last_watched_content", key);
   } catch {
     // Ignore storage errors.
   }
 }
 
-function clearProgress(src) {
+function getProgress(key) {
+  if (!key) return null;
   try {
     const map = JSON.parse(localStorage.getItem("playback_progress") || "{}");
-    delete map[src];
+    const progress = map[key] || (state.currentBaseSrc ? map[state.currentBaseSrc] : null);
+    if (!progress || !Number.isFinite(Number(progress.time))) return null;
+    return progress;
+  } catch {
+    return null;
+  }
+}
+
+function formatTime(seconds) {
+  const safe = Math.max(0, Math.floor(Number(seconds) || 0));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const secs = safe % 60;
+  const pad = (value) => String(value).padStart(2, "0");
+  return hours ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
+}
+
+function closeResumeModal() {
+  dom.resumeOverlay.style.display = "none";
+  document.body.classList.remove("resume-open");
+}
+
+function showResumeModal(progress) {
+  if (!dom.resumeOverlay || state.resumePrompted) return;
+  state.resumePrompted = true;
+  dom.resumeTitle.textContent = state.currentContentTitle || "Progreso guardado";
+  dom.resumeTime.textContent = formatTime(progress.time);
+  dom.resumeOverlay.style.display = "flex";
+  document.body.classList.add("resume-open");
+
+  dom.resumeContinue.onclick = () => {
+    closeResumeModal();
+    dom.video.currentTime = Math.min(Number(progress.time), Math.max(0, dom.video.duration - 1));
+    dom.video.play().catch(() => {});
+  };
+  dom.resumeRestart.onclick = () => {
+    clearProgress(state.currentProgressKey);
+    closeResumeModal();
+    dom.video.currentTime = 0;
+    dom.video.play().catch(() => {});
+  };
+  dom.resumeClose.onclick = closeResumeModal;
+}
+
+function offerSavedProgress() {
+  const progress = getProgress(state.currentProgressKey);
+  if (!progress) return;
+  const duration = Number(dom.video.duration) || Number(progress.duration) || 0;
+  const resumeAt = Number(progress.time) || 0;
+  if (resumeAt >= MIN_RESUME_SECONDS && (!duration || duration - resumeAt > END_PROGRESS_MARGIN_SECONDS)) {
+    showResumeModal(progress);
+  }
+}
+
+function clearProgress(key) {
+  try {
+    const map = JSON.parse(localStorage.getItem("playback_progress") || "{}");
+    delete map[key];
+    if (state.currentBaseSrc) delete map[state.currentBaseSrc];
     localStorage.setItem("playback_progress", JSON.stringify(map));
   } catch {
     // Ignore storage errors.
@@ -149,21 +337,43 @@ function createStoryCard({ href, poster, gradient, code, title, description, act
   `;
 }
 
-function mountPlayer({ src, title, subtitle, poster, gradient, meta, backHref, contentKey, relatedHtml, collectionTitle }) {
+function mountPlayer({ media, title, subtitle, poster, gradient, meta, backHref, contentKey, relatedHtml, collectionTitle }) {
   document.title = title ? `${title} - Player` : "Player";
   dom.backLink.href = backHref;
   dom.backLink.textContent = "Volver al catalogo";
   dom.related.innerHTML = relatedHtml;
   dom.collectionTitle.textContent = collectionTitle;
 
-  dom.source.src = src;
-  dom.source.dataset.baseSrc = src;
-  dom.video.load();
-  dom.status.textContent = `Listo para reproducir: ${title}`;
-
+  const sources = normalizeSources(media);
+  const tracks = normalizeTracks(media);
+  const src = getPrimarySource(media);
   state.currentContentKey = contentKey;
+  state.currentProgressKey = contentKey;
   state.currentContentTitle = title;
   state.currentBaseSrc = src;
+  state.resumePrompted = false;
+  window.setTimeout(offerSavedProgress, 0);
+
+  if (!state.playerUi) mountPlayerUi(media);
+  if (state.playerUi) {
+    state.playerUi.source = { type: "video", title, poster, sources, tracks };
+  } else {
+    dom.video.replaceChildren(
+      ...sources.map((source) => Object.assign(document.createElement("source"), source)),
+      ...tracks.map((track) => {
+        const element = document.createElement("track");
+        element.kind = track.kind;
+        element.label = track.label;
+        element.srclang = track.srcLang;
+        element.src = track.src;
+        element.default = track.default;
+        return element;
+      }),
+    );
+    dom.video.poster = poster || "";
+    dom.video.load();
+  }
+  dom.status.textContent = `Listo para reproducir: ${title}`;
 
   loadRatingsFor(contentKey);
 }
@@ -192,7 +402,7 @@ async function renderMoviePlayer(movie) {
     .join("");
 
   mountPlayer({
-    src: movie.src,
+    media: movie,
     title: movie.title,
     subtitle: movie.saga ? `Saga: ${movie.saga}` : "Pelicula seleccionada desde el catalogo",
     poster,
@@ -227,26 +437,37 @@ async function renderEpisodePlayer(serie, seasonNumber, episodeNumber) {
     .join("");
 
   mountPlayer({
-    src: episode.src,
+    media: episode,
     title: `${serie.title} - ${episode.title || `Episodio ${episodeNumber}`}`,
     subtitle: `Temporada ${seasonNumber} - Episodio ${episodeNumber}`,
     poster,
     gradient: serie.gradient || ["#1c1c22", "#141419"],
     meta: ["Serie", `Temporada ${seasonNumber}`, `Episodio ${episodeNumber}`],
     backHref: "./series.html",
-    contentKey: `series:${slugify(serie.title)}:s${seasonNumber}`,
+    contentKey: `series:${slugify(serie.title)}:s${seasonNumber}:e${episodeNumber}`,
     relatedHtml: relatedEpisodes,
     collectionTitle: `Capitulos de la temporada ${seasonNumber}`,
   });
 }
 
 function bindEvents() {
+  dom.video.addEventListener("loadedmetadata", offerSavedProgress);
+
   dom.video.addEventListener("error", () => {
     dom.status.textContent = "No se pudo cargar el video seleccionado.";
   });
 
   dom.video.addEventListener("playing", () => {
     dom.status.textContent = "";
+    startWatchdog();
+  });
+
+  dom.video.addEventListener("stalled", () => {
+    if (!dom.video.paused && dom.video.readyState < 3) dom.status.textContent = "Cargando mas video...";
+  });
+
+  dom.video.addEventListener("waiting", () => {
+    if (!dom.video.paused) dom.status.textContent = "Ajustando la reproduccion a tu conexion...";
   });
 
   dom.video.addEventListener("timeupdate", () => {
@@ -254,14 +475,38 @@ function bindEvents() {
     const now = Date.now();
     if (now - state.lastProgressSave < 5000) return;
     state.lastProgressSave = now;
-    if (dom.video.currentTime > 10 && dom.video.duration - dom.video.currentTime > 15) {
-      saveProgress(state.currentBaseSrc, dom.video.currentTime, dom.video.duration);
+    if (dom.video.currentTime >= MIN_RESUME_SECONDS
+      && dom.video.duration - dom.video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
+      saveProgress(state.currentProgressKey, dom.video.currentTime, dom.video.duration);
+    }
+  });
+
+  dom.video.addEventListener("seeked", () => {
+    if (!state.currentBaseSrc || !dom.video.duration) return;
+    if (dom.video.currentTime >= MIN_RESUME_SECONDS
+      && dom.video.duration - dom.video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
+      saveProgress(state.currentProgressKey, dom.video.currentTime, dom.video.duration);
     }
   });
 
   dom.video.addEventListener("ended", () => {
-    if (state.currentBaseSrc) clearProgress(state.currentBaseSrc);
+    if (state.currentProgressKey) clearProgress(state.currentProgressKey);
   });
+
+  const persistCurrentProgress = () => {
+    if (!state.currentProgressKey || !dom.video.duration) return;
+    if (dom.video.currentTime >= MIN_RESUME_SECONDS
+      && dom.video.duration - dom.video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
+      saveProgress(state.currentProgressKey, dom.video.currentTime, dom.video.duration);
+    }
+  };
+
+  window.addEventListener("pagehide", persistCurrentProgress);
+  window.addEventListener("beforeunload", persistCurrentProgress);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") persistCurrentProgress();
+  });
+  window.setInterval(persistCurrentProgress, 2000);
 
   dom.userStars?.addEventListener("click", (event) => {
     const session = getKickSession();

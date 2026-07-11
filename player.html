@@ -14,6 +14,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="./site.webmanifest">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.css">
   <link rel="stylesheet" href="./src/styles/app.css">
 </head>
 
@@ -60,9 +61,7 @@
           <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
           <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
         </div>
-        <video id="player" controls preload="metadata" playsinline webkit-playsinline>
-          <source id="playerSource" src="" type="video/mp4">
-        </video>
+        <video id="player" controls preload="metadata" playsinline webkit-playsinline></video>
         <div class="sprocket-row bottom">
           <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
           <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
@@ -90,8 +89,22 @@
     </section>
   </main>
 
+  <div class="resume-overlay" id="resumeOverlay" role="dialog" aria-modal="true" aria-labelledby="resumeModalTitle">
+    <div class="resume-modal">
+      <div class="eyebrow">Continuar viendo</div>
+      <h2 id="resumeModalTitle">Progreso guardado</h2>
+      <div class="resume-time">Quedaste en <span id="resumeModalTime">0:00</span></div>
+      <div class="resume-actions">
+        <button class="resume-btn primary" id="resumeContinueBtn" type="button">Continuar</button>
+        <button class="resume-btn" id="resumeRestartBtn" type="button">Empezar de nuevo</button>
+      </div>
+      <button class="resume-dismiss" id="resumeCloseBtn" type="button">Cerrar</button>
+    </div>
+  </div>
+
   <script type="module" src="./src/scripts/nav.js"></script>
   <script type="module" src="./src/scripts/search-ui.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.polyfilled.min.js"></script>
   <script type="module" src="./src/scripts/player-page.js"></script>
 </body>
 

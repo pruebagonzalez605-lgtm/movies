@@ -558,6 +558,27 @@ body[data-page="sugerencias"] .nav-link[data-nav-page="sugerencias"] {
 .sprocket-row.bottom { padding: 8px 4px 0; }
 .sprocket { width: 10px; height: 10px; background: var(--bg); border-radius: 2px; }
 video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 2px; }
+
+.screen-frame .plyr {
+  --plyr-color-main: var(--accent);
+  --plyr-video-background: #000;
+  --plyr-menu-background: rgba(20, 20, 25, 0.98);
+  --plyr-menu-color: var(--text);
+  --plyr-video-control-color: #fff;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.screen-frame .plyr video {
+  aspect-ratio: auto;
+}
+
+.screen-frame .plyr__menu__container,
+.screen-frame .plyr__control--overlaid {
+  border: 1px solid rgba(232, 196, 104, 0.24);
+}
 .carousel-label { display: flex; align-items: center; gap: 10px; margin: 28px 0 12px; color: var(--text-dim); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; }
 .carousel-label::before, .carousel-label::after { content: ""; flex: 1; height: 1px; background: #2a2a32; }
 .carousel { display: flex; gap: 14px; overflow-x: auto; padding: 6px 4px 16px; scroll-snap-type: x proximity; }
@@ -592,6 +613,13 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
 .resume-btn { font-family: inherit; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; padding: 12px; border-radius: 8px; cursor: pointer; border: 1px solid #2a2a32; background: transparent; color: var(--text); transition: border-color 0.15s ease, background 0.15s ease; }
 .resume-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: bold; }
 .resume-dismiss { margin-top: 14px; background: none; border: none; color: var(--text-dim); font-size: 11px; letter-spacing: 0.1em; cursor: pointer; text-decoration: underline; }
+body.resume-open { overflow: hidden; }
+
+.plyr__preview-thumb {
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.72);
+}
 .tabs { display: flex; justify-content: center; gap: 6px; margin: 26px 0 22px; }
 .tab { background: transparent; border: 1px solid #2a2a32; color: var(--text-dim); font-family: inherit; font-size: 11px; font-weight: bold; letter-spacing: 0.2em; text-transform: uppercase; padding: 8px 18px; border-radius: 999px; cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease; }
 .tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
