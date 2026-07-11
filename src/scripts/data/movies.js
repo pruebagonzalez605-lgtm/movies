@@ -161,4 +161,13 @@ export const MOVIES = [
     tmdbYear: 2001,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.21/AP2.mp4",
   },
+  {
+    code: "22",
+    title: "American Pie 3: La Boda",
+    tmdbTitle: "American Pie: The Wedding",
+    gradient: ["#3d2a0d", "#8a6a1e"],
+    saga: "American Pie",
+    tmdbYear: 2003,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.21/AP3.mp4",
+  },
 ];
