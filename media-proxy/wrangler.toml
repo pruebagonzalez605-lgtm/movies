@@ -1,0 +1,8 @@
+name = "colevana-media"
+main = "src/index.js"
+compatibility_date = "2026-07-10"
+
+[vars]
+ALLOWED_GITHUB_OWNER = "pruebagonzalez605-lgtm"
+ALLOWED_GITHUB_REPO = "movies"
+ALLOWED_SITE_ORIGIN = "https://colevana.com"

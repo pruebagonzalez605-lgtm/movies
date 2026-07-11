@@ -1,4 +1,5 @@
 import { createSupabaseService } from "./services/supabase.js";
+import { resolveMediaUrl } from "./config/media.js";
 import {
   buildEpisodePlayerUrl,
   buildMoviePlayerUrl,
@@ -37,6 +38,9 @@ const dom = {
   resumeContinue: document.getElementById("resumeContinueBtn"),
   resumeRestart: document.getElementById("resumeRestartBtn"),
   resumeClose: document.getElementById("resumeCloseBtn"),
+  quickSettings: document.getElementById("playerQuickSettings"),
+  qualitySelect: document.getElementById("playerQualitySelect"),
+  qualityHint: document.getElementById("playerQualityHint"),
 };
 
 const state = {
@@ -44,13 +48,18 @@ const state = {
   currentProgressKey: null,
   currentContentTitle: null,
   currentBaseSrc: null,
+  currentOriginalSrc: null,
   lastProgressSave: 0,
   isRecovering: false,
   watchdogInterval: null,
   watchdogLastTime: 0,
   watchdogStallCount: 0,
+  waitingTimer: null,
   playerUi: null,
   resumePrompted: false,
+  availableSources: [],
+  currentQuality: 1080,
+  autoQuality: true,
 };
 
 function normalizeSources(media) {
@@ -58,16 +67,75 @@ function normalizeSources(media) {
     return media.sources
       .filter((source) => source?.src)
       .map((source) => ({
-        src: source.src,
+        src: resolveMediaUrl(source.src),
         type: source.type || (source.src.includes(".m3u8") ? "application/x-mpegURL" : "video/mp4"),
         size: Number(source.size || source.quality) || undefined,
       }));
   }
   return media.src ? [{
-    src: media.src,
+    src: resolveMediaUrl(media.src),
     type: media.type || (media.src.includes(".m3u8") ? "application/x-mpegURL" : "video/mp4"),
     size: Number(media.quality) || 1080,
   }] : [];
+}
+
+function buildVariantUrl(src, quality) {
+  try {
+    const url = new URL(src);
+    const parts = url.pathname.split("/");
+    const filename = decodeURIComponent(parts.pop() || "");
+    if (!/\.mp4$/i.test(filename)) return null;
+    const base = filename.replace(/-(?:1080|720|480|360)p(?=\.mp4$)/i, "").replace(/\.mp4$/i, "");
+    parts.push(encodeURIComponent(`${base}-${quality}p.mp4`).replace(/%2F/gi, "/"));
+    url.pathname = parts.join("/");
+    url.search = "";
+    url.hash = "";
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+async function discoverMediaSources(media) {
+  const configured = normalizeSources(media);
+  if (configured.length > 1 || !media.src) return configured;
+
+  let original;
+  try {
+    original = new URL(media.src);
+  } catch {
+    return configured;
+  }
+  if (original.hostname !== "github.com" || !original.pathname.includes("/releases/download/")) {
+    return configured;
+  }
+
+  const candidates = [720, 480]
+    .map((size) => ({ size, src: buildVariantUrl(media.src, size) }))
+    .filter((source) => source.src);
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const checked = await Promise.all(candidates.map(async (source) => {
+      try {
+        const response = await fetch(resolveMediaUrl(source.src), {
+          method: "HEAD",
+          signal: controller.signal,
+        });
+        return response.ok ? {
+          src: resolveMediaUrl(source.src),
+          type: "video/mp4",
+          size: source.size,
+        } : null;
+      } catch {
+        return null;
+      }
+    }));
+    return [...configured, ...checked.filter(Boolean)].sort((a, b) => (b.size || 0) - (a.size || 0));
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function normalizeTracks(media) {
@@ -83,21 +151,41 @@ function normalizeTracks(media) {
     }));
 }
 
-function getPrimarySource(media) {
-  return normalizeSources(media)[0]?.src || "";
+function isAppleMobileDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
-function mountPlayerUi(media) {
-  if (!window.Plyr) return;
+function chooseInitialQuality(sources) {
+  const qualities = sources.map((source) => Number(source.size)).filter(Number.isFinite);
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const slowConnection = connection?.saveData || ["slow-2g", "2g", "3g"].includes(connection?.effectiveType);
+  if (slowConnection && qualities.includes(480)) return 480;
+  if (window.matchMedia("(max-width: 700px), (pointer: coarse)").matches) {
+    if (qualities.includes(720)) return 720;
+    if (qualities.includes(480)) return 480;
+  }
+  return qualities.length ? Math.max(...qualities) : 1080;
+}
+
+function mountPlayerUi(media, defaultQuality) {
+  if (!window.Plyr || isAppleMobileDevice()) {
+    document.documentElement.classList.add("native-ios-player");
+    return;
+  }
   const previewSrc = media.previewThumbnails || media.previewVtt;
-  state.playerUi = new window.Plyr(dom.video, {
-    controls: [
+  const compactControls = window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+  const controls = compactControls
+    ? ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "fullscreen"]
+    : [
       "play-large", "rewind", "play", "fast-forward", "progress", "current-time",
       "duration", "mute", "volume", "captions", "settings", "pip", "fullscreen",
-    ],
-    settings: ["captions", "quality", "speed"],
+    ];
+  state.playerUi = new window.Plyr(dom.video, {
+    controls,
+    settings: ["captions", "speed"],
     quality: {
-      default: 1080,
+      default: defaultQuality,
       options: [1080, 720, 480, 360],
     },
     seekTime: 10,
@@ -136,7 +224,11 @@ function recoverPlayback() {
   const wasPlaying = !dom.video.paused;
   dom.status.textContent = "La conexion se interrumpio. Reconectando el video...";
 
+  const recoveryTimeout = window.setTimeout(() => {
+    state.isRecovering = false;
+  }, 10000);
   const ready = () => {
+    window.clearTimeout(recoveryTimeout);
     dom.video.currentTime = Math.min(resumeAt, Number.isFinite(dom.video.duration) ? dom.video.duration : resumeAt);
     if (wasPlaying) dom.video.play().catch(() => {});
     dom.status.textContent = "Video reconectado.";
@@ -147,8 +239,77 @@ function recoverPlayback() {
   };
 
   dom.video.addEventListener("loadedmetadata", ready, { once: true });
-  dom.video.src = withCacheBust(state.currentBaseSrc);
+  const activeSource = state.availableSources.find((source) => Number(source.size) === state.currentQuality)?.src
+    || dom.video.currentSrc
+    || state.currentBaseSrc;
+  dom.video.src = withCacheBust(activeSource);
   dom.video.load();
+}
+
+function switchPlaybackQuality(quality, reason = "") {
+  const target = state.availableSources.find((source) => Number(source.size) === Number(quality));
+  if (!target || state.isRecovering || Number(quality) === Number(state.currentQuality)) return false;
+
+  state.isRecovering = true;
+  const resumeAt = dom.video.currentTime || 0;
+  const wasPlaying = !dom.video.paused;
+  if (reason) dom.status.textContent = reason;
+
+  const recoveryTimeout = window.setTimeout(() => {
+    state.isRecovering = false;
+  }, 8000);
+  const ready = () => {
+    window.clearTimeout(recoveryTimeout);
+    dom.video.currentTime = Math.min(resumeAt, Number.isFinite(dom.video.duration) ? dom.video.duration : resumeAt);
+    state.currentQuality = Number(quality);
+    state.isRecovering = false;
+    updateQualityControls();
+    if (wasPlaying) dom.video.play().catch(() => {});
+  };
+  dom.video.addEventListener("loadedmetadata", ready, { once: true });
+
+  if (state.playerUi) {
+    state.playerUi.quality = Number(quality);
+  } else {
+    dom.video.src = target.src;
+    dom.video.load();
+  }
+  return true;
+}
+
+function handlePlaybackStall() {
+  if (state.isRecovering) return;
+  const lower = state.availableSources
+    .filter((source) => Number(source.size) < Number(state.currentQuality))
+    .sort((a, b) => Number(b.size) - Number(a.size))[0];
+  if (lower) {
+    state.autoQuality = true;
+    updateQualityControls();
+    switchPlaybackQuality(lower.size, `La conexion esta lenta. Bajando a ${lower.size}p...`);
+    return;
+  }
+  recoverPlayback();
+}
+
+function updateQualityControls() {
+  if (!dom.qualitySelect || !dom.qualityHint) return;
+  dom.qualitySelect.value = state.autoQuality ? "auto" : String(state.currentQuality);
+  dom.qualityHint.textContent = state.autoQuality ? `Actual: ${state.currentQuality}p` : "Seleccion manual";
+}
+
+function renderQualityControls(sources) {
+  if (!dom.quickSettings || !dom.qualitySelect) return;
+  const qualities = [...new Set(sources.map((source) => Number(source.size)).filter(Number.isFinite))]
+    .sort((a, b) => b - a);
+  dom.quickSettings.hidden = qualities.length < 2;
+  dom.qualitySelect.replaceChildren(
+    Object.assign(document.createElement("option"), { value: "auto", textContent: "Automatica" }),
+    ...qualities.map((quality) => Object.assign(document.createElement("option"), {
+      value: String(quality),
+      textContent: `${quality}p`,
+    })),
+  );
+  updateQualityControls();
 }
 
 function startWatchdog() {
@@ -156,7 +317,7 @@ function startWatchdog() {
   state.watchdogLastTime = dom.video.currentTime;
   state.watchdogStallCount = 0;
   state.watchdogInterval = window.setInterval(() => {
-    if (state.isRecovering || dom.video.paused || dom.video.ended || dom.video.readyState < 2) {
+    if (state.isRecovering || dom.video.paused || dom.video.ended) {
       state.watchdogLastTime = dom.video.currentTime;
       state.watchdogStallCount = 0;
       return;
@@ -164,7 +325,7 @@ function startWatchdog() {
     const advanced = Math.abs(dom.video.currentTime - state.watchdogLastTime) >= 0.15;
     state.watchdogStallCount = advanced ? 0 : state.watchdogStallCount + 1;
     state.watchdogLastTime = dom.video.currentTime;
-    if (state.watchdogStallCount >= 2) recoverPlayback();
+    if (state.watchdogStallCount >= 2) handlePlaybackStall();
   }, 8000);
 }
 
@@ -256,7 +417,9 @@ function getProgress(key) {
   if (!key) return null;
   try {
     const map = JSON.parse(localStorage.getItem("playback_progress") || "{}");
-    const progress = map[key] || (state.currentBaseSrc ? map[state.currentBaseSrc] : null);
+    const progress = map[key]
+      || (state.currentOriginalSrc ? map[state.currentOriginalSrc] : null)
+      || (state.currentBaseSrc ? map[state.currentBaseSrc] : null);
     if (!progress || !Number.isFinite(Number(progress.time))) return null;
     return progress;
   } catch {
@@ -314,6 +477,7 @@ function clearProgress(key) {
   try {
     const map = JSON.parse(localStorage.getItem("playback_progress") || "{}");
     delete map[key];
+    if (state.currentOriginalSrc) delete map[state.currentOriginalSrc];
     if (state.currentBaseSrc) delete map[state.currentBaseSrc];
     localStorage.setItem("playback_progress", JSON.stringify(map));
   } catch {
@@ -337,29 +501,36 @@ function createStoryCard({ href, poster, gradient, code, title, description, act
   `;
 }
 
-function mountPlayer({ media, title, subtitle, poster, gradient, meta, backHref, contentKey, relatedHtml, collectionTitle }) {
+async function mountPlayer({ media, title, subtitle, poster, gradient, meta, backHref, contentKey, relatedHtml, collectionTitle }) {
   document.title = title ? `${title} - Player` : "Player";
   dom.backLink.href = backHref;
   dom.backLink.textContent = "Volver al catalogo";
   dom.related.innerHTML = relatedHtml;
   dom.collectionTitle.textContent = collectionTitle;
 
-  const sources = normalizeSources(media);
+  dom.status.textContent = "Buscando calidades disponibles...";
+  const sources = await discoverMediaSources(media);
   const tracks = normalizeTracks(media);
-  const src = getPrimarySource(media);
+  const initialQuality = chooseInitialQuality(sources);
+  const src = sources.find((source) => Number(source.size) === initialQuality)?.src || sources[0]?.src || "";
   state.currentContentKey = contentKey;
   state.currentProgressKey = contentKey;
   state.currentContentTitle = title;
   state.currentBaseSrc = src;
+  state.currentOriginalSrc = media.src || src;
+  state.availableSources = sources;
+  state.currentQuality = initialQuality;
+  state.autoQuality = true;
   state.resumePrompted = false;
   window.setTimeout(offerSavedProgress, 0);
 
-  if (!state.playerUi) mountPlayerUi(media);
+  if (!state.playerUi) mountPlayerUi(media, initialQuality);
   if (state.playerUi) {
     state.playerUi.source = { type: "video", title, poster, sources, tracks };
   } else {
+    const orderedSources = [...sources].sort((a, b) => Number(a.size !== initialQuality) - Number(b.size !== initialQuality));
     dom.video.replaceChildren(
-      ...sources.map((source) => Object.assign(document.createElement("source"), source)),
+      ...orderedSources.map((source) => Object.assign(document.createElement("source"), source)),
       ...tracks.map((track) => {
         const element = document.createElement("track");
         element.kind = track.kind;
@@ -373,6 +544,7 @@ function mountPlayer({ media, title, subtitle, poster, gradient, meta, backHref,
     dom.video.poster = poster || "";
     dom.video.load();
   }
+  renderQualityControls(sources);
   dom.status.textContent = `Listo para reproducir: ${title}`;
 
   loadRatingsFor(contentKey);
@@ -401,7 +573,7 @@ async function renderMoviePlayer(movie) {
     }))
     .join("");
 
-  mountPlayer({
+  await mountPlayer({
     media: movie,
     title: movie.title,
     subtitle: movie.saga ? `Saga: ${movie.saga}` : "Pelicula seleccionada desde el catalogo",
@@ -436,7 +608,7 @@ async function renderEpisodePlayer(serie, seasonNumber, episodeNumber) {
     }))
     .join("");
 
-  mountPlayer({
+  await mountPlayer({
     media: episode,
     title: `${serie.title} - ${episode.title || `Episodio ${episodeNumber}`}`,
     subtitle: `Temporada ${seasonNumber} - Episodio ${episodeNumber}`,
@@ -454,10 +626,21 @@ function bindEvents() {
   dom.video.addEventListener("loadedmetadata", offerSavedProgress);
 
   dom.video.addEventListener("error", () => {
-    dom.status.textContent = "No se pudo cargar el video seleccionado.";
+    dom.status.replaceChildren();
+    const message = document.createElement("span");
+    message.textContent = "No se pudo reproducir este archivo. ";
+    const retry = document.createElement("a");
+    retry.className = "player-native-link";
+    retry.href = state.currentOriginalSrc || state.currentBaseSrc || "#";
+    retry.textContent = "Abrir video directamente";
+    retry.target = "_blank";
+    retry.rel = "noopener";
+    dom.status.append(message, retry);
   });
 
   dom.video.addEventListener("playing", () => {
+    if (state.waitingTimer) window.clearTimeout(state.waitingTimer);
+    state.waitingTimer = null;
     dom.status.textContent = "";
     startWatchdog();
   });
@@ -468,6 +651,30 @@ function bindEvents() {
 
   dom.video.addEventListener("waiting", () => {
     if (!dom.video.paused) dom.status.textContent = "Ajustando la reproduccion a tu conexion...";
+    if (state.waitingTimer) window.clearTimeout(state.waitingTimer);
+    state.waitingTimer = window.setTimeout(() => {
+      if (!dom.video.paused && !dom.video.ended && dom.video.readyState < 3) handlePlaybackStall();
+    }, 10000);
+  });
+
+  dom.video.addEventListener("qualitychange", () => {
+    const selected = Number(state.playerUi?.quality);
+    if (Number.isFinite(selected)) state.currentQuality = selected;
+    updateQualityControls();
+  });
+
+  dom.qualitySelect?.addEventListener("change", () => {
+    if (dom.qualitySelect.value === "auto") {
+      state.autoQuality = true;
+      const automaticQuality = chooseInitialQuality(state.availableSources);
+      if (!switchPlaybackQuality(automaticQuality, `Calidad automatica: ${automaticQuality}p`)) {
+        updateQualityControls();
+      }
+      return;
+    }
+    const selected = Number(dom.qualitySelect.value);
+    state.autoQuality = false;
+    if (!switchPlaybackQuality(selected, `Calidad seleccionada: ${selected}p`)) updateQualityControls();
   });
 
   dom.video.addEventListener("timeupdate", () => {

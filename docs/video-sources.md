@@ -2,6 +2,23 @@
 
 Todos los videos que solo tengan la propiedad `src` se consideran 1080p.
 
+Para que funcionen en Safari de iPhone, los archivos deben usar H.264 (`yuv420p`) y audio AAC, tener los metadatos al inicio (`faststart`) y subirse al Release con el tipo MIME `video/mp4`. Si GitHub los entrega como `application/octet-stream`, Safari puede rechazarlos aunque Chrome los reproduzca.
+
+Los Releases existentes no necesitan volver a subirse. El proyecto incluye `media-proxy`, un Cloudflare Worker que conserva `Range`, transmite el archivo sin cargarlo entero en memoria y corrige el MIME y la descarga forzada. Consulta `media-proxy/README.md`; despues de desplegarlo solo hay que pegar su URL en `src/scripts/config/media.js`.
+
+## Generacion gratuita de 720p y 480p
+
+El workflow `.github/workflows/generate-release-video-qualities.yml` procesa los Releases con GitHub Actions y nunca modifica el MP4 original.
+
+- En Releases nuevos se ejecuta automaticamente al publicarlos.
+- Para uno existente, abre **Actions > Generar calidades de video > Run workflow**.
+- Escribe la etiqueta exacta, por ejemplo `1.2`.
+- `asset_name` puede quedar vacio para procesar todos los MP4 originales del Release, o contener uno exacto como `MJU.mp4`.
+- Las salidas se adjuntan al mismo Release como `MJU-720p.mp4` y `MJU-480p.mp4`.
+- El reproductor las descubre automaticamente; no hay que editar el catalogo.
+
+El repositorio debe permitir que GitHub Actions escriba contenido. Si la subida recibe un error de permisos, activa **Settings > Actions > General > Workflow permissions > Read and write permissions**.
+
 ```js
 {
   title: "Nombre de la pelicula",

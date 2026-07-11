@@ -1,0 +1,311 @@
+name: Generar calidades de video
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Etiqueta exacta del Release que se procesara
+        required: true
+        type: string
+      asset_name:
+        description: Nombre exacto de un MP4 (vacio para procesar todos)
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-video-qualities-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Buscar originales en el Release
+    runs-on: ubuntu-latest
+    outputs:
+      count: ${{ steps.assets.outputs.count }}
+      matrix: ${{ steps.assets.outputs.matrix }}
+      release_tag: ${{ steps.assets.outputs.release_tag }}
+    steps:
+      - name: Seleccionar videos originales
+        id: assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+          REQUESTED_ASSET: ${{ github.event_name == 'workflow_dispatch' && inputs.asset_name || '' }}
+        run: |
+          set -Eeuo pipefail
+
+          if [[ -z "${RELEASE_TAG}" ]]; then
+            echo "::error::No se recibio la etiqueta del Release."
+            exit 1
+          fi
+
+          encoded_tag="$(jq -rn --arg value "${RELEASE_TAG}" '$value | @uri')"
+          if ! release_json="$(gh api --method GET \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GITHUB_REPOSITORY}/releases/tags/${encoded_tag}")"; then
+            echo "::error::No se encontro el Release con etiqueta '${RELEASE_TAG}'."
+            exit 1
+          fi
+
+          release_id="$(jq -r '.id' <<<"${release_json}")"
+          release_url="$(jq -r '.html_url' <<<"${release_json}")"
+
+          # El endpoint del Release no garantiza incluir mas de una pagina de assets.
+          # Se consultan todas las paginas para soportar Releases grandes.
+          assets_json="$(
+            gh api --paginate --method GET \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets?per_page=100" \
+              | jq -sc 'add // []'
+          )"
+
+          eligible_json="$(jq -c '
+            [ .[]
+              | select(.state == "uploaded")
+              | select(.name | test("\\.mp4$"; "i"))
+              | select((.name | test("-(720p|480p)\\.mp4$"; "i")) | not)
+              | {
+                  asset_id: .id,
+                  asset_name: .name,
+                  asset_size: .size
+                }
+            ]
+          ' <<<"${assets_json}")"
+
+          if [[ -n "${REQUESTED_ASSET}" ]]; then
+            selected_json="$(jq -c --arg name "${REQUESTED_ASSET}" \
+              '[.[] | select(.asset_name == $name)]' <<<"${eligible_json}")"
+
+            if [[ "$(jq 'length' <<<"${selected_json}")" -eq 0 ]]; then
+              if jq -e --arg name "${REQUESTED_ASSET}" \
+                '.[] | select(.name == $name)' <<<"${assets_json}" >/dev/null; then
+                echo "::error::El asset '${REQUESTED_ASSET}' no es un MP4 original elegible. Las variantes -720p y -480p se omiten."
+              else
+                echo "::error::No existe un asset llamado '${REQUESTED_ASSET}' en el Release '${RELEASE_TAG}'."
+              fi
+              exit 1
+            fi
+          else
+            selected_json="${eligible_json}"
+          fi
+
+          count="$(jq 'length' <<<"${selected_json}")"
+          matrix="$(jq -c '{include: .}' <<<"${selected_json}")"
+
+          printf 'count=%s\n' "${count}" >>"${GITHUB_OUTPUT}"
+          printf 'matrix=%s\n' "${matrix}" >>"${GITHUB_OUTPUT}"
+          printf 'release_tag=%s\n' "${RELEASE_TAG}" >>"${GITHUB_OUTPUT}"
+
+          {
+            echo "## Preparacion de calidades"
+            echo
+            echo "- Release: [${RELEASE_TAG}](${release_url})"
+            echo "- Originales seleccionados: ${count}"
+            echo "- Las variantes existentes con sufijo \`-720p\` o \`-480p\` fueron omitidas."
+            if [[ "${count}" -eq 0 ]]; then
+              echo
+              echo "No habia MP4 originales pendientes de procesar."
+            else
+              echo
+              jq -r '.[] | "- `\(.asset_name)` (\((.asset_size / 1048576 * 10 | floor) / 10) MiB)"' \
+                <<<"${selected_json}"
+            fi
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+  transcode:
+    name: Convertir ${{ matrix.asset_name }}
+    needs: discover
+    if: needs.discover.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
+      SOURCE_ID: ${{ matrix.asset_id }}
+      SOURCE_NAME: ${{ matrix.asset_name }}
+      SOURCE_SIZE: ${{ matrix.asset_size }}
+    steps:
+      - name: Comprobar FFmpeg
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes ffmpeg
+          fi
+          ffmpeg -version
+
+      - name: Descargar, convertir y subir variantes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          if [[ "${SOURCE_NAME}" == */* || "${SOURCE_NAME}" == *$'\n'* || "${SOURCE_NAME}" == "." || "${SOURCE_NAME}" == ".." ]]; then
+            echo "::error::El nombre del asset no es seguro para usarlo como archivo: '${SOURCE_NAME}'."
+            exit 1
+          fi
+
+          shopt -s nocasematch
+          if [[ "${SOURCE_NAME}" =~ -(720p|480p)\.mp4$ ]]; then
+            echo "El asset ya es una variante y se omite: ${SOURCE_NAME}"
+            exit 0
+          fi
+          shopt -u nocasematch
+
+          work_dir="${RUNNER_TEMP}/release-video-${SOURCE_ID}"
+          rm -rf -- "${work_dir}"
+          mkdir -p -- "${work_dir}"
+          trap 'rm -rf -- "${work_dir}"' EXIT
+
+          # Se conserva solo el original y una variante a la vez. Esta comprobacion
+          # deja margen para el archivo temporal usado por +faststart.
+          available_bytes="$(df --output=avail -B1 "${RUNNER_TEMP}" | tail -n 1 | tr -d ' ')"
+          required_bytes="$((SOURCE_SIZE * 2 + 2147483648))"
+          if (( available_bytes < required_bytes )); then
+            echo "::error::Espacio insuficiente. Disponibles: ${available_bytes} bytes; estimados: ${required_bytes} bytes."
+            exit 1
+          fi
+
+          input_path="${work_dir}/${SOURCE_NAME}"
+          partial_path="${input_path}.part"
+
+          echo "Descargando '${SOURCE_NAME}' (${SOURCE_SIZE} bytes)..."
+          downloaded=false
+          for attempt in 1 2 3; do
+            rm -f -- "${partial_path}"
+            if gh api --method GET \
+              -H "Accept: application/octet-stream" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/releases/assets/${SOURCE_ID}" \
+              >"${partial_path}"; then
+              mv -- "${partial_path}" "${input_path}"
+              downloaded=true
+              break
+            fi
+            echo "::warning::Fallo el intento ${attempt} de descarga."
+            sleep "$((attempt * 5))"
+          done
+
+          if [[ "${downloaded}" != true ]]; then
+            echo "::error::No fue posible descargar el asset despues de 3 intentos."
+            exit 1
+          fi
+
+          actual_size="$(stat --format='%s' "${input_path}")"
+          if [[ "${actual_size}" -ne "${SOURCE_SIZE}" ]]; then
+            echo "::error::La descarga quedo incompleta: se esperaban ${SOURCE_SIZE} bytes y llegaron ${actual_size}."
+            exit 1
+          fi
+
+          stem="${SOURCE_NAME%.*}"
+          shopt -s nocasematch
+          if [[ "${stem}" =~ ^(.+)-1080p$ ]]; then
+            stem="${BASH_REMATCH[1]}"
+          fi
+          shopt -u nocasematch
+
+          if [[ -z "${stem}" ]]; then
+            echo "::error::No se pudo calcular el nombre base de '${SOURCE_NAME}'."
+            exit 1
+          fi
+
+          source_has_audio=false
+          if ffprobe -v error -select_streams a:0 -show_entries stream=index \
+            -of csv=p=0 "${input_path}" | grep -q '[0-9]'; then
+            source_has_audio=true
+          fi
+
+          {
+            echo "## ${SOURCE_NAME}"
+            echo
+            echo "Original descargado y validado: ${actual_size} bytes."
+            echo
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+          transcode_and_upload() {
+            local height="$1"
+            local crf="$2"
+            local maxrate="$3"
+            local bufsize="$4"
+            local output_name="${stem}-${height}p.mp4"
+            local output_path="${work_dir}/${output_name}"
+
+            echo "::group::Generando ${output_name}"
+            ffmpeg -hide_banner -nostdin -y \
+              -i "${input_path}" \
+              -map 0:v:0 -map '0:a:0?' \
+              -sn -dn \
+              -vf "scale=-2:${height}:flags=lanczos,setsar=1" \
+              -c:v libx264 -preset veryfast -crf "${crf}" \
+              -maxrate "${maxrate}" -bufsize "${bufsize}" \
+              -profile:v high -level:v 4.1 -pix_fmt yuv420p -tag:v avc1 \
+              -force_key_frames 'expr:gte(t,n_forced*2)' \
+              -c:a aac -b:a 128k -ar 48000 -ac 2 \
+              -movflags +faststart \
+              "${output_path}"
+            echo "::endgroup::"
+
+            if [[ ! -s "${output_path}" ]]; then
+              echo "::error::FFmpeg no genero '${output_name}'."
+              return 1
+            fi
+
+            local video_info
+            video_info="$(ffprobe -v error -select_streams v:0 \
+              -show_entries stream=codec_name,pix_fmt,height \
+              -of json "${output_path}")"
+            if ! jq -e --argjson expected_height "${height}" '
+              .streams[0].codec_name == "h264"
+              and .streams[0].pix_fmt == "yuv420p"
+              and .streams[0].height == $expected_height
+            ' <<<"${video_info}" >/dev/null; then
+              echo "::error::La validacion de video fallo para '${output_name}'."
+              return 1
+            fi
+
+            if [[ "${source_has_audio}" == true ]]; then
+              local audio_codec
+              audio_codec="$(ffprobe -v error -select_streams a:0 \
+                -show_entries stream=codec_name -of default=nw=1:nk=1 \
+                "${output_path}")"
+              if [[ "${audio_codec}" != "aac" ]]; then
+                echo "::error::La validacion de audio AAC fallo para '${output_name}'."
+                return 1
+              fi
+            fi
+
+            local output_size
+            output_size="$(stat --format='%s' "${output_path}")"
+            if (( output_size >= 2147483648 )); then
+              echo "::error::'${output_name}' pesa ${output_size} bytes y excede el limite de 2 GiB de un asset de GitHub Releases."
+              return 1
+            fi
+
+            gh release upload "${RELEASE_TAG}" "${output_path}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --clobber
+
+            printf -- '- [OK] `%s` - %s MiB\n' \
+              "${output_name}" "$((output_size / 1048576))" \
+              >>"${GITHUB_STEP_SUMMARY}"
+
+            # La siguiente calidad se genera despues de liberar esta variante.
+            rm -f -- "${output_path}"
+          }
+
+          transcode_and_upload 720 22 3500k 7000k
+          transcode_and_upload 480 23 1800k 3600k
+
+          echo >>"${GITHUB_STEP_SUMMARY}"
+          echo "El original \`${SOURCE_NAME}\` no fue modificado." >>"${GITHUB_STEP_SUMMARY}"
