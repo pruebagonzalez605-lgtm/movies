@@ -2038,8 +2038,8 @@ body.modal-open {
 }
 
 .ep-row.current {
-  background: rgba(242, 72, 63, 0.14);
-  border-left-color: #f2483f;
+  background: rgba(232, 196, 104, 0.14);
+  border-left-color: #e8c468;
 }
 
 .ep-row-left {
@@ -2066,7 +2066,7 @@ body.modal-open {
 }
 
 .ep-row.current .ep-row-title {
-  color: #f2483f;
+  color: #e8c468;
 }
 
 .ep-row-right {
