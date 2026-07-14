@@ -689,7 +689,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   const hasValidLocalSource = sources.some((s) => s?.src && s.src.trim() !== "");
 
   if (!hasValidLocalSource) {
-    dom.status.textContent = "Fuente local no disponible. Cargando HLSWish...";
+    dom.status.textContent = "Fuente local no disponible. Cargando Metodo 2...";
     const success = await tryHlsWishFallback(true);
     if (success) loadRatingsFor(contentKey);
     return; // Sin fuente local: no hay <video> que configurar de todos modos.
@@ -1030,8 +1030,8 @@ async function getTmdbIdForContent() {
 // reconocer sus URLs de embed dentro del JSON de vimeus.com y un label
 // para mostrar en el status.
 const EXTERNAL_PROVIDERS = [
-  { name: "HLSWish", label: "Reproduciendo con HLSWish", match: (url) => /^https:\/\/hlswish\.com\/e\//.test(url) },
-  { name: "GoodStream", label: "Reproduciendo con GoodStream", match: (url) => /^https:\/\/goodstream\.one\/embed-/.test(url) },
+  { name: "HLSWish", label: "Reproduciendo con Metodo 2", match: (url) => /^https:\/\/hlswish\.com\/e\//.test(url) },
+  { name: "GoodStream", label: "Reproduciendo con Metodo 3", match: (url) => /^https:\/\/goodstream\.one\/embed-/.test(url) },
 ];
 
 // Recolecta TODOS los links de embed encontrados en el JSON (no solo el
