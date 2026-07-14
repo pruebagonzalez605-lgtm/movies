@@ -12,7 +12,7 @@ export const MOVIES = [
     gradient: ["#1a0507", "#5c1013"],
     texture: "slasher",
     poster: "https://m.media-amazon.com/images/M/MV5BNTJjMDk1NzAtMGVmNS00NTFmLWFlOTQtZDk5M2I2NjZiZDdlXkEyXkFqcGc@._V1_FMjpg_UX878_.jpg",
-    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.1/SC6.mp4",
+    src: "",
   },
   {
     code: "03",
@@ -30,9 +30,12 @@ export const MOVIES = [
   {
     code: "04",
     title: "Obsession",
+    tmdbTitle: "Obsession",     // o el título exacto en TMDB
+    tmdbYear: 2026,             // año de estreno
     gradient: ["#1a0d1f", "#4a1e52"],
-    poster: "https://m.media-amazon.com/images/M/MV5BMmQ3ODQxNjAtZmRlMS00NmNjLTliZmYtY2M3ZWQzMDIwMmNiXkEyXkFqcGc@.V1_FMjpg_UX1050.jpg",
+    poster: "...",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.3/Obson.mp4",
+  // sources: [...] si tenés varias calidades
   },
   {
     code: "05",
@@ -169,5 +172,13 @@ export const MOVIES = [
     saga: "American Pie",
     tmdbYear: 2003,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.21/AP3.mp4",
+  },
+    {
+    code: "23",
+    title: "Y dónde están las rubias?",
+    tmdbTitle: "White Chicks",
+    gradient: ["#3d2a0d", "#8a6a1e"],
+    tmdbYear: 2004,
+    src: "",
   },
 ];

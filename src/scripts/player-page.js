@@ -17,10 +17,14 @@ const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
   anonKey: "sb_publishable_w2GCzCqZJcYMHi8yyCN23Q_IthBqvhF",
 });
+
 const supabaseRest = `${supabase.config.url}/rest/v1`;
 const MIN_RESUME_SECONDS = 3;
 const END_PROGRESS_MARGIN_SECONDS = 15;
 const QUALITY_SWITCH_TIMEOUT_MS = 20000;
+const VIEW_KEY = "MG2pAMcu9veMgs8nQcwlZPUVQ2XqAayOCqWJjUpspk4";
+const EXTERNAL_PLAYER_ORIGINS = ["https://hlswish.com", "https://vimeus.com", "https://goodstream.one"];
+const EXTERNAL_HEARTBEAT_MS = 5000;
 
 const dom = {
   status: document.getElementById("playerStatus"),
@@ -62,6 +66,13 @@ const state = {
   currentQuality: 1080,
   autoQuality: true,
   qualityChangeOrigin: null,
+
+  // --- Tracking de progreso para reproducción externa (HLSWish) ---
+  playbackMode: "video", // "video" | "external"
+  externalProgress: { time: 0, duration: 0 },
+  externalHeartbeat: null,
+  externalMessageCleanup: null,
+  externalMessageSeen: false,
 };
 
 const boundVideoElements = new WeakSet();
@@ -240,19 +251,7 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
       enabled: Boolean(previewSrc),
       src: previewSrc || "",
     },
-    i18n: {
-      restart: "Reiniciar", rewind: "Retroceder {seektime}s", play: "Reproducir",
-      pause: "Pausar", fastForward: "Adelantar {seektime}s", seek: "Buscar",
-      seekLabel: "{currentTime} de {duration}", played: "Reproducido", buffered: "Cargado",
-      currentTime: "Tiempo actual", duration: "Duracion", volume: "Volumen", mute: "Silenciar",
-      unmute: "Activar sonido", enableCaptions: "Activar subtitulos",
-      disableCaptions: "Desactivar subtitulos", settings: "Ajustes", speed: "Velocidad",
-      normal: "Normal", quality: "Calidad", loop: "Repetir", start: "Iniciar",
-      end: "Fin", all: "Todo", reset: "Restablecer", disabled: "Desactivado",
-      enabled: "Activado", advertisement: "Anuncio", qualityBadge: {
-        2160: "4K", 1440: "HD", 1080: "HD", 720: "HD", 576: "SD", 480: "SD",
-      },
-    },
+    i18n: { /* ... tu configuración de i18n ... */ },
   });
   bindVideoEvents(syncActiveVideo());
 }
@@ -270,7 +269,7 @@ function recoverPlayback() {
   state.isRecovering = true;
   const resumeAt = video.currentTime || 0;
   const wasPlaying = !video.paused;
-  dom.status.textContent = "La conexion se interrumpio. Reconectando el video...";
+  dom.status.textContent = "La conexión se interrumpió. Reconectando...";
 
   let recoveryTimeout;
   const ready = () => {
@@ -280,19 +279,15 @@ function recoverPlayback() {
     if (wasPlaying) video.play().catch(() => {});
     dom.status.textContent = "Video reconectado.";
     state.isRecovering = false;
-    window.setTimeout(() => {
-      if (dom.status.textContent === "Video reconectado.") dom.status.textContent = "";
-    }, 2500);
+    setTimeout(() => { if (dom.status.textContent.includes("reconectado")) dom.status.textContent = ""; }, 2500);
   };
-  recoveryTimeout = window.setTimeout(() => {
+  recoveryTimeout = setTimeout(() => {
     video.removeEventListener("loadedmetadata", ready);
     state.isRecovering = false;
   }, 10000);
 
   video.addEventListener("loadedmetadata", ready);
-  const activeSource = state.availableSources.find((source) => Number(source.size) === state.currentQuality)?.src
-    || video.currentSrc
-    || state.currentBaseSrc;
+  const activeSource = state.availableSources.find(s => Number(s.size) === state.currentQuality)?.src || video.currentSrc || state.currentBaseSrc;
   video.src = withCacheBust(activeSource);
   video.load();
 }
@@ -324,7 +319,7 @@ function switchPlaybackQuality(quality, reason = "") {
     state.isRecovering = false;
     state.qualityChangeOrigin = null;
     updateQualityControls();
-    if (!usingPlyr && wasPlaying) video.play().catch(() => {});
+    if (!usingPlyr && wasPlaying) video.play().catch(() => { });
   };
   recoveryTimeout = window.setTimeout(() => {
     video.removeEventListener("loadedmetadata", ready);
@@ -335,10 +330,8 @@ function switchPlaybackQuality(quality, reason = "") {
   video.addEventListener("loadedmetadata", ready);
 
   if (usingPlyr) {
-    // Plyr conserva el tiempo, estado y seleccion visible de su menu interno.
     state.playerUi.quality = Number(quality);
   } else {
-    // Safari iOS usa el reproductor nativo y necesita cambiar el recurso directo.
     video.src = target.src;
     video.load();
   }
@@ -369,8 +362,6 @@ function renderQualityControls(sources) {
   if (!dom.quickSettings || !dom.qualitySelect) return;
   const qualities = [...new Set(sources.map((source) => Number(source.size)).filter(Number.isFinite))]
     .sort((a, b) => b - a);
-  // Plyr muestra las calidades dentro del engranaje. El selector externo queda
-  // como respaldo para iPhone/iPad, donde se usa el reproductor nativo.
   dom.quickSettings.hidden = qualities.length < 2 || Boolean(state.playerUi);
   dom.qualitySelect.replaceChildren(
     Object.assign(document.createElement("option"), { value: "auto", textContent: "Automatica" }),
@@ -523,20 +514,32 @@ function showResumeModal(progress) {
   dom.resumeOverlay.style.display = "flex";
   document.body.classList.add("resume-open");
 
+  const isExternal = state.playbackMode === "external";
+
   dom.resumeContinue.onclick = () => {
-    const video = syncActiveVideo();
     closeResumeModal();
+    if (isExternal) {
+      // No hay forma confirmada de reposicionar el iframe externo a un
+      // segundo exacto. Dejamos el progreso guardado intacto y seguimos
+      // trackeando desde donde el usuario deje avanzar el reproductor externo.
+      return;
+    }
+    const video = syncActiveVideo();
     if (!video) return;
     video.currentTime = Math.min(Number(progress.time), Math.max(0, video.duration - 1));
-    video.play().catch(() => {});
+    video.play().catch(() => { });
   };
   dom.resumeRestart.onclick = () => {
-    const video = syncActiveVideo();
     clearProgress(state.currentProgressKey);
     closeResumeModal();
+    if (isExternal) {
+      state.externalProgress = { time: 0, duration: state.externalProgress.duration };
+      return;
+    }
+    const video = syncActiveVideo();
     if (!video) return;
     video.currentTime = 0;
-    video.play().catch(() => {});
+    video.play().catch(() => { });
   };
   dom.resumeClose.onclick = closeResumeModal;
 }
@@ -544,7 +547,9 @@ function showResumeModal(progress) {
 function offerSavedProgress() {
   const progress = getProgress(state.currentProgressKey);
   if (!progress) return;
-  const duration = Number(syncActiveVideo()?.duration) || Number(progress.duration) || 0;
+  const duration = state.playbackMode === "external"
+    ? Number(progress.duration) || 0
+    : (Number(syncActiveVideo()?.duration) || Number(progress.duration) || 0);
   const resumeAt = Number(progress.time) || 0;
   if (resumeAt >= MIN_RESUME_SECONDS && (!duration || duration - resumeAt > END_PROGRESS_MARGIN_SECONDS)) {
     showResumeModal(progress);
@@ -563,12 +568,95 @@ function clearProgress(key) {
   }
 }
 
+// ==================== TRACKING DE PROGRESO EXTERNO (HLSWish) ====================
+
+function extractExternalEvent(raw) {
+  const payload = raw?.data && typeof raw.data === "object" ? raw.data : raw;
+  if (!payload || typeof payload !== "object") return null;
+  const time = Number(payload.currentTime ?? payload.time ?? payload.position);
+  const duration = Number(payload.duration ?? payload.total);
+  const ended = Boolean(payload.ended) || payload.event === "ended" || raw?.event === "ended";
+  if (!Number.isFinite(time) && !ended) return null;
+  return {
+    time: Number.isFinite(time) ? time : state.externalProgress.time,
+    duration: Number.isFinite(duration) ? duration : state.externalProgress.duration,
+    ended,
+  };
+}
+
+function persistExternalProgress() {
+  if (!state.currentProgressKey) return;
+  const { time, duration } = state.externalProgress;
+  if (time >= MIN_RESUME_SECONDS && (!duration || duration - time > END_PROGRESS_MARGIN_SECONDS)) {
+    saveProgress(state.currentProgressKey, time, duration);
+  }
+}
+
+function stopExternalTracking() {
+  if (state.externalHeartbeat) window.clearInterval(state.externalHeartbeat);
+  state.externalHeartbeat = null;
+  if (state.externalMessageCleanup) state.externalMessageCleanup();
+  state.externalMessageCleanup = null;
+  state.externalMessageSeen = false;
+}
+
+function bindExternalPlaybackTracking(contentKey) {
+  stopExternalTracking();
+  state.playbackMode = "external";
+
+  const existing = getProgress(contentKey);
+  state.externalProgress = {
+    time: Number(existing?.time) || 0,
+    duration: Number(existing?.duration) || 0,
+  };
+
+  const onMessage = (event) => {
+    if (!EXTERNAL_PLAYER_ORIGINS.some((origin) => event.origin?.startsWith(origin))) return;
+    let data = event.data;
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+      } catch {
+        return;
+      }
+    }
+    const parsed = extractExternalEvent(data);
+    if (!parsed) {
+      console.debug("HLSWish postMessage sin formato reconocido:", event.data);
+      return;
+    }
+    state.externalMessageSeen = true;
+    if (parsed.ended) {
+      clearProgress(state.currentProgressKey);
+      return;
+    }
+    state.externalProgress = { time: parsed.time, duration: parsed.duration };
+    persistExternalProgress();
+  };
+  window.addEventListener("message", onMessage);
+  state.externalMessageCleanup = () => window.removeEventListener("message", onMessage);
+
+  // Respaldo por reloj de pared: si el iframe no emite postMessage con el
+  // tiempo de reproducción, estimamos el avance desde que se cargó.
+  // Es aproximado (no detecta pausas dentro del iframe), pero evita que
+  // "continuar viendo" quede completamente roto en modo externo.
+  const startedAt = Date.now() - state.externalProgress.time * 1000;
+  state.externalHeartbeat = window.setInterval(() => {
+    if (state.externalMessageSeen) return; // ya tenemos datos reales, no adivinar
+    state.externalProgress = {
+      time: (Date.now() - startedAt) / 1000,
+      duration: state.externalProgress.duration,
+    };
+    persistExternalProgress();
+  }, EXTERNAL_HEARTBEAT_MS);
+}
+
 function createStoryCard({ href, poster, gradient, code, title, description, active = false }) {
   return `
     <a class="player-story-card${active ? " is-active" : ""}" href="${href}">
       <div class="player-story-art" style="${poster
-        ? `background-image: linear-gradient(180deg, rgba(8,8,12,0.1), rgba(8,8,12,0.82)), url('${poster}'); background-size: cover; background-position: center;`
-        : `background: linear-gradient(160deg, ${gradient[0]}, ${gradient[1]});`}">
+      ? `background-image: linear-gradient(180deg, rgba(8,8,12,0.1), rgba(8,8,12,0.82)), url('${poster}'); background-size: cover; background-position: center;`
+      : `background: linear-gradient(160deg, ${gradient[0]}, ${gradient[1]});`}">
         <span class="player-story-badge">${code}</span>
       </div>
       <div class="player-story-copy">
@@ -586,33 +674,50 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   dom.related.innerHTML = relatedHtml;
   dom.collectionTitle.textContent = collectionTitle;
 
-  dom.status.textContent = "Buscando calidades disponibles...";
-  const sources = await discoverMediaSources(media);
-  const tracks = normalizeTracks(media);
-  const initialQuality = chooseInitialQuality(sources);
-  const src = sources.find((source) => Number(source.size) === initialQuality)?.src || sources[0]?.src || "";
+  // Se define ANTES de resolver la fuente: así el fallback de HLSWish
+  // también cuenta con contentKey/título para guardar progreso.
   state.currentContentKey = contentKey;
   state.currentProgressKey = contentKey;
   state.currentContentTitle = title;
+  state.resumePrompted = false;
+  state.playbackMode = "video";
+  stopExternalTracking();
+
+  dom.status.textContent = "Buscando fuente...";
+
+  const sources = await discoverMediaSources(media);
+  const hasValidLocalSource = sources.some((s) => s?.src && s.src.trim() !== "");
+
+  if (!hasValidLocalSource) {
+    dom.status.textContent = "Fuente local no disponible. Cargando HLSWish...";
+    const success = await tryHlsWishFallback(true);
+    if (success) loadRatingsFor(contentKey);
+    return; // Sin fuente local: no hay <video> que configurar de todos modos.
+  }
+
+  // Fuente local disponible
+  const tracks = normalizeTracks(media);
+  const initialQuality = chooseInitialQuality(sources);
+  const src = sources.find((s) => Number(s.size) === initialQuality)?.src || sources[0]?.src || "";
+
   state.currentBaseSrc = src;
   state.currentOriginalSrc = media.src || src;
   state.availableSources = sources;
   state.currentQuality = initialQuality;
   state.autoQuality = true;
-  state.resumePrompted = false;
-  window.setTimeout(offerSavedProgress, 0);
 
   configureVideoElement(dom.video, sources, tracks, initialQuality, poster);
   if (!state.playerUi) {
-    const qualityOptions = [...new Set(sources.map((source) => Number(source.size)).filter(Number.isFinite))]
-      .sort((a, b) => b - a);
+    const qualityOptions = [...new Set(sources.map((s) => Number(s.size)).filter(Number.isFinite))].sort((a, b) => b - a);
     mountPlayerUi(media, initialQuality, qualityOptions);
   }
+
   bindVideoEvents(syncActiveVideo());
   renderQualityControls(sources);
-  dom.status.textContent = `Listo para reproducir: ${title}`;
+  dom.status.textContent = `Reproduciendo: ${title}`;
 
   loadRatingsFor(contentKey);
+  setTimeout(offerSavedProgress, 800);
 }
 
 async function renderMoviePlayer(movie) {
@@ -785,6 +890,10 @@ function bindVideoEvents(video) {
 }
 
 function persistCurrentProgress() {
+  if (state.playbackMode === "external") {
+    persistExternalProgress();
+    return;
+  }
   const video = syncActiveVideo();
   if (!video || !state.currentProgressKey || !video.duration) return;
   if (video.currentTime >= MIN_RESUME_SECONDS
@@ -867,24 +976,207 @@ async function init() {
     dom.status.textContent = "Contenido no encontrado. Revisa el enlace y vuelve al catalogo.";
     dom.related.innerHTML = `
       ${createStoryCard({
-        href: "./movies.html",
-        poster: "",
-        gradient: ["#3d2b10", "#8a6f2f"],
-        code: "01",
-        title: "Volver a Movies",
-        description: "Explorar peliculas disponibles.",
-      })}
+      href: "./movies.html",
+      poster: "",
+      gradient: ["#3d2b10", "#8a6f2f"],
+      code: "01",
+      title: "Volver a Movies",
+      description: "Explorar peliculas disponibles.",
+    })}
       ${createStoryCard({
-        href: "./series.html",
-        poster: "",
-        gradient: ["#1c1c22", "#141419"],
-        code: "02",
-        title: "Volver a Series",
-        description: "Explorar temporadas y episodios.",
-      })}
+      href: "./series.html",
+      poster: "",
+      gradient: ["#1c1c22", "#141419"],
+      code: "02",
+      title: "Volver a Series",
+      description: "Explorar temporadas y episodios.",
+    })}
     `;
     dom.collectionTitle.textContent = "Sigue explorando";
   }
 }
 
+// ==================== HLSWISH FALLBACK ====================
+
+async function getTmdbIdForContent() {
+  const params = new URLSearchParams(window.location.search);
+  let tmdbId = params.get('tmdb');
+  if (tmdbId) return tmdbId;
+
+  const type = params.get("type");
+  if (type === "movie") {
+    const slug = params.get("id");
+    const movie = getMovies().find(m => slugify(m.title) === slug);
+    if (movie) {
+      tmdbId = movie.tmdb_id || movie.tmdbId || movie.tmdb;
+      if (!tmdbId) {
+        try {
+          const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=58dc4e2bb092932970cdd7af79434942&language=es-419&query=${encodeURIComponent(movie.tmdbTitle || movie.title)}`);
+          const data = await res.json();
+          tmdbId = data.results?.[0]?.id;
+        } catch (e) {
+          console.warn("No se pudo resolver tmdbId por búsqueda:", e);
+        }
+      }
+    }
+  }
+  // Nota: falta resolver tmdbId para series/episodios (type === "episode").
+  // Por ahora el fallback de HLSWish solo funciona con películas o con
+  // ?tmdb= explícito en la URL.
+  return tmdbId;
+}
+
+// Proveedores externos en orden de preferencia. Cada uno define cómo
+// reconocer sus URLs de embed dentro del JSON de vimeus.com y un label
+// para mostrar en el status.
+const EXTERNAL_PROVIDERS = [
+  { name: "HLSWish", label: "Reproduciendo con HLSWish", match: (url) => /^https:\/\/hlswish\.com\/e\//.test(url) },
+  { name: "GoodStream", label: "Reproduciendo con GoodStream", match: (url) => /^https:\/\/goodstream\.one\/embed-/.test(url) },
+];
+
+// Recolecta TODOS los links de embed encontrados en el JSON (no solo el
+// primero), agrupados por proveedor, respetando el orden de EXTERNAL_PROVIDERS.
+function collectExternalCandidates(data) {
+  const found = [];
+  function walk(obj) {
+    if (typeof obj === "string") {
+      const provider = EXTERNAL_PROVIDERS.find((p) => p.match(obj));
+      if (provider) found.push({ provider, url: obj });
+      return;
+    }
+    if (Array.isArray(obj)) {
+      obj.forEach(walk);
+      return;
+    }
+    if (obj && typeof obj === "object") {
+      Object.values(obj).forEach(walk);
+    }
+  }
+  walk(data);
+
+  return EXTERNAL_PROVIDERS
+    .map((provider) => found.find((item) => item.provider === provider))
+    .filter(Boolean);
+}
+
+// Monta un candidato en el iframe y hace una verificación en dos etapas:
+// 1) onload/onerror del iframe (solo confirma que el documento remoto respondió).
+// 2) Ventana de "señales de vida": tras el load, esperamos un tiempo corto a
+//    ver si el proveedor manda CUALQUIER postMessage desde su propio origen.
+//    La mayoría de los reproductores embebidos emiten al menos un mensaje de
+//    listo/resize aunque no tenga el formato de tiempo que ya parseamos.
+//    Si no llega nada, asumimos que el reproductor quedó en negro/muerto y
+//    reportamos fallo para que se intente el siguiente proveedor.
+// Limitación conocida: un proveedor que funcione pero nunca emita ningún
+// postMessage se vería (incorrectamente) como fallido con este método.
+function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000, aliveGraceMs = 6000) {
+  return new Promise((resolve) => {
+    const iframe = document.createElement("iframe");
+    let settled = false;
+    let candidateOrigin = null;
+    try {
+      candidateOrigin = new URL(candidate.url).origin;
+    } catch {
+      candidateOrigin = null;
+    }
+
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(loadTimer);
+      window.clearTimeout(aliveTimer);
+      window.removeEventListener("message", onAliveMessage);
+      iframe.removeEventListener("load", onLoad);
+      iframe.removeEventListener("error", onError);
+      resolve(ok);
+    };
+
+    const onAliveMessage = (event) => {
+      if (candidateOrigin && event.origin !== candidateOrigin) return;
+      finish(true);
+    };
+
+    const startAliveWindow = () => {
+      window.addEventListener("message", onAliveMessage);
+      aliveTimer = window.setTimeout(() => finish(false), aliveGraceMs);
+    };
+
+    const onLoad = () => {
+      window.clearTimeout(loadTimer);
+      if (!candidateOrigin) {
+        // Sin origen parseable no podemos filtrar postMessage: damos por
+        // bueno el load como antes.
+        finish(true);
+        return;
+      }
+      startAliveWindow();
+    };
+    const onError = () => finish(false);
+
+    let aliveTimer = null;
+    const loadTimer = window.setTimeout(() => finish(false), loadTimeoutMs);
+
+    iframe.src = candidate.url;
+    iframe.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border:none;";
+    iframe.setAttribute("frameborder", "0");
+    iframe.setAttribute("allowfullscreen", "");
+    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
+    iframe.addEventListener("load", onLoad);
+    iframe.addEventListener("error", onError);
+
+    container.replaceChildren(iframe);
+  });
+}
+
+async function tryHlsWishFallback(showMessage = true) {
+  const tmdbId = await getTmdbIdForContent();
+  if (!tmdbId) {
+    if (showMessage) dom.status.textContent = "No se encontró fuente alternativa.";
+    return false;
+  }
+
+  let candidates = [];
+  try {
+    const url = `https://vimeus.com/e/movie?tmdb=${tmdbId}&view_key=${VIEW_KEY}`;
+    const response = await fetch(url);
+    const html = await response.text();
+
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const script = doc.querySelector("#data");
+    if (!script) throw new Error("No data");
+
+    const data = JSON.parse(script.textContent);
+    candidates = collectExternalCandidates(data);
+  } catch (e) {
+    console.error("Error obteniendo candidatos externos:", e);
+  }
+
+  const container = document.querySelector(".screen-frame");
+  if (!container || !candidates.length) {
+    if (showMessage) dom.status.textContent = "No se pudo cargar alternativa externa.";
+    return false;
+  }
+
+  container.style.cssText = "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
+
+  for (const candidate of candidates) {
+    if (showMessage) dom.status.textContent = `Verificando ${candidate.provider.name}...`;
+    // eslint-disable-next-line no-await-in-loop
+    const ok = await mountExternalCandidate(container, candidate);
+    if (ok) {
+      bindExternalPlaybackTracking(state.currentProgressKey);
+      setTimeout(offerSavedProgress, 800);
+      if (showMessage) {
+        dom.status.textContent = candidate.provider.label;
+        dom.status.style.color = "#e8c468";
+      }
+      return true;
+    }
+  }
+
+  if (showMessage) dom.status.textContent = "No se pudo cargar ninguna alternativa externa.";
+  return false;
+}
+
+// Iniciar
 init();

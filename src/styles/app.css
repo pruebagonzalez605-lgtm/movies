@@ -1848,3 +1848,16 @@ body.modal-open {
   .poster { flex: 0 0 118px; height: 168px; }
   .episode-card { flex: 0 0 188px; }
 }
+
+.screen-frame {
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.screen-frame iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+}
