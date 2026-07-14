@@ -80,4 +80,25 @@ export const SERIES = [
       }
     ]
   },
+    {
+    title: "It: Bienvenidos a Derry",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "IT: Welcome to Derry",
+    tmdbYear: 2025,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x8.mp4",
+        ]
+      }
+    ]
+  },
 ];
