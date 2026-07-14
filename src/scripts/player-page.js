@@ -1187,7 +1187,13 @@ async function tryHlsWishFallback(showMessage = true) {
     return false;
   }
 
-  const container = document.querySelector(".screen-frame");
+  // FIX: antes se usaba document.querySelector(".screen-frame"), que tambien
+  // contiene el boton #toggleEpisodeBtn y el panel #episodeGridContainer.
+  // container.replaceChildren(iframe) los borraba junto con el video, por
+  // lo que el menu de episodios desaparecia al caer al Metodo 2 / 3.
+  // Ahora el reemplazo queda acotado al slot del video (#mediaSlot, ver
+  // player.html), y el boton + panel de episodios quedan intactos.
+  const container = document.getElementById("mediaSlot");
   if (!container) {
     if (showMessage) dom.status.textContent = "No se pudo cargar alternativa externa.";
     return false;
@@ -1354,8 +1360,9 @@ function initEpisodeGrid() {
     }
   });
 }
-  // Cargar grid de episodios si es una serie
-  initEpisodeGrid();
-  loadEpisodeGrid();
+
+// Cargar grid de episodios si es una serie
+initEpisodeGrid();
+loadEpisodeGrid();
 // Iniciar
 init();

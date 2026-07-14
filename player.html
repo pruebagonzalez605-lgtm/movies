@@ -20,7 +20,9 @@
 
 <body data-page="player">
   <header class="site-header">
-    <a class="brand" href="./index.html"><img class="brand-mark" src="./assets/logo/colevana-120.png" srcset="./assets/logo/colevana-120.png 1x, ./assets/logo/colevana-240.png 2x" alt="" width="32" height="32">COLEVANA</a>
+    <a class="brand" href="./index.html"><img class="brand-mark" src="./assets/logo/colevana-120.png"
+        srcset="./assets/logo/colevana-120.png 1x, ./assets/logo/colevana-240.png 2x" alt="" width="32"
+        height="32">COLEVANA</a>
     <button class="nav-toggle" type="button" aria-label="Abrir menu" aria-controls="site-nav-player"
       aria-expanded="false" data-nav-toggle>
       <span class="nav-toggle-lines">
@@ -35,7 +37,8 @@
       <a class="nav-link" href="./sagas.html">Sagas</a>
       <a class="nav-link" href="./sugerencias.html">Sugerencias</a>
       <form class="site-search" action="./search.html" method="get">
-        <input class="site-search-input" type="search" name="q" placeholder="Buscar peliculas, series..." aria-label="Buscar en el sitio">
+        <input class="site-search-input" type="search" name="q" placeholder="Buscar peliculas, series..."
+          aria-label="Buscar en el sitio">
         <button class="site-search-btn" type="submit">Buscar</button>
         <div class="site-search-dropdown"></div>
       </form>
@@ -50,28 +53,62 @@
     </nav>
   </header>
   <div class="kick-gate-error" id="kickGateError">No se pudo iniciar sesion con Kick. Proba de nuevo.</div>
-
   <main class="player-page">
     <a class="player-back-link" id="playerBackLink" href="./movies.html">Volver al catalogo</a>
-
     <section class="theater">
       <div class="screen-frame">
         <div class="sprocket-row">
-          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
-          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
-          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
         </div>
-        <video id="player" controls preload="metadata" playsinline webkit-playsinline></video>
+
+        <!-- ==================== MEDIA SLOT ====================
+     Todo lo que reemplaza tryHlsWishFallback() (el iframe del Metodo 2 / 3)
+     va DENTRO de este div. Antes se usaba .screen-frame como contenedor y
+     container.replaceChildren(iframe) borraba tambien el boton de
+     Episodios y el panel de temporadas, que son hermanos del video.
+     Ahora quedan afuera y sobreviven al fallback externo. -->
+        <div class="media-slot" id="mediaSlot">
+          <video id="player" controls preload="metadata" playsinline webkit-playsinline></video>
+        </div>
+
         <div class="sprocket-row bottom">
-          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
-          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
-          <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
+          <div class="sprocket"></div>
         </div>
 
         <!-- Botón flotante para abrir episodios -->
         <button id="toggleEpisodeBtn" class="episode-toggle-btn" type="button" title="Ver todos los episodios">
           <span class="episode-toggle-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
           </span>
           Episodios
         </button>
@@ -83,12 +120,12 @@
             <div class="season-select-wrap">
               <select id="seasonSelect" class="season-select" aria-label="Seleccionar temporada"></select>
             </div>
-            <button id="closeGridBtn" class="grid-close-btn" type="button" aria-label="Cerrar lista de episodios">✕</button>
+            <button id="closeGridBtn" class="grid-close-btn" type="button"
+              aria-label="Cerrar lista de episodios">✕</button>
           </div>
           <div class="episode-grid" id="episodeGrid"></div>
         </div>
       </div>
-
       <div class="player-quick-settings" id="playerQuickSettings" hidden>
         <label class="player-quality-control" for="playerQualitySelect">
           <span>Calidad</span>
@@ -99,7 +136,6 @@
         <span class="player-quality-hint" id="playerQualityHint"></span>
       </div>
       <div class="status" id="playerStatus"></div>
-
       <div class="rating-panel" id="ratingPanel">
         <div class="rating-global">
           <div class="stars" id="globalStars"></div>
@@ -112,13 +148,11 @@
         <span class="rating-login-hint" id="ratingLoginHint">Inicia sesion con Kick para calificar</span>
       </div>
     </section>
-
     <section class="catalog-section">
       <div class="carousel-label" id="playerCollectionTitle">Seguir explorando</div>
       <div class="player-story-grid" id="playerRelated"></div>
     </section>
   </main>
-
   <div class="resume-overlay" id="resumeOverlay" role="dialog" aria-modal="true" aria-labelledby="resumeModalTitle">
     <div class="resume-modal">
       <div class="eyebrow">Continuar viendo</div>
@@ -131,7 +165,6 @@
       <button class="resume-dismiss" id="resumeCloseBtn" type="button">Cerrar</button>
     </div>
   </div>
-
   <script type="module" src="./src/scripts/nav.js"></script>
   <script type="module" src="./src/scripts/search-ui.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.polyfilled.min.js"></script>
