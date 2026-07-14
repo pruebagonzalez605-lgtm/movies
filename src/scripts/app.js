@@ -476,16 +476,19 @@ function renderSeasonSelector() {
 
 async function ensureSeasonEpisodes(serie, season) {
   if (season.episodes) {
-    const missingPoster = season.episodes.some((ep) => !ep.poster);
-    if (missingPoster && !season._posterFetchAttempted) {
+    const missingMeta = season.episodes.some((ep) => !ep.poster || ep.runtime === undefined);
+    if (missingMeta && !season._posterFetchAttempted) {
       season._posterFetchAttempted = true;
       const tvId = await tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
       if (tvId) {
         const tmdbEpisodes = await tmdbGetSeasonEpisodes(tvId, season.season);
         season.episodes.forEach((ep, i) => {
-          if (!ep.poster && tmdbEpisodes[i] && tmdbEpisodes[i].poster) {
-            ep.poster = tmdbEpisodes[i].poster;
-          }
+          const tmdbEp = tmdbEpisodes[i];
+          if (!tmdbEp) return;
+          if (!ep.poster && tmdbEp.poster) ep.poster = tmdbEp.poster;
+          if (ep.runtime === undefined) ep.runtime = tmdbEp.runtime;
+          if (ep.airDate === undefined) ep.airDate = tmdbEp.airDate;
+          if (ep.voteAverage === undefined) ep.voteAverage = tmdbEp.voteAverage;
         });
       }
     }
@@ -505,6 +508,9 @@ async function ensureSeasonEpisodes(serie, season) {
       title: tmdbEp.title || `Episodio ${i + 1}`,
       description: tmdbEp.description || "",
       poster: tmdbEp.poster || null,
+      runtime: tmdbEp.runtime ?? null,
+      airDate: tmdbEp.airDate ?? null,
+      voteAverage: tmdbEp.voteAverage ?? null,
       src,
     };
   });

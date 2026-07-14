@@ -110,6 +110,9 @@ export async function tmdbGetSeasonEpisodes(tvId, seasonNumber) {
       title: ep.name,
       description: ep.overview,
       poster: ep.still_path ? TMDB_IMG_BASE + ep.still_path : null,
+      runtime: Number.isFinite(ep.runtime) ? ep.runtime : null,
+      airDate: ep.air_date || null,
+      voteAverage: Number.isFinite(ep.vote_average) ? ep.vote_average : null,
     }));
     tmdbCacheSet(cacheKey, episodes);
     return episodes;

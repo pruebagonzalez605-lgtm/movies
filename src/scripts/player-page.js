@@ -1253,7 +1253,6 @@ async function loadEpisodeGrid() {
   if (!currentSeries) return;
 
   document.getElementById("gridSeriesTitle").textContent = currentSeries.title;
-  document.getElementById("episodeGridContainer").style.display = "block";
 
   const seasonSelect = document.getElementById("seasonSelect");
   seasonSelect.innerHTML = "";
@@ -1268,39 +1267,64 @@ async function loadEpisodeGrid() {
   seasonSelect.onchange = () => loadSeasonEpisodesGrid(Number(seasonSelect.value));
 
   await loadSeasonEpisodesGrid(currentSeasonNum);
-  document.getElementById("toggleEpisodeBtn").style.display = "block";
+  document.getElementById("toggleEpisodeBtn").style.display = "flex";
+}
+
+function formatEpisodeDate(isoDate) {
+  if (!isoDate) return "";
+  const parts = isoDate.split("-");
+  if (parts.length !== 3) return "";
+  const [year, month, day] = parts;
+  return `${Number(day)}/${Number(month)}/${year}`;
+}
+
+function formatEpisodeDuration(minutes) {
+  if (!minutes && minutes !== 0) return "";
+  return `${Math.round(minutes)}m`;
 }
 
 async function loadSeasonEpisodesGrid(seasonNum) {
   const season = currentSeries.seasons.find(s => s.season === seasonNum);
   if (!season) return;
 
-  const episodes = await ensureSeasonEpisodes(currentSeries, season);
   const grid = document.getElementById("episodeGrid");
+  grid.innerHTML = '<div class="ep-row-empty">Cargando episodios...</div>';
+
+  const episodes = await ensureSeasonEpisodes(currentSeries, season);
   grid.innerHTML = "";
+
+  if (!episodes.length) {
+    grid.innerHTML = '<div class="ep-row-empty">Proximamente...</div>';
+    return;
+  }
 
   episodes.forEach((episode, index) => {
     const epNum = index + 1;
-    const isCurrent = epNum === currentEpisodeNum;
+    const isCurrent = seasonNum === currentSeasonNum && epNum === currentEpisodeNum;
 
-    const card = document.createElement("div");
-    card.className = `episode-card${isCurrent ? " current" : ""}`;
-    card.innerHTML = `
-      <img src="${episode.poster || ''}" alt="${episode.title}">
-      <div class="episode-info">
-        <div class="episode-number">1x${epNum}</div>
-        <div class="episode-title">${episode.title || `Episodio ${epNum}`}</div>
-        <div class="episode-desc">${episode.description || `Temporada ${seasonNum}`}</div>
+    const durationText = formatEpisodeDuration(episode.runtime);
+    const dateText = formatEpisodeDate(episode.airDate);
+    const metaText = [durationText, dateText].filter(Boolean).join(" • ");
+
+    const row = document.createElement("div");
+    row.className = `ep-row${isCurrent ? " current" : ""}`;
+    row.innerHTML = `
+      <div class="ep-row-left">
+        <span class="ep-row-code">${seasonNum}×${epNum}</span>
+        <span class="ep-row-title">${episode.title || `Episodio ${epNum}`}</span>
+      </div>
+      <div class="ep-row-right">
+        <span class="ep-row-meta">${metaText}</span>
       </div>
     `;
 
-    card.onclick = () => {
+    row.onclick = () => {
       const newUrl = buildEpisodePlayerUrl(currentSeries, seasonNum, epNum);
       window.history.replaceState({}, '', newUrl);
       window.location.reload(); // Recarga para cargar el nuevo episodio
     };
 
-    grid.appendChild(card);
+    grid.appendChild(row);
   });
 }
 
@@ -1310,18 +1334,23 @@ function initEpisodeGrid() {
   const container = document.getElementById("episodeGridContainer");
   const closeBtn = document.getElementById("closeGridBtn");
 
-  toggleBtn.addEventListener("click", () => {
-    container.style.display = "block";
-  });
+  const openPanel = () => {
+    container.classList.add("open");
+    toggleBtn.classList.add("is-hidden");
+  };
 
-  closeBtn.addEventListener("click", () => {
-    container.style.display = "none";
-  });
+  const closePanel = () => {
+    container.classList.remove("open");
+    toggleBtn.classList.remove("is-hidden");
+  };
+
+  toggleBtn.addEventListener("click", openPanel);
+  closeBtn.addEventListener("click", closePanel);
 
   // Cerrar con Escape
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && container.style.display === "block") {
-      container.style.display = "none";
+    if (e.key === "Escape" && container.classList.contains("open")) {
+      closePanel();
     }
   });
 }
