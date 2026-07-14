@@ -1,5 +1,6 @@
 import { createSupabaseService } from "./services/supabase.js";
 import { resolveMediaUrl } from "./config/media.js";
+import { tmdbFindTvId } from "./services/tmdb.js";
 import {
   buildEpisodePlayerUrl,
   buildMoviePlayerUrl,
@@ -66,6 +67,7 @@ const state = {
   currentQuality: 1080,
   autoQuality: true,
   qualityChangeOrigin: null,
+  localPlaybackFallbackAttempted: false,
 
   // --- Tracking de progreso para reproducción externa (HLSWish) ---
   playbackMode: "video", // "video" | "external"
@@ -681,6 +683,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   state.currentContentTitle = title;
   state.resumePrompted = false;
   state.playbackMode = "video";
+  state.localPlaybackFallbackAttempted = false;
   stopExternalTracking();
 
   dom.status.textContent = "Buscando fuente...";
@@ -829,6 +832,18 @@ function bindVideoEvents(video) {
   });
 
   video.addEventListener("error", () => {
+    // Un error de carga (por ejemplo, la URL local todavia no existe porque
+    // el archivo no fue subido) intenta primero el fallback externo
+    // automáticamente, en vez de rendirse directo con el mensaje genérico.
+    // Solo se intenta una vez por contenido para no quedar en bucle si el
+    // fallback externo también falla.
+    if (!state.localPlaybackFallbackAttempted && state.playbackMode === "video") {
+      state.localPlaybackFallbackAttempted = true;
+      dom.status.textContent = "El archivo local no está disponible. Buscando alternativa...";
+      tryHlsWishFallback(true);
+      return;
+    }
+
     dom.status.replaceChildren();
     const message = document.createElement("span");
     message.textContent = "No se pudo reproducir este archivo. ";
@@ -998,32 +1013,53 @@ async function init() {
 
 // ==================== HLSWISH FALLBACK ====================
 
-async function getTmdbIdForContent() {
+async function getExternalEmbedInfo() {
   const params = new URLSearchParams(window.location.search);
-  let tmdbId = params.get('tmdb');
-  if (tmdbId) return tmdbId;
-
+  const explicitTmdbId = params.get("tmdb");
   const type = params.get("type");
+
   if (type === "movie") {
     const slug = params.get("id");
-    const movie = getMovies().find(m => slugify(m.title) === slug);
-    if (movie) {
-      tmdbId = movie.tmdb_id || movie.tmdbId || movie.tmdb;
-      if (!tmdbId) {
-        try {
-          const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=58dc4e2bb092932970cdd7af79434942&language=es-419&query=${encodeURIComponent(movie.tmdbTitle || movie.title)}`);
-          const data = await res.json();
-          tmdbId = data.results?.[0]?.id;
-        } catch (e) {
-          console.warn("No se pudo resolver tmdbId por búsqueda:", e);
-        }
+    const movie = getMovies().find((m) => slugify(m.title) === slug);
+    let tmdbId = explicitTmdbId || movie?.tmdb_id || movie?.tmdbId || movie?.tmdb;
+    if (!tmdbId && movie) {
+      try {
+        const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=58dc4e2bb092932970cdd7af79434942&language=es-419&query=${encodeURIComponent(movie.tmdbTitle || movie.title)}`);
+        const data = await res.json();
+        tmdbId = data.results?.[0]?.id;
+      } catch (e) {
+        console.warn("No se pudo resolver tmdbId por búsqueda:", e);
       }
     }
+    return tmdbId ? { kind: "movie", tmdbId } : null;
   }
-  // Nota: falta resolver tmdbId para series/episodios (type === "episode").
-  // Por ahora el fallback de HLSWish solo funciona con películas o con
-  // ?tmdb= explícito en la URL.
-  return tmdbId;
+
+  if (type === "episode") {
+    const seriesSlug = params.get("series");
+    const season = Number(params.get("season"));
+    const episode = Number(params.get("episode"));
+    const serie = findSeriesBySlug(seriesSlug || "");
+    if (!serie || !season || !episode) return null;
+
+    let tmdbId = explicitTmdbId || serie.tmdb_id || serie.tmdbId;
+    if (!tmdbId) {
+      try {
+        tmdbId = await tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
+      } catch (e) {
+        console.warn("No se pudo resolver tmdbId de la serie:", e);
+      }
+    }
+    return tmdbId ? { kind: "episode", tmdbId, season, episode } : null;
+  }
+
+  return null;
+}
+
+function buildExternalListingUrl(embedInfo) {
+  if (embedInfo.kind === "episode") {
+    return `https://vimeus.com/e/serie?tmdb=${embedInfo.tmdbId}&se=${embedInfo.season}&ep=${embedInfo.episode}&view_key=${VIEW_KEY}`;
+  }
+  return `https://vimeus.com/e/movie?tmdb=${embedInfo.tmdbId}&view_key=${VIEW_KEY}`;
 }
 
 // Proveedores externos en orden de preferencia. Cada uno define cómo
@@ -1059,67 +1095,34 @@ function collectExternalCandidates(data) {
     .filter(Boolean);
 }
 
-// Monta un candidato en el iframe y hace una verificación en dos etapas:
-// 1) onload/onerror del iframe (solo confirma que el documento remoto respondió).
-// 2) Ventana de "señales de vida": tras el load, esperamos un tiempo corto a
-//    ver si el proveedor manda CUALQUIER postMessage desde su propio origen.
-//    La mayoría de los reproductores embebidos emiten al menos un mensaje de
-//    listo/resize aunque no tenga el formato de tiempo que ya parseamos.
-//    Si no llega nada, asumimos que el reproductor quedó en negro/muerto y
-//    reportamos fallo para que se intente el siguiente proveedor.
-// Limitación conocida: un proveedor que funcione pero nunca emita ningún
-// postMessage se vería (incorrectamente) como fallido con este método.
-function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000, aliveGraceMs = 6000) {
+// Monta un candidato en el iframe. Se considera exitoso en cuanto el iframe
+// termina de cargar su documento (evento "load"). No depende de recibir
+// postMessage del proveedor, ya que muchos (p. ej. GoodStream) reproducen
+// correctamente sin emitir ningún mensaje reconocible, lo que antes
+// generaba falsos negativos y el mensaje "No se pudo cargar ninguna
+// alternativa externa." aunque el video sí funcionara.
+function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
   return new Promise((resolve) => {
     const iframe = document.createElement("iframe");
     let settled = false;
-    let candidateOrigin = null;
-    try {
-      candidateOrigin = new URL(candidate.url).origin;
-    } catch {
-      candidateOrigin = null;
-    }
 
     const finish = (ok) => {
       if (settled) return;
       settled = true;
       window.clearTimeout(loadTimer);
-      window.clearTimeout(aliveTimer);
-      window.removeEventListener("message", onAliveMessage);
       iframe.removeEventListener("load", onLoad);
       iframe.removeEventListener("error", onError);
       resolve(ok);
     };
 
-    const onAliveMessage = (event) => {
-      if (candidateOrigin && event.origin !== candidateOrigin) return;
-      finish(true);
-    };
-
-    const startAliveWindow = () => {
-      window.addEventListener("message", onAliveMessage);
-      aliveTimer = window.setTimeout(() => finish(false), aliveGraceMs);
-    };
-
-    const onLoad = () => {
-      window.clearTimeout(loadTimer);
-      if (!candidateOrigin) {
-        // Sin origen parseable no podemos filtrar postMessage: damos por
-        // bueno el load como antes.
-        finish(true);
-        return;
-      }
-      startAliveWindow();
-    };
+    const onLoad = () => finish(true);
     const onError = () => finish(false);
 
-    let aliveTimer = null;
     const loadTimer = window.setTimeout(() => finish(false), loadTimeoutMs);
 
     iframe.src = candidate.url;
     iframe.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border:none;";
     iframe.setAttribute("frameborder", "0");
-    iframe.setAttribute("allowfullscreen", "");
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
     iframe.addEventListener("load", onLoad);
     iframe.addEventListener("error", onError);
@@ -1128,16 +1131,40 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000, aliv
   });
 }
 
-async function tryHlsWishFallback(showMessage = true) {
-  const tmdbId = await getTmdbIdForContent();
-  if (!tmdbId) {
-    if (showMessage) dom.status.textContent = "No se encontró fuente alternativa.";
-    return false;
-  }
+const RETRY_LINK_ID = "playerExternalRetryLink";
 
-  let candidates = [];
+function removeExternalRetryLink() {
+  document.getElementById(RETRY_LINK_ID)?.remove();
+}
+
+// El evento "load" del iframe solo confirma que el documento remoto
+// respondió, no que el video dentro de él esté realmente reproduciendo
+// (el iframe es cross-origin: no podemos inspeccionar su contenido).
+// Como consecuencia, un proveedor puede quedar "montado" pero mostrar una
+// pantalla negra si ese título en particular no existe o falla del lado
+// del proveedor, sin que nuestro código pueda notarlo. Por eso el enlace de
+// reintento se muestra SIEMPRE que hay un candidato montado, sin importar
+// si es el único disponible, para que el usuario nunca quede atrapado en
+// una pantalla negra sin ninguna salida.
+function showExternalRetryLink(label, onRetry) {
+  removeExternalRetryLink();
+  const link = document.createElement("a");
+  link.id = RETRY_LINK_ID;
+  link.href = "#";
+  link.className = "player-native-link";
+  link.textContent = label;
+  link.style.cssText = "display:inline-block;margin-top:8px;cursor:pointer;";
+  link.addEventListener("click", async (event) => {
+    event.preventDefault();
+    removeExternalRetryLink();
+    await onRetry();
+  });
+  dom.status.insertAdjacentElement("afterend", link);
+}
+
+async function fetchExternalCandidates(embedInfo) {
   try {
-    const url = `https://vimeus.com/e/movie?tmdb=${tmdbId}&view_key=${VIEW_KEY}`;
+    const url = buildExternalListingUrl(embedInfo);
     const response = await fetch(url);
     const html = await response.text();
 
@@ -1146,36 +1173,67 @@ async function tryHlsWishFallback(showMessage = true) {
     if (!script) throw new Error("No data");
 
     const data = JSON.parse(script.textContent);
-    candidates = collectExternalCandidates(data);
+    return collectExternalCandidates(data);
   } catch (e) {
     console.error("Error obteniendo candidatos externos:", e);
+    return [];
+  }
+}
+
+async function tryHlsWishFallback(showMessage = true) {
+  const embedInfo = await getExternalEmbedInfo();
+  if (!embedInfo) {
+    if (showMessage) dom.status.textContent = "No se encontró fuente alternativa.";
+    return false;
   }
 
   const container = document.querySelector(".screen-frame");
-  if (!container || !candidates.length) {
+  if (!container) {
     if (showMessage) dom.status.textContent = "No se pudo cargar alternativa externa.";
     return false;
   }
 
   container.style.cssText = "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
+  removeExternalRetryLink();
 
-  for (const candidate of candidates) {
-    if (showMessage) dom.status.textContent = `Verificando ${candidate.provider.name}...`;
+  let candidates = await fetchExternalCandidates(embedInfo);
+  let index = 0;
+
+  const tryNextCandidate = async () => {
+    if (index >= candidates.length) {
+      // Se agotaron los candidatos conocidos: en vez de dejar al usuario
+      // sin salida, permitimos volver a consultar vimeus.com por si esta
+      // vez responde con otro resultado.
+      if (showMessage) dom.status.textContent = "No se pudo cargar ninguna alternativa externa.";
+      showExternalRetryLink("Reintentar búsqueda de fuentes", async () => {
+        dom.status.textContent = "Buscando fuentes de nuevo...";
+        candidates = await fetchExternalCandidates(embedInfo);
+        index = 0;
+        await tryNextCandidate();
+      });
+      return false;
+    }
+    const candidate = candidates[index];
+    index += 1;
+
     // eslint-disable-next-line no-await-in-loop
     const ok = await mountExternalCandidate(container, candidate);
-    if (ok) {
-      bindExternalPlaybackTracking(state.currentProgressKey);
-      setTimeout(offerSavedProgress, 800);
-      if (showMessage) {
-        dom.status.textContent = candidate.provider.label;
-        dom.status.style.color = "#e8c468";
-      }
-      return true;
-    }
-  }
+    if (!ok) return tryNextCandidate();
 
-  if (showMessage) dom.status.textContent = "No se pudo cargar ninguna alternativa externa.";
-  return false;
+    bindExternalPlaybackTracking(state.currentProgressKey);
+    setTimeout(offerSavedProgress, 800);
+    if (showMessage) {
+      dom.status.textContent = candidate.provider.label;
+      dom.status.style.color = "#e8c468";
+    }
+    showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
+      dom.status.textContent = "Probando otra fuente...";
+      await tryNextCandidate();
+    });
+    return true;
+  };
+
+  return tryNextCandidate();
 }
 
 // Iniciar

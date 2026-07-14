@@ -99,6 +99,32 @@ export async function resolveSeriesCardPoster(serie) {
   return poster || serie.poster || null;
 }
 
+async function probeUrlExists(url) {
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Detecta automaticamente que episodios de una temporada ya fueron subidos
+// al release, sin necesidad de listar cada URL a mano. Prueba secuencialmente
+// prefix+1, prefix+2, ... y se detiene en el primer archivo que no exista
+// (asume que los episodios se suben en orden, igual que las peliculas).
+async function autoDetectSeasonSrcs({ releaseTag, prefix, maxEpisodes = 20 }) {
+  const base = `https://github.com/pruebagonzalez605-lgtm/movies/releases/download/${releaseTag}/`;
+  const srcs = [];
+  for (let episodeNumber = 1; episodeNumber <= maxEpisodes; episodeNumber += 1) {
+    const url = `${base}${prefix}${episodeNumber}.mp4`;
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await probeUrlExists(url);
+    if (!exists) break;
+    srcs.push(url);
+  }
+  return srcs;
+}
+
 export async function ensureSeasonEpisodes(serie, season) {
   if (season.episodes) {
     const missingPoster = season.episodes.some((episode) => !episode.poster);
@@ -115,6 +141,11 @@ export async function ensureSeasonEpisodes(serie, season) {
       }
     }
     return season.episodes;
+  }
+
+  if (!season.srcs && season.autoDetect && !season._autoDetectAttempted) {
+    season._autoDetectAttempted = true;
+    season.srcs = await autoDetectSeasonSrcs(season.autoDetect);
   }
 
   if (!season.srcs || !season.srcs.length) {
