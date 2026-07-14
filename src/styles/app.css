@@ -1861,3 +1861,108 @@ body.modal-open {
     height: 100% !important;
     border: none !important;
 }
+/* ==================== MENÚ LATERAL SIMPLE ==================== */
+.episode-toggle-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #c026d3;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 100;
+  box-shadow: 0 4px 15px rgba(192, 38, 211, 0.4);
+  display: none;
+}
+
+.episode-sidebar {
+  position: fixed;
+  top: 0;
+  right: -380px;
+  width: 380px;
+  height: 100vh;
+  background: #111114;
+  border-left: 1px solid #333;
+  box-shadow: -8px 0 30px rgba(0,0,0,0.8);
+  transition: right 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 1200;
+  overflow-y: auto;
+  color: #ddd;
+}
+
+.episode-sidebar.open {
+  right: 0;
+}
+
+.episode-sidebar-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #2a2a2e;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  background: #111114;
+  z-index: 1;
+}
+
+.episode-sidebar-header h3 {
+  margin: 0;
+  flex: 1;
+  font-size: 1.15rem;
+  color: white;
+}
+
+.season-select {
+  padding: 8px 12px;
+  background: #1f1f24;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 6px;
+}
+
+.sidebar-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+.episode-list {
+  padding: 8px 0;
+}
+
+.episode-list-item {
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #252529;
+  transition: background 0.2s;
+}
+
+.episode-list-item:hover {
+  background: #1f1f24;
+}
+
+.episode-list-item.current {
+  background: #2a1f35;
+  color: #e0b0ff;
+}
+
+.episode-list-item .ep-number {
+  font-weight: bold;
+  color: #888;
+  min-width: 50px;
+}
+
+.episode-list-item .ep-title {
+  flex: 1;
+}

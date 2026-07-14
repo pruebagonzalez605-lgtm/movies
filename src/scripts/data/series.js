@@ -58,4 +58,26 @@ export const SERIES = [
       { season: 5, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X10.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5x11.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X12.mp4"] },
     ],
   },
+  {
+    title: "Un Show Más: Las Cintas Perdidas",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Regular Show: The Lost Tapes",
+    tmdbYear: 2026,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/USMLCP1x9.mp4"
+        ]
+      }
+    ]
+  },
 ];

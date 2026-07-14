@@ -68,6 +68,10 @@
           <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
         </div>
       </div>
+
+      <!-- Botón flotante para abrir episodios -->
+      <button id="toggleEpisodeBtn" class="episode-toggle-btn" title="Ver todos los episodios">📜 Episodios</button>
+
       <div class="player-quick-settings" id="playerQuickSettings" hidden>
         <label class="player-quality-control" for="playerQualitySelect">
           <span>Calidad</span>
@@ -97,6 +101,16 @@
       <div class="player-story-grid" id="playerRelated"></div>
     </section>
   </main>
+
+  <!-- ==================== MENÚ DE EPISODIOS (GRID) ==================== -->
+  <div class="episode-grid-container" id="episodeGridContainer">
+    <div class="episode-grid-header">
+      <h3 id="gridSeriesTitle">Serie</h3>
+      <select id="seasonSelect" class="season-select"></select>
+      <button id="closeGridBtn" class="grid-close-btn">✕</button>
+    </div>
+    <div class="episode-grid" id="episodeGrid"></div>
+  </div>
 
   <div class="resume-overlay" id="resumeOverlay" role="dialog" aria-modal="true" aria-labelledby="resumeModalTitle">
     <div class="resume-modal">

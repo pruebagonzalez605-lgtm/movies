@@ -1236,5 +1236,97 @@ async function tryHlsWishFallback(showMessage = true) {
   return tryNextCandidate();
 }
 
+// ==================== EPISODE GRID FOR SERIES ====================
+let currentSeries = null;
+let currentSeasonNum = null;
+let currentEpisodeNum = null;
+
+async function loadEpisodeGrid() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("type") !== "episode") return;
+
+  const seriesSlug = params.get("series");
+  currentSeasonNum = Number(params.get("season"));
+  currentEpisodeNum = Number(params.get("episode"));
+
+  currentSeries = findSeriesBySlug(seriesSlug);
+  if (!currentSeries) return;
+
+  document.getElementById("gridSeriesTitle").textContent = currentSeries.title;
+  document.getElementById("episodeGridContainer").style.display = "block";
+
+  const seasonSelect = document.getElementById("seasonSelect");
+  seasonSelect.innerHTML = "";
+  currentSeries.seasons.forEach((season) => {
+    const option = document.createElement("option");
+    option.value = season.season;
+    option.textContent = `Temporada ${season.season}`;
+    if (season.season === currentSeasonNum) option.selected = true;
+    seasonSelect.appendChild(option);
+  });
+
+  seasonSelect.onchange = () => loadSeasonEpisodesGrid(Number(seasonSelect.value));
+
+  await loadSeasonEpisodesGrid(currentSeasonNum);
+  document.getElementById("toggleEpisodeBtn").style.display = "block";
+}
+
+async function loadSeasonEpisodesGrid(seasonNum) {
+  const season = currentSeries.seasons.find(s => s.season === seasonNum);
+  if (!season) return;
+
+  const episodes = await ensureSeasonEpisodes(currentSeries, season);
+  const grid = document.getElementById("episodeGrid");
+  grid.innerHTML = "";
+
+  episodes.forEach((episode, index) => {
+    const epNum = index + 1;
+    const isCurrent = epNum === currentEpisodeNum;
+
+    const card = document.createElement("div");
+    card.className = `episode-card${isCurrent ? " current" : ""}`;
+    card.innerHTML = `
+      <img src="${episode.poster || ''}" alt="${episode.title}">
+      <div class="episode-info">
+        <div class="episode-number">1x${epNum}</div>
+        <div class="episode-title">${episode.title || `Episodio ${epNum}`}</div>
+        <div class="episode-desc">${episode.description || `Temporada ${seasonNum}`}</div>
+      </div>
+    `;
+
+    card.onclick = () => {
+      const newUrl = buildEpisodePlayerUrl(currentSeries, seasonNum, epNum);
+      window.history.replaceState({}, '', newUrl);
+      window.location.reload(); // Recarga para cargar el nuevo episodio
+    };
+
+    grid.appendChild(card);
+  });
+}
+
+// Inicializar eventos del grid
+function initEpisodeGrid() {
+  const toggleBtn = document.getElementById("toggleEpisodeBtn");
+  const container = document.getElementById("episodeGridContainer");
+  const closeBtn = document.getElementById("closeGridBtn");
+
+  toggleBtn.addEventListener("click", () => {
+    container.style.display = "block";
+  });
+
+  closeBtn.addEventListener("click", () => {
+    container.style.display = "none";
+  });
+
+  // Cerrar con Escape
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && container.style.display === "block") {
+      container.style.display = "none";
+    }
+  });
+}
+  // Cargar grid de episodios si es una serie
+  initEpisodeGrid();
+  loadEpisodeGrid();
 // Iniciar
 init();
