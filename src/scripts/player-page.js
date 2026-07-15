@@ -1065,9 +1065,26 @@ function buildExternalListingUrl(embedInfo) {
 // Proveedores externos en orden de preferencia. Cada uno define cómo
 // reconocer sus URLs de embed dentro del JSON de vimeus.com y un label
 // para mostrar en el status.
+//
+// GoodStream rota/espeja su dominio de tanto en tanto (goodstream.one,
+// vimeos.net, etc.), pero mantiene siempre el mismo formato de ruta
+// "/embed-{slug}.html". Antes solo se reconocía "goodstream.one": si
+// vimeus.com devolvía el mismo embed en un dominio espejo, el candidato
+// se descartaba en silencio y el capitulo quedaba sin ninguna fuente
+// utilizable (aunque el link espejo funcionara perfectamente si se abria
+// suelto). Por eso se listan varios dominios conocidos en vez de uno solo.
+const GOODSTREAM_MIRROR_DOMAINS = ["goodstream.one", "vimeos.net"];
+
 const EXTERNAL_PROVIDERS = [
   { name: "HLSWish", label: "Reproduciendo con Metodo 2", match: (url) => /^https:\/\/hlswish\.com\/e\//.test(url) },
-  { name: "GoodStream", label: "Reproduciendo con Metodo 3", match: (url) => /^https:\/\/goodstream\.one\/embed-/.test(url) },
+  {
+    name: "GoodStream",
+    label: "Reproduciendo con Metodo 3",
+    match: (url) => GOODSTREAM_MIRROR_DOMAINS.some((domain) => {
+      const escaped = domain.replace(/\./g, "\\.");
+      return new RegExp(`^https:\\/\\/${escaped}\\/embed-`).test(url);
+    }),
+  },
 ];
 
 // Recolecta TODOS los links de embed encontrados en el JSON (no solo el
@@ -1260,20 +1277,65 @@ async function loadEpisodeGrid() {
 
   document.getElementById("gridSeriesTitle").textContent = currentSeries.title;
 
-  const seasonSelect = document.getElementById("seasonSelect");
-  seasonSelect.innerHTML = "";
-  currentSeries.seasons.forEach((season) => {
-    const option = document.createElement("option");
-    option.value = season.season;
-    option.textContent = `Temporada ${season.season}`;
-    if (season.season === currentSeasonNum) option.selected = true;
-    seasonSelect.appendChild(option);
-  });
-
-  seasonSelect.onchange = () => loadSeasonEpisodesGrid(Number(seasonSelect.value));
+  renderSeasonDropdown(currentSeasonNum);
+  document.getElementById("seasonSelectTrigger").onclick = () => {
+    document.getElementById("seasonDropdownPanel").classList.contains("open")
+      ? closeSeasonDropdown()
+      : openSeasonDropdown();
+  };
 
   await loadSeasonEpisodesGrid(currentSeasonNum);
   document.getElementById("toggleEpisodeBtn").style.display = "flex";
+}
+
+function closeSeasonDropdown() {
+  const panel = document.getElementById("seasonDropdownPanel");
+  const trigger = document.getElementById("seasonSelectTrigger");
+  panel.classList.remove("open");
+  trigger.setAttribute("aria-expanded", "false");
+  document.removeEventListener("mousedown", handleSeasonOutsideClick);
+}
+
+function openSeasonDropdown() {
+  const panel = document.getElementById("seasonDropdownPanel");
+  const trigger = document.getElementById("seasonSelectTrigger");
+  panel.classList.add("open");
+  trigger.setAttribute("aria-expanded", "true");
+  document.addEventListener("mousedown", handleSeasonOutsideClick);
+}
+
+function handleSeasonOutsideClick(event) {
+  const panel = document.getElementById("seasonDropdownPanel");
+  const trigger = document.getElementById("seasonSelectTrigger");
+  if (!panel.contains(event.target) && !trigger.contains(event.target)) {
+    closeSeasonDropdown();
+  }
+}
+
+// selectedSeasonNum is the season currently shown in the dropdown/grid,
+// which is NOT always currentSeasonNum (the season that's actually
+// playing) — browsing other seasons must not affect the "current" episode
+// highlight, same as the old seasonSelect.onchange behaved.
+function renderSeasonDropdown(selectedSeasonNum) {
+  const panel = document.getElementById("seasonDropdownPanel");
+  const label = document.getElementById("seasonSelectLabel");
+  label.textContent = `Temporada ${selectedSeasonNum}`;
+  panel.innerHTML = "";
+
+  currentSeries.seasons.forEach((season) => {
+    const item = document.createElement("div");
+    const isSelected = season.season === selectedSeasonNum;
+    item.className = `season-dropdown-option${isSelected ? " selected" : ""}`;
+    item.textContent = `Temporada ${season.season}`;
+    item.setAttribute("role", "option");
+    item.setAttribute("aria-selected", isSelected ? "true" : "false");
+    item.onclick = () => {
+      closeSeasonDropdown();
+      renderSeasonDropdown(season.season);
+      loadSeasonEpisodesGrid(season.season);
+    };
+    panel.appendChild(item);
+  });
 }
 
 function formatEpisodeDate(isoDate) {
@@ -1348,6 +1410,7 @@ function initEpisodeGrid() {
   const closePanel = () => {
     container.classList.remove("open");
     toggleBtn.classList.remove("is-hidden");
+    closeSeasonDropdown();
   };
 
   toggleBtn.addEventListener("click", openPanel);

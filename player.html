@@ -118,7 +118,12 @@
           <div class="episode-grid-header">
             <h3 class="sr-only" id="gridSeriesTitle">Serie</h3>
             <div class="season-select-wrap">
-              <select id="seasonSelect" class="season-select" aria-label="Seleccionar temporada"></select>
+              <button type="button" id="seasonSelectTrigger" class="season-select" aria-haspopup="listbox"
+                aria-expanded="false">
+                <span id="seasonSelectLabel">Temporada</span>
+              </button>
+              <div id="seasonDropdownPanel" class="season-dropdown-panel" role="listbox"
+                aria-label="Seleccionar temporada"></div>
             </div>
             <button id="closeGridBtn" class="grid-close-btn" type="button"
               aria-label="Cerrar lista de episodios">✕</button>
