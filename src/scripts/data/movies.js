@@ -199,15 +199,7 @@ export const MOVIES = [
     saga: "la Noche Del Demonio",
     src: "",
   },
-  {
-    code: "26",
-    title: "La Noche Del Demonio: Capítulo 2",
-    tmdbTitle: "Insidious: Chapter 2",
-    gradient: ["#3d0d0d", "#8a6a1e"],
-    tmdbYear: 2013,
-    saga: "la Noche Del Demonio",
-    src: "",
-  },
+
   {
     code: "27",
     title: "La Noche Del Demonio: La Puerta Roja",
@@ -216,5 +208,13 @@ export const MOVIES = [
     tmdbYear: 2023,
     saga: "la Noche Del Demonio",
     src: "",
-  }
+  },
+    {
+    code: "28",
+    title: "The Wolverine inmortal",
+    tmdbTitle: "The Wolverine",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2013,
+    src: "",
+  },
 ];

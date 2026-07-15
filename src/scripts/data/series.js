@@ -98,7 +98,149 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x8.mp4",
         ]
+      } 
+      ]
+    },
+        {
+    title: "Rick y Morty",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Rick and Morty",
+    tmdbYear: 2013,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x11.mp4",        
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x10.mp4",        
+        ]
+      },
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x10.mp4",        
+        ]
+      },
+      {
+        season: 4,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x10.mp4",        
+        ]
+      },
+      {
+        season: 5,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x10.mp4",        
+        ]
+      },
+      {
+        season: 6,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x10.mp4",        
+        ]
+      },
+      {
+        season: 7,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x10.mp4",        
+        ]
+      },
+      {
+        season: 8,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x10.mp4",        
+        ]
+      },
+      {
+        season: 9,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x8.mp4",     
+        ]
       }
-    ]
-  },
+      ]
+    },
 ];
