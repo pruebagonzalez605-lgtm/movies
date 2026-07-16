@@ -101,7 +101,7 @@ export const SERIES = [
       } 
       ]
     },
-        {
+    {
     title: "Rick y Morty",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Rick and Morty",
@@ -243,4 +243,53 @@ export const SERIES = [
       }
       ]
     },
+    {
+      title: "Dark",
+      gradient: ["#1a3a1a", "#0f2a0f"],
+      tmdbShow: "Dark",
+      tmdbYear: 2017,
+      seasons: [
+        {
+          season: 1,
+          srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x10.mp4",               
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x8.mp4",            
+        ]
+      },
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x8.mp4",            
+        ]
+      }
+      ]
+    }
 ];
