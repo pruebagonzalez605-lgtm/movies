@@ -217,4 +217,31 @@ export const MOVIES = [
     tmdbYear: 2013,
     src: "",
   },
+    {
+    code: "29",
+    title: "Los Ilusionistas 3",
+    tmdbTitle: "Now You See Me: Now You Don't",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2025,
+    saga: "Los Ilusionistas",
+    src: "",
+  },
+      {
+    code: "30",
+    title: "Los Ilusionistas 2",
+    tmdbTitle: "Now You See Me 2",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2016,
+    saga: "Los Ilusionistas",
+    src: "",
+  },
+  {
+    code: "31",
+    title: "Los Ilusionistas",
+    tmdbTitle: "Now You See Me",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2013,
+    saga: "Los Ilusionistas",
+    src: "",
+  }
 ];
