@@ -291,5 +291,40 @@ export const SERIES = [
         ]
       }
       ]
-    }
+    },
+    {
+    title: "El polígamo",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "The Polygamist",
+    tmdbYear: 2026,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X1.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X2.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X3.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X4.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X5.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X6.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X7.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X8.MP4",                    
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X9.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X10.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X11.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X12.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X13.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X14.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X15.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X16.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X17.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X18.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X19.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X20.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X21.MP4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X22.MP4",
+        ]
+      } 
+      ]
+    },
 ];
