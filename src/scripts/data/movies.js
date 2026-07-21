@@ -224,7 +224,7 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2025,
     saga: "Los Ilusionistas",
-    src: "",
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.24/NYCSM.mp4",
   },
       {
     code: "30",
