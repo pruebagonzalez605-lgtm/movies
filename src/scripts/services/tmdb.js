@@ -97,23 +97,50 @@ export async function tmdbFindTvId(title, year) {
   }
 }
 
+async function fetchSeasonRaw(tvId, seasonNumber, language) {
+  const url = `https://api.themoviedb.org/3/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=${language}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.episodes || [];
+}
+
 export async function tmdbGetSeasonEpisodes(tvId, seasonNumber) {
-  const cacheKey = `season_${tvId}_${seasonNumber}`;
+  // v2: now falls back to en-US when es-419 name/overview are blank.
+  // Bumping the key avoids serving stale, blank-text entries cached under
+  // the old key for up to 30 days.
+  const cacheKey = `season_v2_${tvId}_${seasonNumber}`;
   const cached = tmdbCacheGet(cacheKey);
   if (cached !== undefined) return cached;
 
   try {
-    const url = `https://api.themoviedb.org/3/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=${TMDB_LANG}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    const episodes = (data.episodes || []).map((ep) => ({
-      title: ep.name,
-      description: ep.overview,
-      poster: ep.still_path ? TMDB_IMG_BASE + ep.still_path : null,
-      runtime: Number.isFinite(ep.runtime) ? ep.runtime : null,
-      airDate: ep.air_date || null,
-      voteAverage: Number.isFinite(ep.vote_average) ? ep.vote_average : null,
-    }));
+    const primaryEpisodes = await fetchSeasonRaw(tvId, seasonNumber, TMDB_LANG);
+
+    // Recently added or less-popular shows are often not translated into
+    // es-419 yet: TMDB returns the episode list with empty name/overview
+    // strings even though English text already exists. When that happens,
+    // fetch the English season data too and use it to fill the gaps so the
+    // UI doesn't fall back to generic placeholders unnecessarily.
+    const needsFallback = primaryEpisodes.some((ep) => !ep.name || !ep.overview);
+    let fallbackEpisodes = [];
+    if (needsFallback) {
+      try {
+        fallbackEpisodes = await fetchSeasonRaw(tvId, seasonNumber, "en-US");
+      } catch {
+        fallbackEpisodes = [];
+      }
+    }
+
+    const episodes = primaryEpisodes.map((ep, i) => {
+      const fallback = fallbackEpisodes[i] || {};
+      return {
+        title: ep.name || fallback.name || null,
+        description: ep.overview || fallback.overview || null,
+        poster: ep.still_path ? TMDB_IMG_BASE + ep.still_path : (fallback.still_path ? TMDB_IMG_BASE + fallback.still_path : null),
+        runtime: Number.isFinite(ep.runtime) ? ep.runtime : (Number.isFinite(fallback.runtime) ? fallback.runtime : null),
+        airDate: ep.air_date || fallback.air_date || null,
+        voteAverage: Number.isFinite(ep.vote_average) ? ep.vote_average : (Number.isFinite(fallback.vote_average) ? fallback.vote_average : null),
+      };
+    });
     tmdbCacheSet(cacheKey, episodes);
     return episodes;
   } catch {
