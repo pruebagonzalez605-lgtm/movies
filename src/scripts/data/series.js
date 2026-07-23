@@ -353,7 +353,28 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x15.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x16.mp4",          
         ]
-      } 
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x11.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x12.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x13.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x14.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x15.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x16.mp4",          
+        ]
+      },       
       ]
     },
 ];
