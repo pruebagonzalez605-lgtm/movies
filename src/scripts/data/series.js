@@ -327,4 +327,33 @@ export const SERIES = [
       } 
       ]
     },
+    {
+    title: "Beauty in Black",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Beauty in Black",
+    tmdbYear: 2024,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x11.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x12.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x13.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x14.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x15.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x16.mp4",          
+        ]
+      } 
+      ]
+    },
 ];
