@@ -12,7 +12,7 @@ export const MOVIES = [
     gradient: ["#1a0507", "#5c1013"],
     texture: "slasher",
     poster: "https://m.media-amazon.com/images/M/MV5BNTJjMDk1NzAtMGVmNS00NTFmLWFlOTQtZDk5M2I2NjZiZDdlXkEyXkFqcGc@._V1_FMjpg_UX878_.jpg",
-    src: "",
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.1/SC6.mp4",
   },
   {
     code: "03",
