@@ -251,5 +251,13 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2023,
     src: "",
+  },
+  {
+    code: "33",
+    title: "La Isla Siniestra",
+    tmdbTitle: "Shutter Island",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2010,
+    src: "",
   }  
 ];
