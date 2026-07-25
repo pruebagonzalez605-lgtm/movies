@@ -243,5 +243,13 @@ export const MOVIES = [
     tmdbYear: 2013,
     saga: "Los Ilusionistas",
     src: "",
-  }
+  },
+  {
+    code: "32",
+    title: "Hazme El Favor",
+    tmdbTitle: "No Hard Feelings",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2023,
+    src: "",
+  }  
 ];
