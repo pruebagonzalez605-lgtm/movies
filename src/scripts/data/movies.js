@@ -259,5 +259,32 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2010,
     src: "",
-  }  
+  },
+  {
+    code: "34",
+    title: "Batman Begins",
+    tmdbTitle: "Batman Begins",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2005,
+    saga: "Batman",
+    src: "",
+  },
+  {
+    code: "35",
+    title: "Batman El caballero oscuro",
+    tmdbTitle: "The Dark Knight",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2008,
+    saga: "Batman",
+    src: "",
+  },
+  {
+    code: "36",
+    title: "Batman El caballero oscuro: La leyenda renace",
+    tmdbTitle: "The Dark Knight Rises",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2012,
+    saga: "Batman",
+    src: "",
+  }
 ];
