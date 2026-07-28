@@ -23,8 +23,14 @@ const supabaseRest = `${supabase.config.url}/rest/v1`;
 const MIN_RESUME_SECONDS = 3;
 const END_PROGRESS_MARGIN_SECONDS = 15;
 const QUALITY_SWITCH_TIMEOUT_MS = 20000;
-const VIEW_KEY = "MG2pAMcu9veMgs8nQcwlZPUVQ2XqAayOCqWJjUpspk4";
-const EXTERNAL_PLAYER_ORIGINS = ["https://hlswish.com", "https://vimeus.com", "https://goodstream.one"];
+const VIEW_KEY = "OS0Bpp4nTipD72u76tahnxgWKxG-L6aYlucBohhx3P0";
+const PLAYER_DEBUG = new URLSearchParams(window.location.search).has("debugPlayer");
+const EXTERNAL_PLAYER_ORIGINS = [
+  "https://hlswish.com",
+  "https://vimeus.com",
+  "https://goodstream.one",
+  "https://vimeos.net",
+];
 const EXTERNAL_HEARTBEAT_MS = 5000;
 
 const dom = {
@@ -79,6 +85,11 @@ const state = {
 
 const boundVideoElements = new WeakSet();
 let globalEventsBound = false;
+
+function playerConsole(method, ...args) {
+  if (!PLAYER_DEBUG || typeof console[method] !== "function") return;
+  console[method](...args);
+}
 
 function getActiveVideo() {
   const playerMedia = state.playerUi?.media;
@@ -624,7 +635,7 @@ function bindExternalPlaybackTracking(contentKey) {
     }
     const parsed = extractExternalEvent(data);
     if (!parsed) {
-      console.debug("HLSWish postMessage sin formato reconocido:", event.data);
+      playerConsole("debug", "HLSWish postMessage sin formato reconocido:", event.data);
       return;
     }
     state.externalMessageSeen = true;
@@ -1028,7 +1039,7 @@ async function getExternalEmbedInfo() {
         const data = await res.json();
         tmdbId = data.results?.[0]?.id;
       } catch (e) {
-        console.warn("No se pudo resolver tmdbId por búsqueda:", e);
+        playerConsole("warn", "No se pudo resolver tmdbId por busqueda:", e);
       }
     }
     return tmdbId ? { kind: "movie", tmdbId } : null;
@@ -1046,7 +1057,7 @@ async function getExternalEmbedInfo() {
       try {
         tmdbId = await tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
       } catch (e) {
-        console.warn("No se pudo resolver tmdbId de la serie:", e);
+        playerConsole("warn", "No se pudo resolver tmdbId de la serie:", e);
       }
     }
     return tmdbId ? { kind: "episode", tmdbId, season, episode } : null;
@@ -1073,17 +1084,37 @@ function buildExternalListingUrl(embedInfo) {
 // se descartaba en silencio y el capitulo quedaba sin ninguna fuente
 // utilizable (aunque el link espejo funcionara perfectamente si se abria
 // suelto). Por eso se listan varios dominios conocidos en vez de uno solo.
-const GOODSTREAM_MIRROR_DOMAINS = ["goodstream.one", "vimeos.net"];
+const HLSWISH_MIRROR_DOMAINS = ["hlswish.com", "www.hlswish.com"];
+const VIMEOS_MIRROR_DOMAINS = ["vimeos.net", "www.vimeos.net"];
+const GOODSTREAM_MIRROR_DOMAINS = ["goodstream.one", "www.goodstream.one"];
+
+function isExternalEmbedUrl(url, domains, pathPattern) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:"
+      && domains.includes(parsed.hostname)
+      && pathPattern.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
 
 const EXTERNAL_PROVIDERS = [
-  { name: "HLSWish", label: "Reproduciendo con Metodo 2", match: (url) => /^https:\/\/hlswish\.com\/e\//.test(url) },
+  {
+    name: "Vimeos",
+    label: "Reproduciendo con Metodo 3",
+    match: (url) => isExternalEmbedUrl(url, VIMEOS_MIRROR_DOMAINS, /^\/embed-/),
+  },
+  {
+    name: "HLSWish",
+    label: "Reproduciendo con Metodo 2",
+    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
+    assumeMountedAfterMs: 3000,
+  },
   {
     name: "GoodStream",
     label: "Reproduciendo con Metodo 3",
-    match: (url) => GOODSTREAM_MIRROR_DOMAINS.some((domain) => {
-      const escaped = domain.replace(/\./g, "\\.");
-      return new RegExp(`^https:\\/\\/${escaped}\\/embed-`).test(url);
-    }),
+    match: (url) => isExternalEmbedUrl(url, GOODSTREAM_MIRROR_DOMAINS, /^\/embed-/),
   },
 ];
 
@@ -1091,6 +1122,7 @@ const EXTERNAL_PROVIDERS = [
 // primero), agrupados por proveedor, respetando el orden de EXTERNAL_PROVIDERS.
 function collectExternalCandidates(data) {
   const found = [];
+  const unmatchedEmbeds = [];
   function walk(obj) {
     if (typeof obj === "string") {
       const provider = EXTERNAL_PROVIDERS.find((p) => p.match(obj));
@@ -1102,14 +1134,25 @@ function collectExternalCandidates(data) {
       return;
     }
     if (obj && typeof obj === "object") {
+      if (typeof obj.url === "string" && !EXTERNAL_PROVIDERS.some((p) => p.match(obj.url))) {
+        unmatchedEmbeds.push(obj.url);
+      }
       Object.values(obj).forEach(walk);
     }
   }
   walk(data);
 
-  return EXTERNAL_PROVIDERS
+  const candidates = EXTERNAL_PROVIDERS
     .map((provider) => found.find((item) => item.provider === provider))
     .filter(Boolean);
+  playerConsole("info", "[external-player] candidatos reconocidos:", candidates.map((item) => ({
+    provider: item.provider.name,
+    url: item.url,
+  })));
+  if (unmatchedEmbeds.length) {
+    playerConsole("info", "[external-player] embeds ignorados:", unmatchedEmbeds);
+  }
+  return candidates;
 }
 
 // Monta un candidato en el iframe. Se considera exitoso en cuanto el iframe
@@ -1122,11 +1165,13 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
   return new Promise((resolve) => {
     const iframe = document.createElement("iframe");
     let settled = false;
+    let assumeMountedTimer = null;
 
     const finish = (ok) => {
       if (settled) return;
       settled = true;
       window.clearTimeout(loadTimer);
+      if (assumeMountedTimer) window.clearTimeout(assumeMountedTimer);
       iframe.removeEventListener("load", onLoad);
       iframe.removeEventListener("error", onError);
       resolve(ok);
@@ -1136,10 +1181,18 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
     const onError = () => finish(false);
 
     const loadTimer = window.setTimeout(() => finish(false), loadTimeoutMs);
+    if (candidate.provider.assumeMountedAfterMs) {
+      assumeMountedTimer = window.setTimeout(
+        () => finish(true),
+        candidate.provider.assumeMountedAfterMs,
+      );
+    }
 
     iframe.src = candidate.url;
     iframe.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border:none;";
     iframe.setAttribute("frameborder", "0");
+    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-presentation");
+    iframe.setAttribute("referrerpolicy", "no-referrer");
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
     iframe.addEventListener("load", onLoad);
     iframe.addEventListener("error", onError);
@@ -1192,7 +1245,7 @@ async function fetchExternalCandidates(embedInfo) {
     const data = JSON.parse(script.textContent);
     return collectExternalCandidates(data);
   } catch (e) {
-    console.error("Error obteniendo candidatos externos:", e);
+    playerConsole("error", "Error obteniendo candidatos externos:", e);
     return [];
   }
 }
@@ -1238,6 +1291,10 @@ async function tryHlsWishFallback(showMessage = true) {
     }
     const candidate = candidates[index];
     index += 1;
+    playerConsole("info", "[external-player] probando candidato:", {
+      provider: candidate.provider.name,
+      url: candidate.url,
+    });
 
     // eslint-disable-next-line no-await-in-loop
     const ok = await mountExternalCandidate(container, candidate);
