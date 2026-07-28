@@ -332,4 +332,12 @@ export const MOVIES = [
     saga: "Comando Especial",
     src: "",
   },
+  {
+    code: "42",
+    title: "American Psycho",
+    tmdbTitle: "American Psycho",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2000,
+    src: "",
+  },
 ];
