@@ -1104,17 +1104,18 @@ const EXTERNAL_PROVIDERS = [
     name: "Vimeos",
     label: "Reproduciendo con Metodo 3",
     match: (url) => isExternalEmbedUrl(url, VIMEOS_MIRROR_DOMAINS, /^\/embed-/),
+    sandbox: false,
+  },
+  {
+    name: "GoodStream",
+    label: "Reproduciendo con Metodo 3",
+    match: (url) => isExternalEmbedUrl(url, GOODSTREAM_MIRROR_DOMAINS, /^\/embed-/),
   },
   {
     name: "HLSWish",
     label: "Reproduciendo con Metodo 2",
     match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
     assumeMountedAfterMs: 3000,
-  },
-  {
-    name: "GoodStream",
-    label: "Reproduciendo con Metodo 3",
-    match: (url) => isExternalEmbedUrl(url, GOODSTREAM_MIRROR_DOMAINS, /^\/embed-/),
   },
 ];
 
@@ -1191,7 +1192,12 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
     iframe.src = candidate.url;
     iframe.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border:none;";
     iframe.setAttribute("frameborder", "0");
-    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-presentation");
+    if (candidate.provider.sandbox !== false) {
+      iframe.setAttribute(
+        "sandbox",
+        "allow-scripts allow-same-origin allow-presentation",
+      );
+    }
     iframe.setAttribute("referrerpolicy", "no-referrer");
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
     iframe.addEventListener("load", onLoad);
