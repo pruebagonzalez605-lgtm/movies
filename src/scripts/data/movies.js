@@ -313,5 +313,23 @@ export const MOVIES = [
     tmdbYear: 2009,
     saga: "Avatar",
     src: "",
-  }
+  },
+  {
+    code: "40",
+    title: "Comando Especial 2",
+    tmdbTitle: "22 Jump Street",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2014,
+    saga: "Comando Especial",
+    src: "",
+  },
+  {
+    code: "41",
+    title: "Comando Especial",
+    tmdbTitle: "21 Jump Street",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2012,
+    saga: "Comando Especial",
+    src: "",
+  },
 ];
