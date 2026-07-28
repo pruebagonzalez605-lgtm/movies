@@ -286,5 +286,32 @@ export const MOVIES = [
     tmdbYear: 2012,
     saga: "Batman",
     src: "",
+  },
+  {
+    code: "37",
+    title: "Avatar: Fuego y ceniza",
+    tmdbTitle: "Avatar: Fire and Ash",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2025,
+    saga: "Avatar",
+    src: "",
+  },
+  {
+    code: "38",
+    title: "Avatar: El sentido del agua",
+    tmdbTitle: "Avatar: The Way of Water",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2022,
+    saga: "Avatar",
+    src: "",
+  },
+  {
+    code: "39",
+    title: "Avatar",
+    tmdbTitle: "Avatar",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2009,
+    saga: "Avatar",
+    src: "",
   }
 ];
