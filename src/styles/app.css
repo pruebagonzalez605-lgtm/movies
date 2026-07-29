@@ -1943,6 +1943,47 @@ body.modal-open {
   pointer-events: none;
 }
 
+.cast-toggle-btn {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(10, 10, 13, 0.6);
+  color: #e8c468;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 8px 16px 8px 12px;
+  border-radius: 50px;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  z-index: 60;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.cast-toggle-btn .cast-toggle-icon {
+  display: flex;
+}
+
+.cast-toggle-btn:hover {
+  background: rgba(20, 20, 25, 0.85);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.cast-toggle-btn[hidden] {
+  display: none;
+}
+
+.cast-toggle-btn.is-casting {
+  color: #6be675;
+  border-color: rgba(107, 230, 117, 0.4);
+}
+
 .episode-grid-container {
   position: absolute;
   inset: 0 0 0 auto;
@@ -2200,6 +2241,12 @@ body.modal-open {
   .episode-toggle-btn {
     top: 10px;
     right: 10px;
+    padding: 7px 13px 7px 10px;
+    font-size: 12px;
+  }
+  .cast-toggle-btn {
+    top: 10px;
+    left: 10px;
     padding: 7px 13px 7px 10px;
     font-size: 12px;
   }

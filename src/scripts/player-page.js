@@ -53,6 +53,7 @@ const dom = {
   quickSettings: document.getElementById("playerQuickSettings"),
   qualitySelect: document.getElementById("playerQualitySelect"),
   qualityHint: document.getElementById("playerQualityHint"),
+  castBtn: document.getElementById("castBtn"),
 };
 
 const state = {
@@ -245,10 +246,10 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
   const previewSrc = media.previewThumbnails || media.previewVtt;
   const compactControls = window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
   const controls = compactControls
-    ? ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "fullscreen"]
+    ? ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "airplay", "fullscreen"]
     : [
       "play-large", "rewind", "play", "fast-forward", "progress", "current-time",
-      "duration", "mute", "volume", "captions", "settings", "pip", "fullscreen",
+      "duration", "mute", "volume", "captions", "settings", "pip", "airplay", "fullscreen",
     ];
   state.playerUi = new window.Plyr(dom.video, {
     controls,
@@ -725,6 +726,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
     const qualityOptions = [...new Set(sources.map((s) => Number(s.size)).filter(Number.isFinite))].sort((a, b) => b - a);
     mountPlayerUi(media, initialQuality, qualityOptions);
   }
+  initCastButton(dom.video);
 
   bindVideoEvents(syncActiveVideo());
   renderQualityControls(sources);
@@ -926,6 +928,48 @@ function persistCurrentProgress() {
     && video.duration - video.currentTime > END_PROGRESS_MARGIN_SECONDS) {
     saveProgress(state.currentProgressKey, video.currentTime, video.duration);
   }
+}
+
+// --- Transmitir a otra pantalla (Chromecast / TVs con Cast integrado) ---
+// Usa la Remote Playback API del navegador (Chrome, Edge, Android WebView).
+// Safari resuelve AirPlay por su cuenta a traves del control "airplay" de Plyr,
+// asi que aca solo cubrimos el caso en el que existe video.remote.
+function initCastButton(video) {
+  const btn = dom.castBtn;
+  if (!btn || !video || !("remote" in video) || typeof video.remote?.watchAvailability !== "function") {
+    return;
+  }
+  if (video.dataset.castBound === "1") return; // Evita registrar el listener de click mas de una vez.
+  video.dataset.castBound = "1";
+
+  video.remote
+    .watchAvailability((available) => {
+      btn.hidden = !available;
+      playerConsole("log", "Remote Playback: disponibilidad =", available);
+    })
+    .catch((err) => {
+      // Muchos navegadores (incluido Chrome de escritorio) no pueden monitorear
+      // la disponibilidad en segundo plano y rechazan la promesa con NotSupportedError
+      // aunque SI soportan prompt(). El comportamiento recomendado por la especificacion
+      // es mostrar el boton igual y dejar que el usuario intente conectarse manualmente.
+      playerConsole("warn", "Remote Playback: no se puede monitorear disponibilidad, mostrando boton igual", err);
+      btn.hidden = false;
+    });
+
+  btn.addEventListener("click", async () => {
+    try {
+      await video.remote.prompt();
+    } catch (err) {
+      playerConsole("warn", "No se pudo iniciar la transmision a pantalla", err);
+      dom.status.textContent = "No se encontraron dispositivos para transmitir.";
+      setTimeout(() => {
+        if (dom.status.textContent.includes("transmitir")) dom.status.textContent = "";
+      }, 3000);
+    }
+  });
+
+  video.remote.addEventListener?.("connect", () => btn.classList.add("is-casting"));
+  video.remote.addEventListener?.("disconnect", () => btn.classList.remove("is-casting"));
 }
 
 function bindEvents() {

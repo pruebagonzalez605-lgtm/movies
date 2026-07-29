@@ -8,8 +8,13 @@ const FORWARDED_REQUEST_HEADERS = [
 
 function corsHeaders(request, env) {
   const requestOrigin = request.headers.get("Origin");
-  const allowedOrigin = env.ALLOWED_SITE_ORIGIN || "https://colevana.com";
-  const origin = requestOrigin === allowedOrigin ? allowedOrigin : allowedOrigin;
+  const configuredOrigins = env.ALLOWED_SITE_ORIGIN || "https://colevana.com";
+  const allowedOrigins = configuredOrigins.split(",").map((value) => value.trim()).filter(Boolean);
+  // Si el origen de la solicitud esta en la lista permitida, se lo devolvemos tal cual
+  // (requisito de CORS: el valor de Allow-Origin debe coincidir exactamente con el origen).
+  // Si no coincide, devolvemos el primero de la lista para no filtrar informacion ni
+  // dejar pasar un origen no autorizado.
+  const origin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
