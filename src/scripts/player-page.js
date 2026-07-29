@@ -270,6 +270,29 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
   bindVideoEvents(syncActiveVideo());
 }
 
+function mountCastButtonInPlayerControls(btn) {
+  const controls = state.playerUi?.elements?.controls || document.querySelector(".plyr__controls");
+  if (!btn || !controls) return;
+
+  btn.classList.add("plyr__control", "cast-control-btn");
+  btn.setAttribute("aria-label", "Transmitir a otra pantalla");
+  btn.title = "Transmitir a otra pantalla";
+
+  const fullscreenButton = controls.querySelector('[data-plyr="fullscreen"]');
+  if (fullscreenButton?.parentElement === controls) {
+    controls.insertBefore(btn, fullscreenButton);
+  } else if (!controls.contains(btn)) {
+    controls.appendChild(btn);
+  }
+}
+
+function resetCastButton() {
+  const btn = dom.castBtn;
+  if (!btn) return;
+  btn.hidden = true;
+  btn.classList.remove("is-casting");
+}
+
 function withCacheBust(url) {
   if (!url) return url;
   const separator = url.includes("?") ? "&" : "?";
@@ -726,7 +749,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
     const qualityOptions = [...new Set(sources.map((s) => Number(s.size)).filter(Number.isFinite))].sort((a, b) => b - a);
     mountPlayerUi(media, initialQuality, qualityOptions);
   }
-  initCastButton(dom.video);
+  bindCastButtonForActiveVideo();
 
   bindVideoEvents(syncActiveVideo());
   renderQualityControls(sources);
@@ -936,29 +959,40 @@ function persistCurrentProgress() {
 // asi que aca solo cubrimos el caso en el que existe video.remote.
 function initCastButton(video) {
   const btn = dom.castBtn;
-  if (!btn || !video || !("remote" in video) || typeof video.remote?.watchAvailability !== "function") {
+  if (!btn || !video || !("remote" in video) || typeof video.remote?.prompt !== "function") {
+    resetCastButton();
     return;
   }
-  if (video.dataset.castBound === "1") return; // Evita registrar el listener de click mas de una vez.
-  video.dataset.castBound = "1";
+  mountCastButtonInPlayerControls(btn);
+  btn.hidden = false;
 
-  video.remote
-    .watchAvailability((available) => {
-      btn.hidden = !available;
-      playerConsole("log", "Remote Playback: disponibilidad =", available);
-    })
-    .catch((err) => {
-      // Muchos navegadores (incluido Chrome de escritorio) no pueden monitorear
-      // la disponibilidad en segundo plano y rechazan la promesa con NotSupportedError
-      // aunque SI soportan prompt(). El comportamiento recomendado por la especificacion
-      // es mostrar el boton igual y dejar que el usuario intente conectarse manualmente.
-      playerConsole("warn", "Remote Playback: no se puede monitorear disponibilidad, mostrando boton igual", err);
-      btn.hidden = false;
-    });
+  if (typeof video.remote.watchAvailability === "function") {
+    video.remote
+      .watchAvailability((available) => {
+        btn.hidden = !available;
+        playerConsole("log", "Remote Playback: disponibilidad =", available);
+      })
+      .catch((err) => {
+        // Muchos navegadores (incluido Chrome de escritorio) no pueden monitorear
+        // la disponibilidad en segundo plano y rechazan la promesa con NotSupportedError
+        // aunque SI soportan prompt(). El comportamiento recomendado por la especificacion
+        // es mostrar el boton igual y dejar que el usuario intente conectarse manualmente.
+        playerConsole("warn", "Remote Playback: no se puede monitorear disponibilidad, mostrando boton igual", err);
+        btn.hidden = false;
+      });
+  }
+
+  if (btn.dataset.castBound === "1") return; // Evita registrar el listener de click mas de una vez.
+  btn.dataset.castBound = "1";
 
   btn.addEventListener("click", async () => {
+    const activeVideo = syncActiveVideo();
+    if (!activeVideo?.remote || typeof activeVideo.remote.prompt !== "function") {
+      resetCastButton();
+      return;
+    }
     try {
-      await video.remote.prompt();
+      await activeVideo.remote.prompt();
     } catch (err) {
       playerConsole("warn", "No se pudo iniciar la transmision a pantalla", err);
       dom.status.textContent = "No se encontraron dispositivos para transmitir.";
@@ -969,7 +1003,18 @@ function initCastButton(video) {
   });
 
   video.remote.addEventListener?.("connect", () => btn.classList.add("is-casting"));
-  video.remote.addEventListener?.("disconnect", () => btn.classList.remove("is-casting"));
+  video.remote.addEventListener?.("disconnect", () => {
+    btn.classList.remove("is-casting");
+  });
+}
+
+function bindCastButtonForActiveVideo() {
+  const video = syncActiveVideo();
+  if (state.playbackMode !== "video") {
+    resetCastButton();
+    return;
+  }
+  initCastButton(video);
 }
 
 function bindEvents() {
@@ -1247,6 +1292,7 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
     iframe.addEventListener("load", onLoad);
     iframe.addEventListener("error", onError);
 
+    resetCastButton();
     container.replaceChildren(iframe);
   });
 }

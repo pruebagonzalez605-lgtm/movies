@@ -1984,6 +1984,44 @@ body.modal-open {
   border-color: rgba(107, 230, 117, 0.4);
 }
 
+.screen-frame .plyr__controls .cast-control-btn {
+  position: static;
+  inset: auto;
+  display: inline-flex;
+  gap: 0;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border: 0;
+  border-radius: var(--plyr-control-radius, 3px);
+  background: transparent;
+  color: var(--plyr-video-control-color, #fff);
+  font-size: 0;
+  letter-spacing: 0;
+  z-index: auto;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.screen-frame .plyr__controls .cast-control-btn:hover,
+.screen-frame .plyr__controls .cast-control-btn:focus-visible {
+  background: var(--plyr-video-control-background-hover, var(--plyr-color-main));
+  color: var(--plyr-video-control-color-hover, #fff);
+}
+
+.screen-frame .plyr__controls .cast-control-btn .cast-toggle-icon {
+  display: inline-flex;
+}
+
+.screen-frame .plyr__controls .cast-control-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.screen-frame .plyr__controls .cast-control-btn.is-casting {
+  color: #6be675;
+}
+
 .episode-grid-container {
   position: absolute;
   inset: 0 0 0 auto;
