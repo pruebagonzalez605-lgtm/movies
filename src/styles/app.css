@@ -1449,6 +1449,15 @@ body.modal-open {
   overflow: hidden;
 }
 
+/* Episodes get a wider, landscape layout instead of the tall movie-poster grid */
+.player-story-grid.player-story-grid--episodes {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.player-story-art.player-story-art--episode {
+  aspect-ratio: 16 / 9;
+}
+
 .catalog-hero-copy,
 .screen-frame,
 .rating-panel,
@@ -1623,6 +1632,9 @@ body.modal-open {
   }
   .player-story-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 140px));
+  }
+  .player-story-grid.player-story-grid--episodes {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
   .theater { width: 100%; padding: 16px 16px 32px; }
   .marquee { margin-bottom: 14px; }

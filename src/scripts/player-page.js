@@ -688,10 +688,12 @@ function bindExternalPlaybackTracking(contentKey) {
   }, EXTERNAL_HEARTBEAT_MS);
 }
 
-function createStoryCard({ href, poster, gradient, code, title, description, active = false }) {
+function createStoryCard({ href, poster, gradient, code, title, description, active = false, variant = "default" }) {
+  const variantClass = variant === "episode" ? " player-story-card--episode" : "";
+  const artVariantClass = variant === "episode" ? " player-story-art--episode" : "";
   return `
-    <a class="player-story-card${active ? " is-active" : ""}" href="${href}">
-      <div class="player-story-art" style="${poster
+    <a class="player-story-card${variantClass}${active ? " is-active" : ""}" href="${href}">
+      <div class="player-story-art${artVariantClass}" style="${poster
       ? `background-image: linear-gradient(180deg, rgba(8,8,12,0.1), rgba(8,8,12,0.82)), url('${poster}'); background-size: cover; background-position: center;`
       : `background: linear-gradient(160deg, ${gradient[0]}, ${gradient[1]});`}">
         <span class="player-story-badge">${code}</span>
@@ -704,11 +706,12 @@ function createStoryCard({ href, poster, gradient, code, title, description, act
   `;
 }
 
-async function mountPlayer({ media, title, subtitle, poster, gradient, meta, backHref, contentKey, relatedHtml, collectionTitle }) {
+async function mountPlayer({ media, title, subtitle, poster, gradient, meta, backHref, contentKey, relatedHtml, collectionTitle, relatedVariant = "default" }) {
   document.title = title ? `${title} - Player` : "Player";
   dom.backLink.href = backHref;
   dom.backLink.textContent = "Volver al catalogo";
   dom.related.innerHTML = relatedHtml;
+  dom.related.classList.toggle("player-story-grid--episodes", relatedVariant === "episode");
   dom.collectionTitle.textContent = collectionTitle;
 
   // Se define ANTES de resolver la fuente: así el fallback de HLSWish
@@ -814,6 +817,7 @@ async function renderEpisodePlayer(serie, seasonNumber, episodeNumber) {
       title: item.title || `Episodio ${index + 1}`,
       description: item.description || `Temporada ${seasonNumber}`,
       active: index === episodeNumber - 1,
+      variant: "episode",
     }))
     .join("");
 
@@ -828,6 +832,7 @@ async function renderEpisodePlayer(serie, seasonNumber, episodeNumber) {
     contentKey: `series:${slugify(serie.title)}:s${seasonNumber}:e${episodeNumber}`,
     relatedHtml: relatedEpisodes,
     collectionTitle: `Capitulos de la temporada ${seasonNumber}`,
+    relatedVariant: "episode",
   });
 }
 
