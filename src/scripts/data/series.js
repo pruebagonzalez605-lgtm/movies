@@ -56,13 +56,13 @@ export const SERIES = [
       { season: 3, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X10.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X11.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X12.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS3X13.mp4"] },
       { season: 4, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X10.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X11.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X12.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS4X13.mp4"] },
       { season: 5, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X10.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5x11.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS5X12.mp4"] },
-      { season: 6, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X9.mp4", "ttps://github.com/pruebagonzalez605-lgtm/moviehs/releases/download/1.22/AHS6X10.mp4",  ]},
-      { season: 7, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X1.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X2.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X3.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X4.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X5.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X6.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X7.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X8.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X9.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X10.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X11.mp4"]},
-      { season: 8, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X10.mp4"]},
-      { season: 9, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X9.mp4"]},
-      { season: 10, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X5.mp4", "https://github/com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X9.mp4"]},
-      { season: 11, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X5.mp4", "https://github/com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X10.mp4"]},
-      { season: 12, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X5.mp4", "https://github/com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X9.mp4"]}    
+      { season: 6, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS6X9.mp4", "ttps://github.com/pruebagonzalez605-lgtm/moviehs/releases/download/1.22/AHS6X10.mp4",] },
+      { season: 7, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X1.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X2.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X3.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X4.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X5.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X6.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X7.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X8.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X9.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X10.mp4", "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS7X11.mp4"] },
+      { season: 8, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS8X10.mp4"] },
+      { season: 9, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X5.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS9X9.mp4"] },
+      { season: 10, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X5.mp4", "https://github/com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS10X9.mp4"] },
+      { season: 11, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X5.mp4", "https://github/com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X9.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS11X10.mp4"] },
+      { season: 12, srcs: ["https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X1.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X2.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X3.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X4.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X5.mp4", "https://github/com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X6.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X7.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X8.mp4", "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.22/AHS12X9.mp4"] }
     ],
   },
   {
@@ -87,7 +87,7 @@ export const SERIES = [
       }
     ]
   },
-    {
+  {
     title: "It: Bienvenidos a Derry",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "IT: Welcome to Derry",
@@ -105,10 +105,10 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWD1x8.mp4",
         ]
-      } 
-      ]
-    },
-    {
+      }
+    ]
+  },
+  {
     title: "Rick y Morty",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Rick and Morty",
@@ -127,7 +127,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x9.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x10.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x11.mp4",        
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM1x11.mp4",
         ]
       },
       {
@@ -142,7 +142,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x9.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x10.mp4",        
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM2x10.mp4",
         ]
       },
       {
@@ -157,7 +157,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x9.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x10.mp4",        
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM3x10.mp4",
         ]
       },
       {
@@ -172,7 +172,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x9.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x10.mp4",        
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM4x10.mp4",
         ]
       },
       {
@@ -187,7 +187,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x9.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x10.mp4",        
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM5x10.mp4",
         ]
       },
       {
@@ -202,7 +202,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x9.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x10.mp4",        
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM6x10.mp4",
         ]
       },
       {
@@ -217,7 +217,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x9.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x10.mp4",        
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM7x10.mp4",
         ]
       },
       {
@@ -232,7 +232,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x9.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x10.mp4",        
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM8x10.mp4",
         ]
       },
       {
@@ -245,20 +245,20 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x5.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x6.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x7.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x8.mp4",     
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x8.mp4",
         ]
       }
-      ]
-    },
-    {
-      title: "Dark",
-      gradient: ["#1a3a1a", "#0f2a0f"],
-      tmdbShow: "Dark",
-      tmdbYear: 2017,
-      seasons: [
-        {
-          season: 1,
-          srcs: [
+    ]
+  },
+  {
+    title: "Dark",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Dark",
+    tmdbYear: 2017,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x1.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x2.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x3.mp4",
@@ -268,7 +268,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x9.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x10.mp4",               
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x10.mp4",
         ]
       },
       {
@@ -281,7 +281,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x5.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x6.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x7.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x8.mp4",            
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK2x8.mp4",
         ]
       },
       {
@@ -294,12 +294,12 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x5.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x6.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x7.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x8.mp4",            
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/DK1x8.mp4",
         ]
       }
-      ]
-    },
-    {
+    ]
+  },
+  {
     title: "El polígamo",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "The Polygamist",
@@ -331,10 +331,10 @@ export const SERIES = [
           { title: "Episodio 21", description: "Solo y debilitado, Jonasi enfrenta el peso de una vida marcada por decisiones que dividieron a los suyos.", src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X21.MP4" },
           { title: "Episodio 22", description: "Tras la muerte de Jonasi, la rivalidad entre sus esposas se traslada a la disputa por cómo recordarlo.", src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.23/PLGM1X22.MP4" },
         ]
-      } 
-      ]
-    },
-    {
+      }
+    ]
+  },
+  {
     title: "Beauty in Black",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Beauty in Black",
@@ -358,7 +358,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x13.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x14.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x15.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x16.mp4",          
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB1x16.mp4",
         ]
       },
       {
@@ -379,9 +379,9 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x13.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x14.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x15.mp4",
-          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x16.mp4",          
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x16.mp4",
         ]
-      },       
-      ]
-    },
+      },
+    ]
+  },
 ];
