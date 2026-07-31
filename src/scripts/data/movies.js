@@ -376,4 +376,12 @@ export const MOVIES = [
     tmdbYear: 2024,
     src: "",
   },
+  {
+    code: "47",
+    title: "Coraline y la puerta secreta",
+    tmdbTitle: "Coraline y la puerta secreta",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2009,
+    src: "",
+  },
 ];
