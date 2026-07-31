@@ -382,6 +382,6 @@ export const MOVIES = [
     tmdbTitle: "Coraline y la puerta secreta",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2009,
-    src: "",
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/CRLINE.mp4",
   },
 ];
