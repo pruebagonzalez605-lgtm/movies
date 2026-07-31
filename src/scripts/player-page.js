@@ -54,6 +54,7 @@ const dom = {
   qualitySelect: document.getElementById("playerQualitySelect"),
   qualityHint: document.getElementById("playerQualityHint"),
   castBtn: document.getElementById("castBtn"),
+  downloadBtn: document.getElementById("downloadBtn"),
 };
 
 const state = {
@@ -238,13 +239,44 @@ function chooseInitialQuality(sources) {
   return qualities.length ? Math.max(...qualities) : 1080;
 }
 
+function isCoarsePointerViewport() {
+  return window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+}
+
+// --- Rotar automaticamente a horizontal al entrar en pantalla completa ---
+// La Fullscreen API por si sola no gira la pantalla; hace falta pedirlo
+// explicitamente con la Screen Orientation API. Solo aplica en moviles
+// (Android/Chrome principalmente) y solo funciona mientras estamos en
+// fullscreen real, por eso se ata a los eventos enterfullscreen/exitfullscreen
+// de Plyr. iOS no soporta lock() y ademas usa su propio reproductor nativo
+// (ver isAppleMobileDevice en mountPlayerUi), que ya rota solo.
+function initFullscreenOrientationLock(player) {
+  if (!player || typeof player.on !== "function") return;
+  const orientation = window.screen?.orientation;
+  if (!orientation || typeof orientation.lock !== "function") return;
+
+  player.on("enterfullscreen", () => {
+    if (!isCoarsePointerViewport()) return;
+    orientation.lock("landscape").catch(() => {
+      // Algunos navegadores (o cuando la pagina no esta en primer plano/instalada
+      // como PWA) rechazan el lock; el usuario siempre puede rotar a mano como antes.
+    });
+  });
+
+  player.on("exitfullscreen", () => {
+    if (typeof orientation.unlock === "function") {
+      try { orientation.unlock(); } catch { /* no-op */ }
+    }
+  });
+}
+
 function mountPlayerUi(media, defaultQuality, qualityOptions) {
   if (!window.Plyr || isAppleMobileDevice()) {
     document.documentElement.classList.add("native-ios-player");
     return;
   }
   const previewSrc = media.previewThumbnails || media.previewVtt;
-  const compactControls = window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+  const compactControls = isCoarsePointerViewport();
   const controls = compactControls
     ? ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "airplay", "fullscreen"]
     : [
@@ -267,6 +299,7 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
     },
     i18n: { /* ... tu configuración de i18n ... */ },
   });
+  initFullscreenOrientationLock(state.playerUi);
   bindVideoEvents(syncActiveVideo());
 }
 
@@ -753,6 +786,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
     mountPlayerUi(media, initialQuality, qualityOptions);
   }
   bindCastButtonForActiveVideo();
+  bindDownloadButtonForActiveVideo();
 
   bindVideoEvents(syncActiveVideo());
   renderQualityControls(sources);
@@ -1020,6 +1054,95 @@ function bindCastButtonForActiveVideo() {
     return;
   }
   initCastButton(video);
+}
+
+// --- Descargar la calidad actualmente en reproduccion ---
+// Solo tiene sentido cuando hay un <video> local (state.playbackMode === "video").
+// Si se cayo al Metodo 2/3 (iframe externo tipo HLSWish) no hay archivo propio
+// que ofrecer, asi que el boton se mantiene oculto en ese caso.
+function mountDownloadButtonInPlayerControls(btn) {
+  const controls = state.playerUi?.elements?.controls || document.querySelector(".plyr__controls");
+  if (!btn || !controls) return;
+
+  btn.classList.add("plyr__control", "download-control-btn");
+  btn.setAttribute("aria-label", "Descargar");
+
+  const castButton = dom.castBtn;
+  if (castButton && castButton.parentElement === controls) {
+    controls.insertBefore(btn, castButton);
+  } else {
+    const fullscreenButton = controls.querySelector('[data-plyr="fullscreen"]');
+    if (fullscreenButton?.parentElement === controls) {
+      controls.insertBefore(btn, fullscreenButton);
+    } else if (!controls.contains(btn)) {
+      controls.appendChild(btn);
+    }
+  }
+}
+
+function resetDownloadButton() {
+  const btn = dom.downloadBtn;
+  if (!btn) return;
+  btn.hidden = true;
+}
+
+function slugifyForFilename(value) {
+  return String(value || "video")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase() || "video";
+}
+
+function getActiveDownloadTarget() {
+  const quality = state.currentQuality;
+  const bySize = state.availableSources?.find((source) => Number(source.size) === Number(quality));
+  const video = syncActiveVideo();
+  const src = bySize?.src || video?.currentSrc || state.currentBaseSrc;
+  if (!src) return null;
+
+  const separator = src.includes("?") ? "&" : "?";
+  const filenameBase = slugifyForFilename(state.currentContentTitle);
+  const qualitySuffix = Number.isFinite(Number(quality)) ? `-${quality}p` : "";
+  const downloadUrl = `${src}${separator}download=1&filename=${encodeURIComponent(`${filenameBase}${qualitySuffix}.mp4`)}`;
+  return { url: downloadUrl, filename: `${filenameBase}${qualitySuffix}.mp4` };
+}
+
+function initDownloadButton() {
+  const btn = dom.downloadBtn;
+  if (!btn) return;
+
+  mountDownloadButtonInPlayerControls(btn);
+  btn.hidden = false;
+
+  if (btn.dataset.downloadBound === "1") return; // Evita registrar el listener mas de una vez.
+  btn.dataset.downloadBound = "1";
+
+  btn.addEventListener("click", () => {
+    const target = getActiveDownloadTarget();
+    if (!target) {
+      dom.status.textContent = "No se encontro un archivo para descargar.";
+      setTimeout(() => {
+        if (dom.status.textContent.includes("descargar")) dom.status.textContent = "";
+      }, 3000);
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = target.url;
+    link.download = target.filename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  });
+}
+
+function bindDownloadButtonForActiveVideo() {
+  if (state.playbackMode !== "video" || !state.availableSources?.length) {
+    resetDownloadButton();
+    return;
+  }
+  initDownloadButton();
 }
 
 function bindEvents() {
@@ -1298,6 +1421,7 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
     iframe.addEventListener("error", onError);
 
     resetCastButton();
+    resetDownloadButton();
     container.replaceChildren(iframe);
   });
 }

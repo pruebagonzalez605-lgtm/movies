@@ -111,6 +111,19 @@
           Transmitir
         </button>
 
+        <!-- Botón de descarga: player-page.js lo mueve a los controles de Plyr cuando el reproductor local esta activo. -->
+        <button id="downloadBtn" class="download-toggle-btn" type="button" title="Descargar" hidden>
+          <span class="download-toggle-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </span>
+          Descargar
+        </button>
+
         <!-- Botón flotante para abrir episodios -->
         <button id="toggleEpisodeBtn" class="episode-toggle-btn" type="button" title="Ver todos los episodios">
           <span class="episode-toggle-icon" aria-hidden="true">

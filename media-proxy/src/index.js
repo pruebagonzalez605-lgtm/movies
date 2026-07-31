@@ -86,13 +86,24 @@ function buildUpstreamHeaders(request) {
   return headers;
 }
 
+function sanitizeFilename(name) {
+  return String(name || "")
+    .replace(/["\r\n]/g, "")
+    .replace(/[\\/]/g, "-")
+    .slice(0, 200);
+}
+
 function buildResponseHeaders(upstreamResponse, request, env, upstreamUrl) {
   const headers = new Headers(upstreamResponse.headers);
-  const filename = decodeURIComponent(upstreamUrl.pathname.split("/").pop() || "video.mp4")
+  const requestUrl = new URL(request.url);
+  const wantsDownload = requestUrl.searchParams.get("download") === "1";
+  const requestedFilename = sanitizeFilename(requestUrl.searchParams.get("filename"));
+  const fallbackFilename = decodeURIComponent(upstreamUrl.pathname.split("/").pop() || "video.mp4")
     .replace(/["\r\n]/g, "");
+  const filename = requestedFilename || fallbackFilename;
 
   headers.set("Content-Type", "video/mp4");
-  headers.set("Content-Disposition", `inline; filename="${filename}"`);
+  headers.set("Content-Disposition", `${wantsDownload ? "attachment" : "inline"}; filename="${filename}"`);
   headers.set("Accept-Ranges", upstreamResponse.headers.get("Accept-Ranges") || "bytes");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.delete("Set-Cookie");
