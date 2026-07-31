@@ -384,4 +384,11 @@ export const MOVIES = [
     tmdbYear: 2009,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.26/CRLINE.mp4",
   },
+  {
+    code: "47",
+    title: "Prisioneros",
+    tmdbTitle: "Prisoners ",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2013,
+  }
 ];
