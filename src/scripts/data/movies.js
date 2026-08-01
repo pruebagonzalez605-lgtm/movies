@@ -557,5 +557,29 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
     tmdbYear: 2021,
+  },
+  {
+    code: "70",
+    title: "Madagascar",
+    tmdbTitle: "Madagascar",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    saga: "Madagascar",
+    tmdbYear: 2005,
+  },
+  {
+    code: "71",
+    title: "Madagascar 2",
+    tmdbTitle: "Madagascar: Escape 2 Africa",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    saga: "Madagascar",
+    tmdbYear: 2008,
+  },
+  {
+    code: "72",
+    title: "Madagascar 3",
+    tmdbTitle: "Madagascar 3: Europe's Most Wanted",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    saga: "Madagascar",
+    tmdbYear: 2012,
   }
 ];
