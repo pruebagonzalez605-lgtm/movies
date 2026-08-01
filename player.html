@@ -16,6 +16,7 @@
   <link rel="manifest" href="./site.webmanifest">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.css">
   <link rel="stylesheet" href="./src/styles/app.css">
+  <link rel="stylesheet" href="./src/styles/adblock.css">
 </head>
 
 <body data-page="player">
@@ -168,6 +169,12 @@
         <span class="player-quality-hint" id="playerQualityHint"></span>
       </div>
       <div class="status" id="playerStatus"></div>
+      <p class="adblock-hint" id="adblockHint" hidden>
+        Esta fuente externa puede mostrar anuncios.
+        Para bloquearlos te recomendamos
+        <a class="adblock-hint-link" href="https://chromewebstore.google.com/detail/adblock-%E2%80%94-block-ads-acros/gighmmpiobklfepjocnamgkkbiglidom?hl=es" target="_blank" rel="noopener noreferrer">AdBlock</a>
+        u otra extensión similar en tu navegador.
+      </p>
       <div class="rating-panel" id="ratingPanel">
         <div class="rating-global">
           <div class="stars" id="globalStars"></div>
@@ -201,6 +208,7 @@
   <script type="module" src="./src/scripts/search-ui.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.polyfilled.min.js"></script>
   <script type="module" src="./src/scripts/player-page.js"></script>
+  <script type="module" src="./src/scripts/adblock-boot.js"></script>
 </body>
 
 </html>

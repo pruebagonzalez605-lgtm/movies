@@ -790,6 +790,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
 
   bindVideoEvents(syncActiveVideo());
   renderQualityControls(sources);
+  hideAdblockHint();
   dom.status.textContent = `Reproduciendo: ${title}`;
 
   loadRatingsFor(contentKey);
@@ -1427,6 +1428,19 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
 }
 
 const RETRY_LINK_ID = "playerExternalRetryLink";
+const ADBLOCK_HINT_ID = "adblockHint";
+
+function showAdblockHint() {
+  const el = document.getElementById(ADBLOCK_HINT_ID);
+  if (el) el.hidden = false;
+}
+
+function hideAdblockHint() {
+  const el = document.getElementById(ADBLOCK_HINT_ID);
+  if (el) el.hidden = true;
+}
+
+
 
 function removeExternalRetryLink() {
   document.getElementById(RETRY_LINK_ID)?.remove();
@@ -1531,6 +1545,7 @@ async function tryHlsWishFallback(showMessage = true) {
       dom.status.textContent = candidate.provider.label;
       dom.status.style.color = "#e8c468";
     }
+    showAdblockHint();
     showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
       dom.status.textContent = "Probando otra fuente...";
       await tryNextCandidate();
