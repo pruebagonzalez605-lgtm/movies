@@ -384,4 +384,96 @@ export const SERIES = [
       },
     ]
   },
+  {
+    title: "Breaking Bad",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Breaking Bad",
+    tmdbYear: 2008,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB1x7.mp4",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x11.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x12.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB2x13.mp4",
+        ]
+      },
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x11.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x12.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB3x13.mp4",
+        ]
+      },
+      {
+        season: 4,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x11.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x12.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB4x13.mp4",
+        ]
+      },
+      {
+        season: 5,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x11.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x12.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/BB5x13.mp4",
+        ]
+      },
+    ]
+  },
 ];
