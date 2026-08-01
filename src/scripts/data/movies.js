@@ -582,5 +582,26 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Madagascar",
     tmdbYear: 2012,
-  }
+  },
+  {
+    code: "73",
+    title: "Capitán América: Civil War ",
+    tmdbTitle: "Captain America: Civil War",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2016,
+  },
+  {
+    code: "74",
+    title: "Avengers: Infinity War",
+    tmdbTitle: "Avengers: Infinity War",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2018,
+  },
+  {
+    code: "75",
+    title: "Avengers: Endgame",
+    tmdbTitle: "Avengers: Endgame",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2019,
+  },
 ];
