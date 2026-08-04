@@ -604,4 +604,13 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2019,
   },
+  {
+    code: "76",
+    title: "SpiderMan: Brand New Day",
+    tmdbTitle: "SpiderMan: Brand New Day",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    saga: "Spiderman",
+    tmdbYear: 2026,
+    src: "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.28/SPMBND.mp4",
+  },
 ];
