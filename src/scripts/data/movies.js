@@ -613,4 +613,12 @@ export const MOVIES = [
     tmdbYear: 2026,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/SPMBND.MP4",
   },
+  {
+    code: "77",
+    title: "Los Voyeurs",
+    tmdbTitle: "The Voyeurs",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2021,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.29/VYS.mp4",
+  },
 ];
