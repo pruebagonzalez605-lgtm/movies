@@ -611,6 +611,6 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
     tmdbYear: 2026,
-    src: "https://github.comm/pruebagonzalez605-lgtm/movies/releases/download/1.28/SPMBND.MP4",
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/SPMBND.MP4",
   },
 ];
