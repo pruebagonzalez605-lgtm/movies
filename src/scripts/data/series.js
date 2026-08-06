@@ -476,4 +476,25 @@ export const SERIES = [
       },
     ]
   },
+  {
+    title: "Te encontraré",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "I Will Find You",
+    tmdbYear: 2026,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWFY1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWFY1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWFY1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWFY1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWFY1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWFY1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWFY1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/IWFY1x8.mp4",
+        ]
+      }
+    ]
+  },
 ];
