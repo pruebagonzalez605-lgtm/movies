@@ -497,4 +497,78 @@ export const SERIES = [
       }
     ]
   },
+  {
+    title: "Peaky Blinders",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Peaky Blinders",
+    tmdbYear: 2013,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY1x6.mp4",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY2x6.mp4",
+        ]
+      },
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY3x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY3x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY3x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY3x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY3x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY3x6.mp4",
+        ]
+      },
+      {
+        season: 4,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY4x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY4x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY4x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY4x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY4x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY4x6.mp4",
+        ]
+      },
+      {
+        season: 5,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY5x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY5x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY5x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY5x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY5x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY5x6.mp4",
+        ]
+      },
+      {
+        season: 6,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY6x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY6x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY6x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY6x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY6x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/PKY6x6.mp4",
+        ]
+      },
+    ]
+  },
 ];
