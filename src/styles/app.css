@@ -2376,3 +2376,35 @@ body.modal-open {
     font-size: 12px;
   }
 }
+
+/* ==================== NATIVE iOS PLAYER: sacar los botones flotantes del video ====================
+   En iPhone (mountPlayerUi -> isAppleMobileDevice) no se usa Plyr, sino el <video controls>
+   nativo de Safari. Ese reproductor nativo pone sus propios iconos de silenciar y de pantalla
+   completa justo en las esquinas superiores. Como .download-toggle-btn y .episode-toggle-btn
+   son position:absolute sobre esas mismas esquinas con z-index alto, tapan los controles
+   nativos. En este modo los sacamos del overlay y los mostramos como una fila normal debajo
+   del video, para que nunca se superpongan con los controles de iOS. */
+.native-ios-player .cast-toggle-btn,
+.native-ios-player .download-toggle-btn,
+.native-ios-player .episode-toggle-btn {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: auto;
+  margin: 10px 6px 0 0;
+}
+
+.native-ios-player .screen-frame {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.native-ios-player .screen-frame .sprocket-row,
+.native-ios-player .screen-frame .media-slot {
+  flex: 0 0 100%;
+}
+
+.native-ios-player .screen-frame .episode-grid-container {
+  position: absolute;
+}
