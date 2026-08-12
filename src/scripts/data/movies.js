@@ -637,4 +637,12 @@ export const MOVIES = [
     tmdbYear: 2015,
     src: "",
   },
+  {
+    code: "80",
+    title: "Minions & Monstruos",
+    tmdbTitle: "Minions & Monsters",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2026,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.30/MNS.mp4",
+  },
 ];
