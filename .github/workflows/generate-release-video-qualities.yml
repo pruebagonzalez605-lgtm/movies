@@ -309,3 +309,76 @@ jobs:
 
           echo >>"${GITHUB_STEP_SUMMARY}"
           echo "El original \`${SOURCE_NAME}\` no fue modificado." >>"${GITHUB_STEP_SUMMARY}"
+
+  update-movies-js:
+    name: Actualizar movies.js con las calidades generadas
+    needs: [discover, transcode]
+    if: needs.discover.outputs.count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
+      MATRIX_JSON: ${{ needs.discover.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Releer assets actuales del Release
+        id: current-assets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          encoded_tag="$(jq -rn --arg value "${RELEASE_TAG}" '$value | @uri')"
+          release_id="$(gh api --method GET \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GITHUB_REPOSITORY}/releases/tags/${encoded_tag}" | jq -r '.id')"
+          assets_json="$(gh api --paginate --method GET \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets?per_page=100" \
+            | jq -sc 'add // []')"
+          names_json="$(jq -c '[.[] | select(.state == "uploaded") | .name]' <<<"${assets_json}")"
+          printf 'names=%s\n' "${names_json}" >>"${GITHUB_OUTPUT}"
+
+      - name: Actualizar sources en movies.js
+        shell: bash
+        env:
+          ASSET_NAMES_JSON: ${{ steps.current-assets.outputs.names }}
+        run: |
+          set -Eeuo pipefail
+          base_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}"
+
+          echo "${MATRIX_JSON}" | jq -c '.include[]' | while read -r item; do
+            asset_name="$(jq -r '.asset_name' <<<"${item}")"
+            stem="${asset_name%.*}"
+            stem="$(echo "${stem}" | sed -E 's/-1080p$//I')"
+
+            qualities="1080"
+            for q in 720 480; do
+              variant_name="${stem}-${q}p.mp4"
+              if jq -e --arg name "${variant_name}" 'any(.[]; . == $name)' <<<"${ASSET_NAMES_JSON}" >/dev/null; then
+                qualities="${qualities},${q}"
+              fi
+            done
+
+            original_url="${base_url}/${asset_name}"
+            echo "Procesando ${asset_name} (calidades: ${qualities})..."
+            node .github/scripts/update-movie-sources.mjs "${original_url}" "${qualities}"
+          done
+
+      - name: Commit y push si hubo cambios
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if git diff --quiet -- src/scripts/data/movies.js; then
+            echo "Sin cambios en movies.js."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/scripts/data/movies.js
+          git commit -m "chore: actualizar calidades de video en movies.js (${RELEASE_TAG})"
+          git push
