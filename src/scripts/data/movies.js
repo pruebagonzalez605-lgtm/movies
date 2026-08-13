@@ -502,6 +502,11 @@ export const MOVIES = [
     saga: "Spiderman",
     tmdbYear: 2002,
     src:"https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/SPM.mp4",
+    sources: [
+      { src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/SPM.mp4", size: 1080 },
+      { src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/SPM-720p.mp4", size: 720 },
+      { src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.27/SPM-480p.mp4", size: 480 },
+    ],
   },
   {
     code: "63",
