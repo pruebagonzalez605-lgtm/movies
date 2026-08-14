@@ -655,4 +655,12 @@ export const MOVIES = [
       { src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.30/MNS-480p.mp4", size: 480 },
     ],
   },
+  {
+    code: "81",
+    title: "Bastardos Sin Gloria",
+    tmdbTitle: "Inglourious Basterds",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2009,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.30/IB.mp4",
+  },
 ];
