@@ -663,4 +663,13 @@ export const MOVIES = [
     tmdbYear: 2009,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.30/IB.mp4",
   },
+  {
+    code: "82",
+    title: "Insidious",
+    tmdbTitle: "Insidious",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2010,
+    saga: "la Noche Del Demonio",
+    src: "",
+  },
 ];
