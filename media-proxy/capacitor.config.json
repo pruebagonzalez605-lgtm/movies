@@ -1,0 +1,6 @@
+{
+  "appId": "com.colevana.tv",
+  "appName": "Colevana TV",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

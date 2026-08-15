@@ -1,13 +1,18 @@
 {
-  "name": "colevana-media-proxy",
+  "name": "colevana-tv",
+  "version": "1.0.0",
   "private": true,
-  "type": "module",
+  "description": "Colevana empaquetado con Capacitor para Android TV",
   "scripts": {
-    "test": "node --test",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "build:www": "node scripts/build-www.mjs",
+    "cap:sync": "npm run build:www && npx cap sync android",
+    "cap:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/core": "^6.1.0"
   },
   "devDependencies": {
-    "wrangler": "^4.110.0"
+    "@capacitor/cli": "^6.1.0"
   }
 }

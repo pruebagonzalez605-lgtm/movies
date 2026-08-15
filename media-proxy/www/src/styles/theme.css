@@ -1,0 +1,24 @@
+:root {
+  --bg: #0b0b0f;
+  --panel: #141419;
+  --film: #1c1c22;
+  --accent: #e8c468;
+  --accent-dim: #8a6f2f;
+  --text: #eae6da;
+  --text-dim: #8b8a86;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: radial-gradient(ellipse at center, #16161c 0%, var(--bg) 70%);
+  color: var(--text);
+  font-family: "Montserrat", sans-serif;
+  font-weight: 600;
+}

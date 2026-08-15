@@ -1,0 +1,33 @@
+.theater {
+  width: min(1400px, 92vw);
+  margin: 0 auto;
+  padding: 28px 28px 40px;
+}
+
+.screen-frame {
+  position: relative;
+  background: var(--film);
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow:
+    0 0 0 1px #2a2a32,
+    0 30px 60px -20px rgba(0, 0, 0, 0.8);
+}
+
+.carousel {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 6px 4px 16px;
+  scroll-snap-type: x proximity;
+}
+
+.poster {
+  scroll-snap-align: start;
+  flex: 0 0 172px;
+  height: 244px;
+  border-radius: 6px;
+  border: 1px solid #2a2a32;
+  position: relative;
+  overflow: hidden;
+}
