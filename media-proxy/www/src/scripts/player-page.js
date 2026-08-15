@@ -291,6 +291,14 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
       options: qualityOptions,
     },
     seekTime: 10,
+    // Desactivado: por defecto Plyr captura ArrowLeft/Right/Up/Down para
+    // adelantar/retroceder y volumen, lo que le gana el paso a nuestra
+    // navegacion por control remoto (tv/spatial-nav.js) y deja al usuario
+    // sin poder salir del reproductor con el D-pad. Dejamos que sea
+    // spatial-nav.js quien decida que hacer con las flechas; el seek
+    // sigue funcionando igual cuando la barra de progreso (input range)
+    // tiene el foco.
+    keyboard: { focused: false, global: false },
     speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
     captions: { active: false, language: "auto", update: true },
     previewThumbnails: {
@@ -572,8 +580,8 @@ function formatTime(seconds) {
 }
 
 function closeResumeModal() {
-  dom.resumeOverlay.style.display = "none";
-  document.body.classList.remove("resume-open");
+  dom.resumeOverlay.classList.remove("is-open");
+  document.body.classList.remove("resume-open", "modal-open");
 }
 
 function showResumeModal(progress) {
@@ -581,8 +589,8 @@ function showResumeModal(progress) {
   state.resumePrompted = true;
   dom.resumeTitle.textContent = state.currentContentTitle || "Progreso guardado";
   dom.resumeTime.textContent = formatTime(progress.time);
-  dom.resumeOverlay.style.display = "flex";
-  document.body.classList.add("resume-open");
+  dom.resumeOverlay.classList.add("is-open");
+  document.body.classList.add("resume-open", "modal-open");
 
   const isExternal = state.playbackMode === "external";
 

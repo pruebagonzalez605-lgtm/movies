@@ -760,6 +760,7 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
 .episode-desc { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .status { text-align: center; margin-top: 14px; font-size: 12px; color: var(--text-dim); min-height: 16px; }
 .resume-overlay { display: none; position: fixed; inset: 0; background: rgba(5, 5, 8, 0.78); backdrop-filter: blur(3px); align-items: center; justify-content: center; z-index: 9000; padding: 20px; }
+.resume-overlay.is-open { display: flex; z-index: 9000; }
 .resume-modal { width: min(380px, 100%); background: var(--panel); border: 1px solid #2a2a32; border-radius: 10px; padding: 26px 24px; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8); text-align: center; }
 .resume-modal .eyebrow { letter-spacing: 0.3em; font-size: 10px; color: var(--accent-dim); text-transform: uppercase; }
 .resume-modal h2 { font-family: "Montserrat", sans-serif; font-weight: 800; font-size: 19px; color: var(--accent); margin: 8px 0 4px; }
