@@ -103,6 +103,27 @@ public class MainActivity extends BridgeActivity {
     if (hasFocus) hideSystemUi();
   }
 
+  // Capacitor 6 no maneja el boton "atras" del control remoto por si solo:
+  // BridgeActivity no sobreescribe onBackPressed(), asi que sin esto cada
+  // toque de "atras" ejecuta el comportamiento por defecto de Android
+  // (Activity.onBackPressed() -> finish()) y cierra la app de una, sin
+  // importar en que pagina este el WebView (catalogo, player, etc.).
+  //
+  // La navegacion entre paginas del sitio (index -> movies -> player, etc.)
+  // se hace con <a href> normales, asi que el WebView SI va acumulando
+  // historial propio. Lo unico que falta es pedirle que retroceda en ese
+  // historial cuando lo haya; recien si no hay a donde volver (estamos en
+  // la primera pagina) dejamos que Android cierre la app como es normal.
+  @Override
+  public void onBackPressed() {
+    WebView webView = getBridge().getWebView();
+    if (webView != null && webView.canGoBack()) {
+      webView.goBack();
+      return;
+    }
+    super.onBackPressed();
+  }
+
   private void hideSystemUi() {
     getWindow().getDecorView().setSystemUiVisibility(
         View.SYSTEM_UI_FLAG_LAYOUT_STABLE

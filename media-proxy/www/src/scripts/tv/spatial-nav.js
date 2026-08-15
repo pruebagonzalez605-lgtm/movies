@@ -145,11 +145,19 @@ function handleDirectional(event) {
 
   const active = document.activeElement;
 
-  // Dejar que los inputs de texto y los controles nativos (range, select)
-  // manejen sus propias flechas (cursor de texto, seek del reproductor, etc).
+  // Dejar que los inputs de texto manejen sus propias flechas (cursor de texto).
   if (active && TEXT_ENTRY_TAGS.has(active.tagName)) return;
-  if (active && active.tagName === "INPUT" && active.type === "range") return;
   if (active && active.tagName === "SELECT") return;
+
+  // Los sliders (barra de progreso y volumen de Plyr son <input type="range">)
+  // manejan izquierda/derecha para su propio seek/ajuste nativo, pero arriba/
+  // abajo deben poder sacar el foco del control. Si no, con un D-pad (que no
+  // tiene Tab) el foco queda atrapado ahi para siempre: cualquier flecha
+  // termina interpretada como "avanzar"/"retroceder" en vez de mover el foco
+  // a otro control.
+  if (active && active.tagName === "INPUT" && active.type === "range") {
+    if (direction === "left" || direction === "right") return;
+  }
 
   if (!active || active === document.body) {
     event.preventDefault();

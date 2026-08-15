@@ -81,6 +81,24 @@
      Ahora quedan afuera y sobreviven al fallback externo. -->
         <div class="media-slot" id="mediaSlot">
           <video id="player" controls preload="metadata" playsinline webkit-playsinline></video>
+
+          <!-- ==================== SIGUIENTE EPISODIO ====================
+     Aparece sobre el video cerca del final de un episodio (ver
+     showNextEpisodeOverlay en player-page.js). Vive dentro de #mediaSlot
+     para quedar encima del video tanto en fullscreen real como en el modo
+     teatro de la app de TV (tv-locked-fullscreen). El boton es un <button>
+     normal: la navegacion por D-pad (tv/spatial-nav.js) ya lo detecta solo,
+     y al mostrarse queda enfocado de una para que alcance con tocar OK. -->
+          <div class="next-episode-overlay" id="nextEpisodeOverlay" hidden>
+            <div class="next-episode-card">
+              <span class="next-episode-eyebrow">Siguiente episodio</span>
+              <span class="next-episode-title" id="nextEpisodeTitle"></span>
+              <button type="button" class="next-episode-btn" id="nextEpisodeBtn">
+                <span class="next-episode-btn-icon" aria-hidden="true">▶</span>
+                Reproducir
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="sprocket-row bottom">

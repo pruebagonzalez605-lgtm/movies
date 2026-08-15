@@ -1980,6 +1980,88 @@ body.modal-open {
   height: 100vh !important;
 }
 
+/* Tarjeta de "siguiente episodio" (ver showNextEpisodeOverlay en
+   player-page.js). z-index 30: por encima del video/iframe (0) y de
+   #autoFullscreenGate (20), por debajo de los modales (resume-overlay,
+   catalog-modal, en 9000+). */
+.next-episode-overlay {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+  max-width: min(340px, calc(100% - 48px));
+  animation: next-episode-in 0.25s ease;
+}
+
+.next-episode-overlay[hidden] {
+  display: none;
+}
+
+@keyframes next-episode-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.next-episode-card {
+  background: rgba(10, 10, 14, 0.88);
+  backdrop-filter: blur(6px);
+  border: 1px solid #2a2a32;
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 20px 40px -16px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.next-episode-eyebrow {
+  letter-spacing: 0.3em;
+  font-size: 10px;
+  color: var(--accent-dim);
+  text-transform: uppercase;
+}
+
+.next-episode-title {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.next-episode-btn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.next-episode-btn-icon {
+  font-size: 11px;
+}
+
+.next-episode-btn:focus-visible,
+.next-episode-btn.tv-focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(232, 196, 104, 0.55);
+  transform: scale(1.03);
+}
+
 /* Modo teatro para la app nativa de TV (ver enterTvLockedTheaterMode en
    player-page.js). A diferencia de la Fullscreen API real de arriba, esto
    NO depende de ningun gesto de usuario: es solo una clase en <html> que
