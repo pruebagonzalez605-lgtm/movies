@@ -205,11 +205,30 @@ function markFocusForFallback() {
   // Ademas de :focus-visible (que ya cubren los navegadores basados en
   // Chromium usados por Android TV), dejamos una clase explicita por si el
   // WebView del dispositivo no la soporta bien.
+  //
+  // Solo queremos que el borde grueso (.tv-focus) aparezca cuando el foco
+  // llega por teclado/D-pad, no por click de mouse/touch. Para eso
+  // llevamos la cuenta de cual fue el ultimo tipo de input usado.
+  let lastInputWasPointer = false;
+
+  document.addEventListener("pointerdown", () => { lastInputWasPointer = true; }, true);
+  document.addEventListener("mousedown", () => { lastInputWasPointer = true; }, true);
+  document.addEventListener("touchstart", () => { lastInputWasPointer = true; }, true);
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (Object.prototype.hasOwnProperty.call(ARROW_TO_DIRECTION, event.key) || event.key === "Tab") {
+        lastInputWasPointer = false;
+      }
+    },
+    true,
+  );
+
   document.addEventListener(
     "focusin",
     (event) => {
       document.querySelectorAll(".tv-focus").forEach((el) => el.classList.remove("tv-focus"));
-      if (event.target instanceof Element && event.target !== document.body) {
+      if (event.target instanceof Element && event.target !== document.body && !lastInputWasPointer) {
         event.target.classList.add("tv-focus");
       }
     },
