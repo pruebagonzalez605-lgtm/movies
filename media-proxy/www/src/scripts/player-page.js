@@ -243,7 +243,118 @@ function isCoarsePointerViewport() {
   return window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
 }
 
-// --- Rotar automaticamente a horizontal al entrar en pantalla completa ---
+// --- Fullscreen automatico dentro del APK (Capacitor) ---
+// En la web dejamos que cada fuente decida: el <video> local usa el boton
+// de Plyr, y las fuentes externas (godstream, hlswish, etc.) usan el boton
+// de fullscreen que trae el propio iframe. En el APK no queremos esa
+// eleccion: al abrir una pelicula o episodio el reproductor debe quedar en
+// fullscreen de una, sin importar de que fuente termine sirviendo el video.
+// La forma de lograrlo sin depender del tipo de fuente es pedir fullscreen
+// sobre #mediaSlot (el contenedor que aloja tanto al <video> como al
+// <iframe> externo, ver mountPlayer/tryHlsWishFallback) en lugar de pedirlo
+// sobre el <video> o el iframe en si.
+function isNativeAppShell() {
+  return Boolean(window.Capacitor?.isNativePlatform?.());
+}
+
+function lockLandscapeOrientation() {
+  const orientation = window.screen?.orientation;
+  if (orientation && typeof orientation.lock === "function") {
+    orientation.lock("landscape").catch(() => {
+      // Puede fallar si el navegador/WebView no esta en primer plano o no
+      // soporta el lock; el usuario siempre puede rotar el dispositivo.
+    });
+  }
+}
+
+function enterAutoFullscreen() {
+  if (!isNativeAppShell()) return;
+  const target = document.getElementById("mediaSlot");
+  if (!target) return;
+  if (document.fullscreenElement === target || document.webkitFullscreenElement === target) {
+    lockLandscapeOrientation();
+    return;
+  }
+
+  const requestFs = (target.requestFullscreen
+    || target.webkitRequestFullscreen
+    || target.mozRequestFullScreen
+    || target.msRequestFullscreen)?.bind(target);
+
+  if (typeof requestFs !== "function") return;
+
+  Promise.resolve(requestFs())
+    .then(lockLandscapeOrientation)
+    .catch((err) => {
+      // Si el WebView rechaza el pedido (por ejemplo por falta de gesto de
+      // usuario reciente), no rompemos nada: el usuario puede activar el
+      // fullscreen a mano con los controles del reproductor.
+      playerConsole("warn", "[auto-fullscreen] No se pudo activar automaticamente:", err?.message || err);
+    });
+}
+
+// --- Puerta de gesto de usuario para el fullscreen automatico ---
+// requestFullscreen() SOLO funciona si el navegador/WebView detecta que fue
+// llamado dentro del mismo toque del usuario ("user activation"). Pedirlo
+// apenas carga player.html (antes de que el usuario toque algo) no sirve:
+// el WebView lo descarta en silencio y la pantalla nunca cambia, aunque la
+// promesa no tire error visible.
+//
+// La solucion es enganchar el pedido de fullscreen al primer toque real
+// que hace el usuario en la pagina -que de todos modos es el toque en
+// "play"- en vez de pedirlo de entrada. Para que quede parejo entre la
+// fuente local (<video>) y las externas (iframe de godstream, hlswish,
+// etc.), se pone una capa transparente encima de #mediaSlot que intercepta
+// ese primer toque, dispara el fullscreen y el play en el mismo gesto, y
+// despues se saca de encima para no volver a interferir con los controles
+// reales (los del propio Plyr o los del iframe externo).
+const AUTO_FULLSCREEN_GATE_ID = "autoFullscreenGate";
+
+function removeAutoFullscreenGate() {
+  document.getElementById(AUTO_FULLSCREEN_GATE_ID)?.remove();
+}
+
+function installAutoFullscreenGate() {
+  if (!isNativeAppShell()) return;
+  removeAutoFullscreenGate();
+
+  const mediaSlot = document.getElementById("mediaSlot");
+  if (!mediaSlot) return;
+
+  const gate = document.createElement("div");
+  gate.id = AUTO_FULLSCREEN_GATE_ID;
+  gate.setAttribute("aria-hidden", "true");
+  gate.style.cssText = "background:transparent;cursor:pointer;";
+
+  const onGateTap = () => {
+    // Importante: requestFullscreen se dispara de forma SINCRONICA aca
+    // adentro (aunque su resultado sea una promesa), que es lo que
+    // conserva la activacion del usuario. No mover esta llamada detras
+    // de un await.
+    enterAutoFullscreen();
+    // Si la fuente activa es el <video> local, este toque reemplaza al
+    // toque que hubiera hecho el usuario sobre el boton de play de Plyr,
+    // asi que disparamos el play nosotros para no pedirle un segundo toque.
+    if (state.playbackMode === "video") {
+      dom.video?.play?.().catch(() => {
+        // Autoplay bloqueado o video aun sin fuente lista; el usuario
+        // puede tocar play de nuevo con los controles normales.
+      });
+    }
+    // NOTA sobre fuentes externas (godstream/hlswish/etc.): al sacar esta
+    // capa, el usuario todavia va a tener que tocar el play del iframe una
+    // vez (el iframe es de otro origen y no podemos disparar su play desde
+    // aca), pero el contenedor #mediaSlot ya va a estar en fullscreen real
+    // antes de ese toque.
+    removeAutoFullscreenGate();
+  };
+
+  gate.addEventListener("click", onGateTap, { once: true });
+  gate.addEventListener("touchend", onGateTap, { once: true });
+  mediaSlot.appendChild(gate);
+}
+
+
 // La Fullscreen API por si sola no gira la pantalla; hace falta pedirlo
 // explicitamente con la Screen Orientation API. Solo aplica en moviles
 // (Android/Chrome principalmente) y solo funciona mientras estamos en
@@ -765,6 +876,13 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   state.localPlaybackFallbackAttempted = false;
   stopExternalTracking();
 
+  // Se instala ANTES de saber si la fuente sera local o externa: #mediaSlot
+  // es el contenedor comun a ambos casos, asi que el fullscreen automatico
+  // del APK queda parejo sin importar de donde termine viniendo el video.
+  // No se pide el fullscreen aca directamente: hace falta un toque real del
+  // usuario (ver installAutoFullscreenGate).
+  installAutoFullscreenGate();
+
   dom.status.textContent = "Buscando fuente...";
 
   const sources = await discoverMediaSources(media);
@@ -1172,6 +1290,26 @@ function bindEvents() {
     state.autoQuality = false;
     if (!switchPlaybackQuality(selected, `Calidad seleccionada: ${selected}p`)) updateQualityControls();
   });
+
+  // Desbloquea la rotacion cuando se sale del fullscreen automatico de
+  // #mediaSlot por cualquier via (boton atras del sistema, gesto del
+  // usuario, etc.), no solo cuando lo pedimos nosotros mismos.
+  const handleFullscreenChange = () => {
+    const stillFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!stillFullscreen) {
+      const orientation = window.screen?.orientation;
+      if (orientation && typeof orientation.unlock === "function") {
+        try { orientation.unlock(); } catch { /* no-op */ }
+      }
+    } else {
+      // Si por algun motivo ya se entro en fullscreen (p. ej. el usuario
+      // toco directamente el boton de Plyr), la capa de gesto ya no tiene
+      // sentido y podria tapar controles.
+      removeAutoFullscreenGate();
+    }
+  };
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
   window.addEventListener("pagehide", persistCurrentProgress);
   window.addEventListener("beforeunload", persistCurrentProgress);

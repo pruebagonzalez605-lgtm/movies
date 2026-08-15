@@ -1936,6 +1936,49 @@ body.modal-open {
     height: 100% !important;
     border: none !important;
 }
+
+.media-slot {
+  position: relative;
+}
+
+/* Capa transparente que intercepta el primer toque del usuario para poder
+   pedir fullscreen (ver installAutoFullscreenGate en player-page.js). Debe
+   cubrir exactamente el video/iframe, por eso vive dentro de #mediaSlot. */
+#autoFullscreenGate {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+}
+
+/* Fullscreen automatico del APK (ver enterAutoFullscreen en player-page.js):
+   #mediaSlot es el contenedor comun al <video> local y al <iframe> externo,
+   y es el elemento que pasa a fullscreen real. Sin estas reglas, el video
+   local queda encogido por el aspect-ratio: 16/9 que usa en modo normal. */
+#mediaSlot:fullscreen,
+#mediaSlot:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  padding-top: 0 !important;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#mediaSlot:fullscreen video,
+#mediaSlot:-webkit-full-screen video,
+#mediaSlot:fullscreen .plyr,
+#mediaSlot:-webkit-full-screen .plyr {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+#mediaSlot:fullscreen iframe,
+#mediaSlot:-webkit-full-screen iframe {
+  width: 100vw !important;
+  height: 100vh !important;
+}
 /* ==================== PANEL DE EPISODIOS (esquina del reproductor) ==================== */
 .sr-only {
   position: absolute;
