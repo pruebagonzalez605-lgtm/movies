@@ -1349,6 +1349,36 @@ body.modal-open {
   overflow: hidden;
 }
 
+.tv-app-prompt-dialog {
+  width: min(560px, 100%);
+  text-align: center;
+}
+
+.tv-app-prompt-dialog .catalog-modal-head {
+  margin-top: 6px;
+}
+
+.tv-app-prompt-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.tv-app-prompt-download {
+  width: 100%;
+  max-width: 320px;
+  padding: 16px 24px;
+  font-size: 13px;
+}
+
+.tv-app-prompt-hint {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .player-page {
   padding-top: 26px;
 }
