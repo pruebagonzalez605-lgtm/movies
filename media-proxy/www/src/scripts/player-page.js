@@ -293,60 +293,67 @@ function enterAutoFullscreen() {
     });
 }
 
-// --- Puerta de gesto de usuario para el fullscreen automatico ---
-// requestFullscreen() SOLO funciona si el navegador/WebView detecta que fue
-// llamado dentro del mismo toque del usuario ("user activation"). Pedirlo
-// apenas carga player.html (antes de que el usuario toque algo) no sirve:
-// el WebView lo descarta en silencio y la pantalla nunca cambia, aunque la
-// promesa no tire error visible.
+// --- Modo teatro fijo para el shell nativo (APK de TV) ---
+// Antes esto dependia de una capa transparente sobre #mediaSlot que
+// esperaba un click/touchend para recien ahi pedir requestFullscreen()
+// (que exige un gesto de usuario "fresco" para funcionar). Eso andaba con
+// mouse/touch, pero un control remoto de TV no genera ese click sobre la
+// capa: el D-pad mueve el foco entre elementos reales (botones, etc.) y el
+// OK/Enter dispara el click directamente sobre el elemento enfocado, no
+// sobre una capa invisible que ademas no es enfocable para spatial-nav.js.
+// Resultado: en TV el fullscreen automatico nunca se disparaba sin tocar
+// la pantalla a mano (mouse) primero.
 //
-// La solucion es enganchar el pedido de fullscreen al primer toque real
-// que hace el usuario en la pagina -que de todos modos es el toque en
-// "play"- en vez de pedirlo de entrada. Para que quede parejo entre la
-// fuente local (<video>) y las externas (iframe de godstream, hlswish,
-// etc.), se pone una capa transparente encima de #mediaSlot que intercepta
-// ese primer toque, dispara el fullscreen y el play en el mismo gesto, y
-// despues se saca de encima para no volver a interferir con los controles
-// reales (los del propio Plyr o los del iframe externo).
-const AUTO_FULLSCREEN_GATE_ID = "autoFullscreenGate";
+// Como esta es una app nativa donde controlamos toda la ventana (ver
+// MainActivity.hideSystemUi, que ahora se llama siempre, no solo cuando
+// dispara la Fullscreen API), no hace falta la Fullscreen API del navegador
+// para lograr el look fullscreen: alcanza con una clase CSS que reproduce
+// las mismas reglas que hoy usan #mediaSlot:fullscreen. Una clase no
+// requiere gesto de usuario, asi que se puede aplicar apenas se monta el
+// reproductor, sin esperar ningun toque.
+const TV_THEATER_CLASS = "tv-locked-fullscreen";
 
-function removeAutoFullscreenGate() {
-  document.getElementById(AUTO_FULLSCREEN_GATE_ID)?.remove();
+function enterTvLockedTheaterMode() {
+  if (!isNativeAppShell()) return;
+  document.documentElement.classList.add(TV_THEATER_CLASS);
+  lockLandscapeOrientation();
+  // El play automatico funciona sin gesto porque MainActivity ya desactiva
+  // setMediaPlaybackRequiresUserGesture. Si la fuente activa es un iframe
+  // externo (godstream/hlswish/etc.) no podemos dispararle el play porque
+  // es de otro origen; el usuario lo arranca con los controles del propio
+  // iframe, que ya van a quedar dentro del area "fullscreen" por CSS.
+  if (state.playbackMode === "video") {
+    dom.video?.play?.().catch(() => {
+      // Si el dispositivo igual bloquea el autoplay, el usuario puede
+      // tocar play a mano con los controles normales de Plyr.
+    });
+  }
 }
 
+function exitTvLockedTheaterMode() {
+  document.documentElement.classList.remove(TV_THEATER_CLASS);
+}
+
+// Mantenemos la puerta de gesto original SOLO para cuando esto corre como
+// sitio web comun (navegador de escritorio/mobile), donde si necesitamos
+// la Fullscreen API real y por lo tanto un gesto de usuario genuino.
 function installAutoFullscreenGate() {
-  if (!isNativeAppShell()) return;
-  removeAutoFullscreenGate();
+  document.getElementById("autoFullscreenGate")?.remove();
 
   const mediaSlot = document.getElementById("mediaSlot");
   if (!mediaSlot) return;
 
   const gate = document.createElement("div");
-  gate.id = AUTO_FULLSCREEN_GATE_ID;
+  gate.id = "autoFullscreenGate";
   gate.setAttribute("aria-hidden", "true");
   gate.style.cssText = "background:transparent;cursor:pointer;";
 
   const onGateTap = () => {
-    // Importante: requestFullscreen se dispara de forma SINCRONICA aca
-    // adentro (aunque su resultado sea una promesa), que es lo que
-    // conserva la activacion del usuario. No mover esta llamada detras
-    // de un await.
     enterAutoFullscreen();
-    // Si la fuente activa es el <video> local, este toque reemplaza al
-    // toque que hubiera hecho el usuario sobre el boton de play de Plyr,
-    // asi que disparamos el play nosotros para no pedirle un segundo toque.
     if (state.playbackMode === "video") {
-      dom.video?.play?.().catch(() => {
-        // Autoplay bloqueado o video aun sin fuente lista; el usuario
-        // puede tocar play de nuevo con los controles normales.
-      });
+      dom.video?.play?.().catch(() => {});
     }
-    // NOTA sobre fuentes externas (godstream/hlswish/etc.): al sacar esta
-    // capa, el usuario todavia va a tener que tocar el play del iframe una
-    // vez (el iframe es de otro origen y no podemos disparar su play desde
-    // aca), pero el contenedor #mediaSlot ya va a estar en fullscreen real
-    // antes de ese toque.
-    removeAutoFullscreenGate();
+    gate.remove();
   };
 
   gate.addEventListener("click", onGateTap, { once: true });
@@ -876,12 +883,16 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   state.localPlaybackFallbackAttempted = false;
   stopExternalTracking();
 
-  // Se instala ANTES de saber si la fuente sera local o externa: #mediaSlot
-  // es el contenedor comun a ambos casos, asi que el fullscreen automatico
-  // del APK queda parejo sin importar de donde termine viniendo el video.
-  // No se pide el fullscreen aca directamente: hace falta un toque real del
-  // usuario (ver installAutoFullscreenGate).
-  installAutoFullscreenGate();
+  // Se aplica ANTES de saber si la fuente sera local o externa: #mediaSlot
+  // es el contenedor comun a ambos casos, asi que el look fullscreen queda
+  // parejo sin importar de donde termine viniendo el video.
+  if (isNativeAppShell()) {
+    // App nativa (APK de TV): sin gesto, sin toque. Ver enterTvLockedTheaterMode.
+    enterTvLockedTheaterMode();
+  } else {
+    // Sitio web comun: si necesitamos un gesto real para la Fullscreen API.
+    installAutoFullscreenGate();
+  }
 
   dom.status.textContent = "Buscando fuente...";
 
@@ -1305,7 +1316,7 @@ function bindEvents() {
       // Si por algun motivo ya se entro en fullscreen (p. ej. el usuario
       // toco directamente el boton de Plyr), la capa de gesto ya no tiene
       // sentido y podria tapar controles.
-      removeAutoFullscreenGate();
+      document.getElementById("autoFullscreenGate")?.remove();
     }
   };
   document.addEventListener("fullscreenchange", handleFullscreenChange);

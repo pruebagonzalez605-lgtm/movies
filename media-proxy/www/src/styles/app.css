@@ -1979,6 +1979,51 @@ body.modal-open {
   width: 100vw !important;
   height: 100vh !important;
 }
+
+/* Modo teatro para la app nativa de TV (ver enterTvLockedTheaterMode en
+   player-page.js). A diferencia de la Fullscreen API real de arriba, esto
+   NO depende de ningun gesto de usuario: es solo una clase en <html> que
+   se aplica apenas se monta el reproductor. Como no es fullscreen real del
+   navegador (que oculta automaticamente todo lo que no sea el elemento
+   fullscreen), aca hay que ocultar a mano el resto de la pagina y hacer
+   que #mediaSlot cubra toda la pantalla. */
+html.tv-locked-fullscreen .site-header,
+html.tv-locked-fullscreen .player-back-link,
+html.tv-locked-fullscreen .sprocket-row,
+html.tv-locked-fullscreen .player-quick-settings,
+html.tv-locked-fullscreen .status,
+html.tv-locked-fullscreen .adblock-hint,
+html.tv-locked-fullscreen .rating-panel,
+html.tv-locked-fullscreen .catalog-section,
+html.tv-locked-fullscreen .episode-toggle-btn,
+html.tv-locked-fullscreen .episode-grid-container {
+  display: none !important;
+}
+
+html.tv-locked-fullscreen #mediaSlot {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100vw;
+  height: 100vh;
+  padding-top: 0 !important;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html.tv-locked-fullscreen #mediaSlot video,
+html.tv-locked-fullscreen #mediaSlot .plyr {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+html.tv-locked-fullscreen #mediaSlot iframe {
+  width: 100vw !important;
+  height: 100vh !important;
+}
 /* ==================== PANEL DE EPISODIOS (esquina del reproductor) ==================== */
 .sr-only {
   position: absolute;
