@@ -1095,7 +1095,13 @@ body.resume-open { overflow: hidden; }
 
 .catalog-inline-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  /* auto-fill (no auto-fit) + un maximo de columna evita que, cuando hay
+     pocos elementos (ej: una temporada con un solo episodio), la(s)
+     tarjeta(s) se estiren para llenar todo el ancho del modal. En TVs
+     grandes el modal puede ocupar casi toda la pantalla, asi que sin este
+     tope una sola tarjeta terminaba viendose gigante. */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 340px));
+  justify-content: start;
   gap: 16px;
 }
 
@@ -2012,13 +2018,6 @@ body.modal-open {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.next-episode-eyebrow {
-  letter-spacing: 0.3em;
-  font-size: 10px;
-  color: var(--accent-dim);
-  text-transform: uppercase;
 }
 
 .next-episode-title {
