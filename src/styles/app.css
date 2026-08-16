@@ -1300,7 +1300,11 @@ body.resume-open { overflow: hidden; }
 }
 
 .catalog-modal-dialog {
-  width: min(1100px, 100%);
+  /* Antes llegaba hasta 1100px: en TVs grandes eso se ve como una caja
+     enorme, sobre todo cuando el contenido es poco (ej: una temporada con
+     un solo episodio). 860px sigue dejando espacio de sobra para grids con
+     varios items, pero ya no ocupa casi toda la pantalla. */
+  width: min(860px, 92%);
   max-height: min(88vh, 920px);
   overflow: auto;
   background: linear-gradient(160deg, rgba(28, 28, 34, 0.98), rgba(20, 20, 25, 0.98));
