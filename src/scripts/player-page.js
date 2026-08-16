@@ -98,6 +98,11 @@ const state = {
 // llegar a que termine el episodio actual.
 const NEXT_EPISODE_LEAD_SECONDS = 20;
 
+// Cuantos segundos avanza/retrocede cada toque de izquierda/derecha del
+// control remoto (estilo Netflix: no hace falta enfocar la barra de
+// progreso, las flechas siempre adelantan/retroceden directo).
+const REMOTE_SEEK_STEP_SECONDS = 10;
+
 const boundVideoElements = new WeakSet();
 let globalEventsBound = false;
 
@@ -1250,7 +1255,10 @@ function bindVideoEvents(video) {
 
   video.addEventListener("ended", () => {
     if (state.currentProgressKey) clearProgress(state.currentProgressKey);
-    if (state.nextEpisodeTarget) showNextEpisodeOverlay();
+    // Estilo Netflix: si el usuario no toco "Siguiente episodio" durante
+    // los ultimos NEXT_EPISODE_LEAD_SECONDS, al llegar al final se dispara
+    // solo, sin esperar mas input.
+    if (state.nextEpisodeTarget) playNextEpisode();
   });
 }
 
@@ -1482,7 +1490,47 @@ function bindEvents() {
   });
 }
 
+// Estilo Netflix: izquierda/derecha del control remoto adelantan/retroceden
+// SIEMPRE, sin necesidad de mover el foco hasta la barra de progreso (que
+// ademas ya no es alcanzable con el D-pad, ver spatial-nav.js). Se registra
+// en fase de "captura" para que se ejecute ANTES que el manejador de
+// izquierda/derecha de spatial-nav.js (que solo mueve el foco entre
+// botones) y le corta el paso con stopPropagation.
+function initRemoteSeekControls() {
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+      const video = dom.video;
+      if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+
+      // Si hay un modal/menu/panel abierto (episodios, calidad, menu
+      // hamburguesa, etc.), dejamos que las flechas se usen para navegar
+      // ese overlay normalmente en vez de adelantar el video de fondo.
+      const overlayOpen = document.querySelector(
+        ".catalog-modal.is-open, .site-nav.is-open, .episode-grid-container.open, .site-search-dropdown.is-open",
+      );
+      if (overlayOpen) return;
+
+      // Los campos de texto/listas siguen manejando sus propias flechas.
+      const active = document.activeElement;
+      const tag = active?.tagName;
+      if (tag === "TEXTAREA" || tag === "SELECT") return;
+      if (tag === "INPUT" && active.type !== "range") return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const delta = event.key === "ArrowRight" ? REMOTE_SEEK_STEP_SECONDS : -REMOTE_SEEK_STEP_SECONDS;
+      video.currentTime = Math.min(Math.max(video.currentTime + delta, 0), video.duration);
+    },
+    true,
+  );
+}
+
 async function init() {
+  initRemoteSeekControls();
   initKickAuthUI({
     onChange: () => {
       if (state.currentContentKey) loadRatingsFor(state.currentContentKey);
