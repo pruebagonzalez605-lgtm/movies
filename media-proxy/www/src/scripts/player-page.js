@@ -36,6 +36,7 @@ const EXTERNAL_HEARTBEAT_MS = 5000;
 const dom = {
   status: document.getElementById("playerStatus"),
   video: document.getElementById("player"),
+  mediaSlot: document.getElementById("mediaSlot"),
   related: document.getElementById("playerRelated"),
   collectionTitle: document.getElementById("playerCollectionTitle"),
   backLink: document.getElementById("playerBackLink"),
@@ -55,6 +56,9 @@ const dom = {
   qualityHint: document.getElementById("playerQualityHint"),
   castBtn: document.getElementById("castBtn"),
   downloadBtn: document.getElementById("downloadBtn"),
+  nextEpisodeOverlay: document.getElementById("nextEpisodeOverlay"),
+  nextEpisodeTitle: document.getElementById("nextEpisodeTitle"),
+  nextEpisodeBtn: document.getElementById("nextEpisodeBtn"),
 };
 
 const state = {
@@ -83,7 +87,16 @@ const state = {
   externalHeartbeat: null,
   externalMessageCleanup: null,
   externalMessageSeen: false,
+
+  // --- "Siguiente episodio" estilo Netflix (ver showNextEpisodeOverlay) ---
+  nextEpisodeTarget: null, // { serie, seasonNumber, episodeNumber, title } | null
+  nextEpisodeVisible: false,
 };
+
+// Cuanto antes del final (en segundos) aparece la tarjeta de siguiente
+// episodio. 20s alcanza para que el usuario la vea y pueda tocar OK sin
+// llegar a que termine el episodio actual.
+const NEXT_EPISODE_LEAD_SECONDS = 20;
 
 const boundVideoElements = new WeakSet();
 let globalEventsBound = false;
@@ -824,6 +837,7 @@ function bindExternalPlaybackTracking(contentKey) {
     state.externalMessageSeen = true;
     if (parsed.ended) {
       clearProgress(state.currentProgressKey);
+      if (state.nextEpisodeTarget) showNextEpisodeOverlay();
       return;
     }
     state.externalProgress = { time: parsed.time, duration: parsed.duration };
@@ -917,6 +931,15 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   state.currentQuality = initialQuality;
   state.autoQuality = true;
 
+  // Si el episodio/pelicula anterior en esta misma pagina cayo al fallback
+  // externo (ver mountExternalCandidate), #mediaSlot pudo haber quedado con
+  // el <video> desprendido del DOM (reemplazado por el <iframe>). Antes de
+  // usarlo de nuevo hay que devolverlo a #mediaSlot; si no, el video se
+  // reproduce "invisible" (nunca se ve, aunque el audio y los eventos si
+  // funcionen).
+  if (dom.video && dom.mediaSlot && dom.video.parentElement !== dom.mediaSlot) {
+    dom.mediaSlot.replaceChildren(...[dom.video, dom.nextEpisodeOverlay].filter(Boolean));
+  }
   configureVideoElement(dom.video, sources, tracks, initialQuality, poster);
   if (!state.playerUi) {
     const qualityOptions = [...new Set(sources.map((s) => Number(s.size)).filter(Number.isFinite))].sort((a, b) => b - a);
@@ -971,6 +994,89 @@ async function renderMoviePlayer(movie) {
   });
 }
 
+// --- "Siguiente episodio" estilo Netflix ---
+// Busca el episodio que sigue al actual: el proximo de la misma temporada,
+// o si este era el ultimo, el episodio 1 de la siguiente temporada que
+// tenga contenido disponible. Devuelve null si no hay nada mas (ultimo
+// episodio de la ultima temporada) para no mostrar la tarjeta en ese caso.
+async function findNextEpisodeTarget(serie, seasonNumber, episodeNumber, episodesInSeason) {
+  const nextInSeason = episodesInSeason[episodeNumber]; // indice = siguiente episodio (0-based)
+  if (nextInSeason) {
+    return {
+      serie,
+      seasonNumber,
+      episodeNumber: episodeNumber + 1,
+      title: nextInSeason.title || `Episodio ${episodeNumber + 1}`,
+    };
+  }
+
+  const sortedSeasons = [...serie.seasons].sort((a, b) => a.season - b.season);
+  const currentIndex = sortedSeasons.findIndex((item) => item.season === seasonNumber);
+  if (currentIndex === -1) return null;
+
+  for (let i = currentIndex + 1; i < sortedSeasons.length; i += 1) {
+    const nextSeason = sortedSeasons[i];
+    // eslint-disable-next-line no-await-in-loop
+    const nextSeasonEpisodes = await ensureSeasonEpisodes(serie, nextSeason);
+    if (nextSeasonEpisodes.length) {
+      return {
+        serie,
+        seasonNumber: nextSeason.season,
+        episodeNumber: 1,
+        title: nextSeasonEpisodes[0].title || "Episodio 1",
+      };
+    }
+  }
+
+  return null;
+}
+
+function hideNextEpisodeOverlay() {
+  if (!dom.nextEpisodeOverlay) return;
+  dom.nextEpisodeOverlay.hidden = true;
+  state.nextEpisodeVisible = false;
+}
+
+function showNextEpisodeOverlay() {
+  if (!dom.nextEpisodeOverlay || !state.nextEpisodeTarget) return;
+  if (state.nextEpisodeVisible) return; // ya esta visible, no reenfocar en cada tick
+  dom.nextEpisodeTitle.textContent = state.nextEpisodeTarget.title;
+  dom.nextEpisodeOverlay.hidden = false;
+  state.nextEpisodeVisible = true;
+  // Auto-foco: el pedido original es que alcance con tocar OK en el control
+  // remoto, sin tener que navegar hasta el boton primero.
+  dom.nextEpisodeBtn?.focus();
+}
+
+// Cambia de episodio SIN salir de player.html: en vez de armar un <a href>
+// que dispare una navegacion completa, actualizamos la URL (para que
+// compartir/recargar la pagina quede en el episodio correcto) y volvemos a
+// correr el mismo flujo de montaje que uso el episodio actual. mountPlayer
+// reusa el <video>/Plyr ya existentes (ver "if (!state.playerUi)"), asi que
+// no hay parpadeo de salir del reproductor ni se pierde el modo teatro de
+// la app de TV.
+async function playNextEpisode() {
+  const target = state.nextEpisodeTarget;
+  if (!target) return;
+  hideNextEpisodeOverlay();
+  const newUrl = buildEpisodePlayerUrl(target.serie, target.seasonNumber, target.episodeNumber);
+  window.history.replaceState({}, "", newUrl);
+  try {
+    await renderEpisodePlayer(target.serie, target.seasonNumber, target.episodeNumber);
+    // Mantiene sincronizado el panel de episodios (boton "Episodios"), que
+    // guarda su propio estado de temporada/episodio actual aparte.
+    currentSeasonNum = target.seasonNumber;
+    currentEpisodeNum = target.episodeNumber;
+    if (typeof loadSeasonEpisodesGrid === "function") {
+      renderSeasonDropdown(target.seasonNumber);
+      loadSeasonEpisodesGrid(target.seasonNumber);
+    }
+  } catch (err) {
+    playerConsole("error", "[next-episode] No se pudo cargar en el reproductor, navegando:", err);
+    window.location.href = newUrl;
+  }
+}
+
 async function renderEpisodePlayer(serie, seasonNumber, episodeNumber) {
   const season = serie.seasons.find((item) => item.season === seasonNumber);
   if (!season) throw new Error("season_not_found");
@@ -978,6 +1084,9 @@ async function renderEpisodePlayer(serie, seasonNumber, episodeNumber) {
   const episodes = await ensureSeasonEpisodes(serie, season);
   const episode = episodes[episodeNumber - 1];
   if (!episode) throw new Error("episode_not_found");
+
+  state.nextEpisodeTarget = await findNextEpisodeTarget(serie, seasonNumber, episodeNumber, episodes);
+  hideNextEpisodeOverlay();
 
   const poster = episode.poster || await resolveSeriesCardPoster(serie);
   const relatedEpisodes = episodes
@@ -1095,6 +1204,18 @@ function bindVideoEvents(video) {
 
   video.addEventListener("timeupdate", () => {
     if (!state.currentBaseSrc || !video.duration) return;
+
+    if (state.nextEpisodeTarget) {
+      const remaining = video.duration - video.currentTime;
+      if (remaining <= NEXT_EPISODE_LEAD_SECONDS) {
+        showNextEpisodeOverlay();
+      } else if (state.nextEpisodeVisible) {
+        // El usuario retrocedio (seek) lejos del final: ocultamos la
+        // tarjeta hasta que vuelva a estar cerca.
+        hideNextEpisodeOverlay();
+      }
+    }
+
     const now = Date.now();
     if (now - state.lastProgressSave < 5000) return;
     state.lastProgressSave = now;
@@ -1114,6 +1235,7 @@ function bindVideoEvents(video) {
 
   video.addEventListener("ended", () => {
     if (state.currentProgressKey) clearProgress(state.currentProgressKey);
+    if (state.nextEpisodeTarget) showNextEpisodeOverlay();
   });
 }
 
@@ -1287,6 +1409,8 @@ function bindEvents() {
   bindVideoEvents(syncActiveVideo());
   if (globalEventsBound) return;
   globalEventsBound = true;
+
+  dom.nextEpisodeBtn?.addEventListener("click", playNextEpisode);
 
   dom.qualitySelect?.addEventListener("change", () => {
     if (dom.qualitySelect.value === "auto") {
@@ -1581,6 +1705,12 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
     resetCastButton();
     resetDownloadButton();
     container.replaceChildren(iframe);
+    // replaceChildren() tambien borraria #nextEpisodeOverlay (vive dentro
+    // de #mediaSlot para quedar encima del video/iframe, ver player.html).
+    // Lo reinsertamos para que la tarjeta de "siguiente episodio" pueda
+    // seguir mostrandose aunque la fuente activa haya caido al fallback
+    // externo (godstream/hlswish/etc.).
+    if (dom.nextEpisodeOverlay) container.appendChild(dom.nextEpisodeOverlay);
   });
 }
 
