@@ -1151,6 +1151,21 @@ function bindVideoEvents(video) {
   video.addEventListener("loadedmetadata", () => {
     syncQualityFromVideo(video, !state.isRecovering);
     offerSavedProgress();
+    // App nativa de TV (APK): arrancamos el video sin gesto del usuario.
+    // Esto se dispara ACA (no en enterTvLockedTheaterMode) porque recien en
+    // este punto el <source> del episodio nuevo ya esta cargado; antes de
+    // esto el <video> podia seguir vacio (por ejemplo al pasar de un
+    // episodio a "Siguiente episodio"), y llamar a play() en ese momento no
+    // hacia nada, dejando el reproductor pausado sin forma de reanudarlo
+    // con el control remoto. Si hay progreso guardado, offerSavedProgress
+    // ya mostro el modal de "Continuar viendo" y es ese modal el que decide
+    // cuando arrancar la reproduccion, asi que no interferimos.
+    if (isNativeAppShell() && state.playbackMode === "video" && !state.resumePrompted) {
+      video.play().catch(() => {
+        // Si el dispositivo igual bloquea el autoplay, el usuario puede
+        // tocar play a mano con los controles normales de Plyr.
+      });
+    }
   });
 
   video.addEventListener("error", () => {
