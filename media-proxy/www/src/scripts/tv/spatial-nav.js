@@ -14,7 +14,12 @@
 const FOCUSABLE_SELECTOR = [
   "a[href]",
   "button:not([disabled])",
-  "input:not([disabled]):not([type='hidden'])",
+  // Excluimos type='range': son los sliders de progreso/volumen de Plyr.
+  // Navegarlos con el D-pad (moviendo el foco hasta ahi y despues usando
+  // izquierda/derecha para arrastrar de a poquito) es incomodo en TV. En su
+  // lugar, izquierda/derecha adelantan/retroceden directamente sin
+  // necesidad de enfocar nada (ver el keydown de player-page.js).
+  "input:not([disabled]):not([type='hidden']):not([type='range'])",
   "select:not([disabled])",
   "textarea:not([disabled])",
   "[tabindex]:not([tabindex='-1'])",
@@ -161,16 +166,6 @@ function handleDirectional(event) {
   // Dejar que los inputs de texto manejen sus propias flechas (cursor de texto).
   if (active && TEXT_ENTRY_TAGS.has(active.tagName)) return;
   if (active && active.tagName === "SELECT") return;
-
-  // Los sliders (barra de progreso y volumen de Plyr son <input type="range">)
-  // manejan izquierda/derecha para su propio seek/ajuste nativo, pero arriba/
-  // abajo deben poder sacar el foco del control. Si no, con un D-pad (que no
-  // tiene Tab) el foco queda atrapado ahi para siempre: cualquier flecha
-  // termina interpretada como "avanzar"/"retroceder" en vez de mover el foco
-  // a otro control.
-  if (active && active.tagName === "INPUT" && active.type === "range") {
-    if (direction === "left" || direction === "right") return;
-  }
 
   if (!active || active === document.body) {
     event.preventDefault();
