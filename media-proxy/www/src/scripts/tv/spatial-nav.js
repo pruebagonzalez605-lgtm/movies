@@ -47,8 +47,20 @@ function getOpenModalDialog() {
   return openModal.querySelector(".catalog-modal-dialog") || openModal;
 }
 
+// El menu hamburguesa (.site-nav) no usa las clases .catalog-modal, pero
+// necesita el mismo comportamiento: mientras esta abierto, el D-pad debe
+// quedar encerrado adentro (si no, el foco "se escapa" hacia el contenido
+// de la pagina de abajo y hay que recorrer todo el catalogo para volver).
+function getOpenSiteNav() {
+  return document.querySelector(".site-nav.is-open");
+}
+
+function getOpenOverlay() {
+  return getOpenModalDialog() || getOpenSiteNav();
+}
+
 function getScopeRoot() {
-  return getOpenModalDialog() || document;
+  return getOpenOverlay() || document;
 }
 
 function getFocusables(root = getScopeRoot()) {
@@ -132,7 +144,8 @@ function handleBack(event) {
 
   const openModal = document.querySelector(".catalog-modal.is-open");
   const openSearchDropdown = document.querySelector(".site-search-dropdown.is-open");
-  if (!openModal && !openSearchDropdown) return;
+  const openSiteNav = getOpenSiteNav();
+  if (!openModal && !openSearchDropdown && !openSiteNav) return;
 
   event.preventDefault();
   // Reutiliza el cierre ya implementado en cada pagina, que escucha "Escape".
@@ -173,11 +186,11 @@ function handleDirectional(event) {
   }
 }
 
-function observeModal(modalEl) {
+function observeOverlay(overlayEl, dialogSelector) {
   const observer = new MutationObserver(() => {
-    if (modalEl.classList.contains("is-open")) {
+    if (overlayEl.classList.contains("is-open")) {
       lastFocusedBeforeModal = document.activeElement;
-      const dialog = modalEl.querySelector(".catalog-modal-dialog") || modalEl;
+      const dialog = (dialogSelector && overlayEl.querySelector(dialogSelector)) || overlayEl;
       const [firstFocusable] = getFocusables(dialog);
       if (firstFocusable) {
         firstFocusable.focus();
@@ -190,11 +203,14 @@ function observeModal(modalEl) {
       lastFocusedBeforeModal = null;
     }
   });
-  observer.observe(modalEl, { attributes: true, attributeFilter: ["class"] });
+  observer.observe(overlayEl, { attributes: true, attributeFilter: ["class"] });
 }
 
 function watchForModals() {
-  document.querySelectorAll(".catalog-modal").forEach(observeModal);
+  document.querySelectorAll(".catalog-modal").forEach((el) => observeOverlay(el, ".catalog-modal-dialog"));
+  // El menu hamburguesa (.site-nav) tambien necesita que el foco entre al
+  // primer link apenas se abre, igual que un modal.
+  document.querySelectorAll(".site-nav").forEach((el) => observeOverlay(el));
 
   // El modal del catalogo se crea de forma perezosa (al abrirlo la primera
   // vez), asi que tambien observamos si aparece mas adelante.
@@ -202,7 +218,7 @@ function watchForModals() {
     for (const mutation of mutations) {
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1 && node.classList && node.classList.contains("catalog-modal")) {
-          observeModal(node);
+          observeOverlay(node, ".catalog-modal-dialog");
         }
       });
     }
