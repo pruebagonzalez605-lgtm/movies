@@ -1794,19 +1794,25 @@ async function mountDirectStream(container, streamUrl) {
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
         state._hls = hls;
-        await new Promise((resolve) => {
-          const t = window.setTimeout(resolve, 8000);
+        const okManifest = await new Promise((resolve) => {
+          const t = window.setTimeout(() => resolve(false), 10000);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             window.clearTimeout(t);
-            resolve();
+            resolve(true);
           });
           hls.on(Hls.Events.ERROR, (_, data) => {
+            playerConsole("warn", "[hls] error", data?.type, data?.details, data?.response?.code);
             if (data?.fatal) {
               window.clearTimeout(t);
-              resolve();
+              resolve(false);
             }
           });
         });
+        if (!okManifest) {
+          try { hls.destroy(); } catch (_) {}
+          state._hls = null;
+          throw new Error("hls_manifest_failed");
+        }
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = streamUrl;
       } else {
@@ -1834,17 +1840,25 @@ async function mountDirectStream(container, streamUrl) {
 }
 
 
-function viaHlsProxy(streamUrl) {
+function viaHlsProxy(streamUrl, embedUrl = null) {
   const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
   if (!proxyBase || !streamUrl) return streamUrl;
-  if (streamUrl.includes("/proxy-hls?")) return streamUrl;
+  if (streamUrl.includes("/proxy-hls?")) {
+    // Asegurar param embed si falta
+    if (embedUrl && !streamUrl.includes("embed=")) {
+      return `${streamUrl}&embed=${encodeURIComponent(embedUrl)}`;
+    }
+    return streamUrl;
+  }
   try {
     const u = new URL(streamUrl);
     if (u.hostname.includes("workers.dev") || u.hostname === "github.com") return streamUrl;
   } catch {
     return streamUrl;
   }
-  return `${proxyBase}/proxy-hls?url=${encodeURIComponent(streamUrl)}`;
+  let out = `${proxyBase}/proxy-hls?url=${encodeURIComponent(streamUrl)}`;
+  if (embedUrl) out += `&embed=${encodeURIComponent(embedUrl)}`;
+  return out;
 }
 
 async function resolveEmbedStream(embedUrl) {
@@ -1862,17 +1876,15 @@ async function resolveEmbedStream(embedUrl) {
         return null;
       }
       const data = await res.json();
-      // Preferir stream crudo y envolver SIEMPRE con proxy-hls en el cliente
-      // (así funciona aunque el worker aún no devuelva "proxied").
       const rawStream = data?.stream || null;
       if (rawStream && /^https:\/\//i.test(rawStream)) {
-        const finalUrl = viaHlsProxy(rawStream);
+        const finalUrl = viaHlsProxy(rawStream, embedUrl);
         playerConsole("info", "[resolve-stream] stream:", rawStream);
         playerConsole("info", "[resolve-stream] proxied:", finalUrl);
         return finalUrl;
       }
       if (data?.proxied && /^https:\/\//i.test(data.proxied)) {
-        return data.proxied;
+        return viaHlsProxy(data.proxied, embedUrl);
       }
       return null;
     } finally {

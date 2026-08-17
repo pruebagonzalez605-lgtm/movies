@@ -351,7 +351,7 @@ async function handleResolveStream(request, env, requestUrl) {
 
   // Devolvemos también la URL ya proxificada para que el cliente no pegue al CDN directo.
   const proxyBase = new URL(request.url).origin;
-  const proxied = `${proxyBase}/proxy-hls?url=${encodeURIComponent(stream)}`;
+  const proxied = `${proxyBase}/proxy-hls?url=${encodeURIComponent(stream)}&embed=${encodeURIComponent(embedUrl.href)}`;
 
   return jsonResponse(request, env, 200, {
     stream,
@@ -375,29 +375,64 @@ async function handleProxyHls(request, env, requestUrl) {
     return jsonResponse(request, env, 400, error.message);
   }
 
-  const headers = buildUpstreamHeaders(request);
-  // Referer/Origin del ecosistema del CDN (hotlink protection)
-  let referer = "https://vimeos.net/";
-  let origin = "https://vimeos.net";
-  const host = upstreamUrl.hostname.toLowerCase();
-  if (host.includes("goodstream")) {
-    referer = "https://goodstream.one/";
-    origin = "https://goodstream.one";
-  } else if (host.includes("hlswish")) {
-    referer = "https://hlswish.com/";
-    origin = "https://hlswish.com";
-  } else if (host.includes("vimeos")) {
-    referer = "https://vimeos.net/";
-    origin = "https://vimeos.net";
+  // Embed opcional: visita previa para cookies / contexto de hotlink
+  let embedReferer = "https://vimeos.net/";
+  let embedOrigin = "https://vimeos.net";
+  let cookieHeader = "";
+  const embedParam = requestUrl.searchParams.get("embed");
+  if (embedParam) {
+    try {
+      const embedUrl = validateEmbedUrl(embedParam);
+      embedReferer = embedUrl.href;
+      embedOrigin = embedUrl.origin;
+      const embedRes = await fetch(embedUrl.href, {
+        method: "GET",
+        redirect: "follow",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+        },
+      });
+      // Workers: getSetCookie() si existe
+      const setCookies = typeof embedRes.headers.getSetCookie === "function"
+        ? embedRes.headers.getSetCookie()
+        : [];
+      if (setCookies.length) {
+        cookieHeader = setCookies.map((c) => c.split(";")[0]).join("; ");
+      } else {
+        const sc = embedRes.headers.get("set-cookie");
+        if (sc) cookieHeader = sc.split(",").map((p) => p.split(";")[0].trim()).join("; ");
+      }
+      // consumir body para no colgar
+      try { await embedRes.arrayBuffer(); } catch (_) {}
+    } catch (_) {
+      // seguir sin cookies
+    }
+  } else {
+    const host = upstreamUrl.hostname.toLowerCase();
+    if (host.includes("goodstream")) {
+      embedReferer = "https://goodstream.one/";
+      embedOrigin = "https://goodstream.one";
+    } else if (host.includes("hlswish")) {
+      embedReferer = "https://hlswish.com/";
+      embedOrigin = "https://hlswish.com";
+    }
   }
-  headers.set("Referer", referer);
-  headers.set("Origin", origin);
+
+  const headers = buildUpstreamHeaders(request);
+  headers.set("Referer", embedReferer);
+  // Algunos CDN 403 si Origin no es el esperado; otros 403 si viene.
+  // Probamos con Origin del embed.
+  headers.set("Origin", embedOrigin);
   headers.set(
     "Accept",
     upstreamUrl.pathname.includes(".m3u8")
       ? "application/vnd.apple.mpegurl,application/x-mpegURL,*/*;q=0.8"
       : "*/*",
   );
+  if (cookieHeader) headers.set("Cookie", cookieHeader);
 
   let upstreamResponse;
   try {
@@ -410,6 +445,28 @@ async function handleProxyHls(request, env, requestUrl) {
     return jsonResponse(request, env, 502, "hls_upstream_unavailable");
   }
 
+  // Si 403, reintentar sin Origin (solo Referer)
+  if (upstreamResponse.status === 403) {
+    try {
+      const headers2 = buildUpstreamHeaders(request);
+      headers2.set("Referer", embedReferer);
+      headers2.set(
+        "Accept",
+        upstreamUrl.pathname.includes(".m3u8")
+          ? "application/vnd.apple.mpegurl,application/x-mpegURL,*/*;q=0.8"
+          : "*/*",
+      );
+      if (cookieHeader) headers2.set("Cookie", cookieHeader);
+      upstreamResponse = await fetch(upstreamUrl.href, {
+        method: request.method,
+        headers: headers2,
+        redirect: "follow",
+      });
+    } catch {
+      return jsonResponse(request, env, 502, "hls_upstream_unavailable");
+    }
+  }
+
   const proxyBase = new URL(request.url).origin;
   const contentType = (upstreamResponse.headers.get("Content-Type") || "").toLowerCase();
   const isPlaylist =
@@ -417,9 +474,30 @@ async function handleProxyHls(request, env, requestUrl) {
     || contentType.includes("mpegurl")
     || contentType.includes("m3u8");
 
-  if (isPlaylist && request.method === "GET") {
-    const text = await upstreamResponse.text();
-    const rewritten = rewriteM3u8(text, upstreamUrl.href, proxyBase);
+  if (isPlaylist && request.method === "GET" && upstreamResponse.ok) {
+    const textBody = await upstreamResponse.text();
+    // Reescribir conservando embed en las URLs hijas
+    const embedQ = embedParam ? `&embed=${encodeURIComponent(embedParam)}` : "";
+    const rewritten = textBody.split("\n").map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) {
+        return line.replace(/URI="([^"]+)"/gi, (_, uri) => {
+          try {
+            const abs = new URL(uri, upstreamUrl).href;
+            return `URI="${proxyBase}/proxy-hls?url=${encodeURIComponent(abs)}${embedQ}"`;
+          } catch {
+            return `URI="${uri}"`;
+          }
+        });
+      }
+      try {
+        const abs = new URL(trimmed, upstreamUrl).href;
+        return `${proxyBase}/proxy-hls?url=${encodeURIComponent(abs)}${embedQ}`;
+      } catch {
+        return line;
+      }
+    }).join("\n");
+
     const outHeaders = new Headers();
     for (const [name, value] of Object.entries(corsHeaders(request, env))) {
       outHeaders.set(name, value);
@@ -427,10 +505,9 @@ async function handleProxyHls(request, env, requestUrl) {
     outHeaders.set("Content-Type", "application/vnd.apple.mpegurl; charset=utf-8");
     outHeaders.set("Cache-Control", "no-store");
     outHeaders.set("X-Content-Type-Options", "nosniff");
-    return new Response(rewritten, { status: upstreamResponse.status, headers: outHeaders });
+    return new Response(rewritten, { status: 200, headers: outHeaders });
   }
 
-  // Segmentos .ts / keys / audio: pipe
   const outHeaders = new Headers(upstreamResponse.headers);
   outHeaders.delete("Set-Cookie");
   for (const [name, value] of Object.entries(corsHeaders(request, env))) {
