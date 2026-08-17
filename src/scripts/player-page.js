@@ -1776,8 +1776,7 @@ function preferSpanishAudio(hls) {
     return false;
   }
   const tracks = hls.audioTracks;
-  playerConsole(
-    "info",
+  console.info(
     "[hls] pistas de audio:",
     tracks.map((t, i) => ({
       i,
@@ -1788,23 +1787,58 @@ function preferSpanishAudio(hls) {
   );
 
   const isEs = (t) => {
-    const lang = String(t.lang || t.language || "").toLowerCase();
+    const lang = String(t.lang || t.language || "").toLowerCase().trim();
     const name = String(t.name || "").toLowerCase();
     return (
-      lang.startsWith("es")
-      || /espa[nñ]ol|spanish|latino|castellano|dual.?es/.test(name)
+      // ISO 639-1 ("es", "es-419", "es-MX"...)
+      lang === "es" || lang.startsWith("es-")
+      // ISO 639-2/B ("spa"), muy comun en streams remuxeados con ffmpeg
+      || lang === "spa" || lang.startsWith("spa-") || lang.startsWith("spa_")
+      || /(^|[^a-z])espa[nñ]ol|spanish|latino|castellano|dual.?es(?![a-z])/.test(name)
     );
   };
 
-  // 1) default marcado español  2) cualquier es  3) no tocar
+  // Si hay mas de una pista y ninguna quedo identificada como ingles/otro
+  // idioma reconocible, asumimos que el proveedor uso codigos no estandar
+  // (p. ej. "aud1"/"aud2") y preferimos evitar tocar nada para no romper
+  // el audio que el usuario ya esta escuchando.
+  const isEn = (t) => {
+    const lang = String(t.lang || t.language || "").toLowerCase().trim();
+    const name = String(t.name || "").toLowerCase();
+    return (
+      lang === "en" || lang.startsWith("en-")
+      || lang === "eng" || lang.startsWith("eng-") || lang.startsWith("eng_")
+      || /(^|[^a-z])ingl[eé]s|english(?![a-z])/.test(name)
+    );
+  };
+
+  // 1) default marcado español  2) cualquier es  3) heurística por descarte
+  // 4) no tocar
   let idx = tracks.findIndex((t) => isEs(t) && (t.default === true || t.default === "yes"));
   if (idx < 0) idx = tracks.findIndex(isEs);
+  if (idx < 0 && tracks.length > 1) {
+    // El proveedor no etiquetó el idioma con un código/nombre reconocible
+    // (pasa con algunos remuxes: "aud1"/"aud2" sin lang). Si exactamente
+    // una pista es identificable como inglés, asumimos que la(s) otra(s)
+    // es el doblaje y la probamos: es mejor apuesta que quedarse en inglés.
+    const englishTracks = tracks.filter(isEn);
+    const nonEnglish = tracks.filter((t) => !isEn(t));
+    if (englishTracks.length && nonEnglish.length === 1) {
+      idx = tracks.indexOf(nonEnglish[0]);
+      playerConsole("info", "[hls] sin lang explicito, usando pista no-ingles por descarte");
+    }
+  }
   if (idx < 0) {
-    playerConsole("warn", "[hls] no hay pista en español");
+    console.warn(
+      "[hls] no se encontró pista en español entre",
+      tracks.length,
+      "pista(s):",
+      tracks.map((t) => t.lang || t.language || t.name || "?").join(", "),
+    );
     return false;
   }
   if (hls.audioTrack !== idx) {
-    playerConsole("info", "[hls] forzando audio ES →", idx, tracks[idx]?.name || tracks[idx]?.lang);
+    console.info("[hls] forzando audio ES →", idx, tracks[idx]?.name || tracks[idx]?.lang);
     try {
       hls.audioTrack = idx;
     } catch (e) {
@@ -1815,8 +1849,67 @@ function preferSpanishAudio(hls) {
   return true;
 }
 
+const AUDIO_SELECTOR_ID = "playerAudioTrackSelector";
+
+function removeAudioTrackSelector() {
+  document.getElementById(AUDIO_SELECTOR_ID)?.remove();
+}
+
+// Selector manual de pista de audio: se muestra apenas hls.js reporta 2+
+// pistas, sin importar si la deteccion automatica de idioma (preferSpanishAudio)
+// acerto o no. Es el fallback definitivo para proveedores que etiquetan mal
+// (o no etiquetan) el idioma en el manifest.
+function showAudioTrackSelector(hls) {
+  if (!hls || !Array.isArray(hls.audioTracks) || hls.audioTracks.length < 2) {
+    removeAudioTrackSelector();
+    return;
+  }
+  const tracks = hls.audioTracks;
+
+  const existing = document.getElementById(AUDIO_SELECTOR_ID);
+  const wrap = existing || document.createElement("div");
+  wrap.id = AUDIO_SELECTOR_ID;
+  wrap.style.cssText =
+    "display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;";
+  wrap.innerHTML = "";
+
+  const labelSpan = document.createElement("span");
+  labelSpan.textContent = "Audio:";
+  labelSpan.style.cssText = "color:#9a9a9a;font-size:14px;";
+  wrap.appendChild(labelSpan);
+
+  tracks.forEach((t, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const rawLabel = t.name || t.lang || t.language || `Pista ${i + 1}`;
+    btn.textContent = rawLabel;
+    const active = hls.audioTrack === i;
+    btn.style.cssText =
+      "cursor:pointer;border-radius:6px;padding:4px 10px;font-size:13px;"
+      + (active
+        ? "background:#e8c468;color:#1a1a1a;border:1px solid #e8c468;font-weight:600;"
+        : "background:transparent;color:#e8c468;border:1px solid #e8c468;");
+    btn.addEventListener("click", () => {
+      if (hls.audioTrack === i) return;
+      try {
+        hls.audioTrack = i;
+        console.info("[hls] audio elegido manualmente →", i, rawLabel);
+      } catch (e) {
+        playerConsole("warn", "[hls] no se pudo cambiar audioTrack manualmente", e);
+      }
+      showAudioTrackSelector(hls);
+    });
+    wrap.appendChild(btn);
+  });
+
+  if (!existing) {
+    dom.status.insertAdjacentElement("afterend", wrap);
+  }
+}
+
 async function mountDirectStream(container, streamUrl) {
   stopExternalTracking();
+  removeAudioTrackSelector();
   if (state._hls) {
     try { state._hls.destroy(); } catch (_) {}
     state._hls = null;
@@ -1826,9 +1919,17 @@ async function mountDirectStream(container, streamUrl) {
   state.playbackMode = "video";
   state.currentBaseSrc = streamUrl;
   state.currentOriginalSrc = streamUrl;
+  // Deteccion de HLS mas tolerante: antes exigiamos que la URL *terminara*
+  // en ".m3u8" o ".m3u8?...", pero streams que llegan envueltos (proxy,
+  // parametros extra tipo "&embed=...") no matcheaban y el reproductor
+  // caia silenciosamente a <video src> nativo (sin hls.js, sin seleccion
+  // de audio, sin logs). Ahora basta con que ".m3u8" aparezca en algun
+  // punto de la URL.
+  const looksLikeHls = /\.m3u8/i.test(streamUrl);
+  console.info("[direct-stream] montando:", streamUrl, "→", looksLikeHls ? "HLS (hls.js)" : "video directo (mp4/nativo)");
   state.availableSources = [{
     src: streamUrl,
-    type: /\.m3u8(\?|$)/i.test(streamUrl) ? "application/x-mpegURL" : "video/mp4",
+    type: looksLikeHls ? "application/x-mpegURL" : "video/mp4",
     size: 1080,
   }];
   state.currentQuality = 1080;
@@ -1851,7 +1952,7 @@ async function mountDirectStream(container, streamUrl) {
   resetCastButton();
   resetDownloadButton();
 
-  if (/\.m3u8(\?|$)/i.test(streamUrl)) {
+  if (looksLikeHls) {
     try {
       const Hls = await loadHlsScript();
       if (Hls?.isSupported()) {
@@ -1881,9 +1982,13 @@ async function mountDirectStream(container, streamUrl) {
             playerConsole("info", "[hls] manifest ok, esperando fragmento...");
             preferSpanishAudio(hls);
           });
-          hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => preferSpanishAudio(hls));
+          hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+            preferSpanishAudio(hls);
+            showAudioTrackSelector(hls);
+          });
           hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_, data) => {
-            playerConsole("info", "[hls] audio switched →", data);
+            console.info("[hls] audio switched →", data);
+            showAudioTrackSelector(hls);
           });
           hls.on(Hls.Events.ERROR, (_, data) => {
             const code = data?.response?.code;
@@ -1899,6 +2004,7 @@ async function mountDirectStream(container, streamUrl) {
           throw new Error("hls_playback_failed");
         }
         preferSpanishAudio(hls);
+        showAudioTrackSelector(hls);
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = streamUrl;
         // Safari nativo: timeout corto si no arranca
@@ -2226,6 +2332,7 @@ async function tryHlsWishFallback(showMessage = true) {
 
   container.style.cssText = "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
   removeExternalRetryLink();
+  removeAudioTrackSelector();
   if (state._hls) {
     try { state._hls.destroy(); } catch (_) {}
     state._hls = null;
