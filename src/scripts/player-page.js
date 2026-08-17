@@ -1,5 +1,5 @@
 import { createSupabaseService } from "./services/supabase.js";
-import { resolveMediaUrl } from "./config/media.js";
+import { resolveMediaUrl, MEDIA_CONFIG } from "./config/media.js";
 import { tmdbFindTvId } from "./services/tmdb.js";
 import {
   buildEpisodePlayerUrl,
@@ -1663,6 +1663,12 @@ function isExternalEmbedUrl(url, domains, pathPattern) {
 
 const EXTERNAL_PROVIDERS = [
   {
+    name: "HLSWish",
+    label: "Reproduciendo con Metodo 2",
+    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
+    assumeMountedAfterMs: 3000,
+  },
+  {
     name: "Vimeos",
     label: "Reproduciendo con Metodo 3",
     match: (url) => isExternalEmbedUrl(url, VIMEOS_MIRROR_DOMAINS, /^\/embed-/),
@@ -1673,13 +1679,188 @@ const EXTERNAL_PROVIDERS = [
     label: "Reproduciendo con Metodo 3",
     match: (url) => isExternalEmbedUrl(url, GOODSTREAM_MIRROR_DOMAINS, /^\/embed-/),
   },
-  {
-    name: "HLSWish",
-    label: "Reproduciendo con Metodo 2",
-    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
-    assumeMountedAfterMs: 3000,
-  },
 ];
+
+const STREAM_AD_HINT =
+  /preroll|midroll|postroll|aviator|\bad\b|ads?[._/-]|advert|publicidad|promo|vast|ima|betwinner|anuncio/i;
+
+const HLS_JS_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js";
+
+function isPlayableStreamUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    return /\.m3u8(\?|$)/i.test(u.pathname + u.search) || /\.mp4(\?|$)/i.test(u.pathname + u.search);
+  } catch {
+    return false;
+  }
+}
+
+function isCleanStreamUrl(url) {
+  return isPlayableStreamUrl(url) && !STREAM_AD_HINT.test(url);
+}
+
+/** Recorre el JSON de vimeus y junta posibles streams directos (no embeds de player). */
+function collectDirectStreams(data) {
+  const found = [];
+  const seen = new Set();
+
+  function walk(obj) {
+    if (typeof obj === "string") {
+      if (isCleanStreamUrl(obj) && !seen.has(obj)) {
+        seen.add(obj);
+        found.push(obj);
+      }
+      return;
+    }
+    if (Array.isArray(obj)) {
+      obj.forEach(walk);
+      return;
+    }
+    if (obj && typeof obj === "object") {
+      for (const key of ["file", "src", "source", "url", "stream", "hls", "link", "video"]) {
+        if (typeof obj[key] === "string") walk(obj[key]);
+      }
+      Object.values(obj).forEach(walk);
+    }
+  }
+
+  walk(data);
+  found.sort((a, b) => Number(/\.m3u8/i.test(b)) - Number(/\.m3u8/i.test(a)));
+  return found;
+}
+
+function loadHlsScript() {
+  if (window.Hls) return Promise.resolve(window.Hls);
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${HLS_JS_SRC}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.Hls), { once: true });
+      existing.addEventListener("error", () => reject(new Error("hls_load_failed")), { once: true });
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = HLS_JS_SRC;
+    s.onload = () => resolve(window.Hls);
+    s.onerror = () => reject(new Error("hls_load_failed"));
+    document.head.appendChild(s);
+  });
+}
+
+/**
+ * Reproduce un stream directo en #mediaSlot con <video> (+ hls.js si hace falta).
+ * Evita el iframe del proveedor y por tanto el preroll de JWPlayer.
+ */
+async function mountDirectStream(container, streamUrl) {
+  stopExternalTracking();
+  if (state._hls) {
+    try { state._hls.destroy(); } catch (_) {}
+    state._hls = null;
+  }
+
+  state.playbackMode = "video";
+  state.currentBaseSrc = streamUrl;
+  state.currentOriginalSrc = streamUrl;
+  state.availableSources = [{
+    src: streamUrl,
+    type: /\.m3u8(\?|$)/i.test(streamUrl) ? "application/x-mpegURL" : "video/mp4",
+    size: 1080,
+  }];
+  state.currentQuality = 1080;
+
+  const video = document.createElement("video");
+  video.id = "player";
+  video.className = "plyr-video";
+  video.controls = true;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000;";
+
+  container.style.cssText =
+    "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
+  container.replaceChildren(video);
+  if (dom.nextEpisodeOverlay) container.appendChild(dom.nextEpisodeOverlay);
+
+  dom.video = video;
+  hideAdblockHint();
+  resetCastButton();
+  resetDownloadButton();
+
+  if (/\.m3u8(\?|$)/i.test(streamUrl)) {
+    try {
+      const Hls = await loadHlsScript();
+      if (Hls?.isSupported()) {
+        const hls = new Hls({ enableWorker: true });
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        state._hls = hls;
+        await new Promise((resolve) => {
+          const t = window.setTimeout(resolve, 8000);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            window.clearTimeout(t);
+            resolve();
+          });
+          hls.on(Hls.Events.ERROR, (_, data) => {
+            if (data?.fatal) {
+              window.clearTimeout(t);
+              resolve();
+            }
+          });
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = streamUrl;
+      } else {
+        throw new Error("hls_unsupported");
+      }
+    } catch (e) {
+      playerConsole("warn", "[direct-stream] HLS fallo:", e);
+      video.src = streamUrl;
+    }
+  } else {
+    video.src = streamUrl;
+  }
+
+  bindVideoEvents(video);
+  try {
+    await video.play();
+  } catch {
+    // Autoplay bloqueado: el usuario usa controles.
+  }
+
+  bindCastButtonForActiveVideo();
+  resetDownloadButton();
+  setTimeout(offerSavedProgress, 600);
+  return true;
+}
+
+
+async function resolveEmbedStream(embedUrl) {
+  try {
+    const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
+    if (!proxyBase) return null;
+
+    const endpoint = `${proxyBase}/resolve-stream?url=${encodeURIComponent(embedUrl)}`;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 10000);
+    try {
+      const res = await fetch(endpoint, { signal: controller.signal });
+      if (!res.ok) {
+        playerConsole("warn", "[resolve-stream] HTTP", res.status);
+        return null;
+      }
+      const data = await res.json();
+      if (data?.stream && /^https:\/\//i.test(data.stream) && /\.m3u8(\?|$)/i.test(data.stream)) {
+        return data.stream;
+      }
+      return null;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  } catch (e) {
+    playerConsole("warn", "[resolve-stream] fallo:", e);
+    return null;
+  }
+}
 
 // Recolecta TODOS los links de embed encontrados en el JSON (no solo el
 // primero), agrupados por proveedor, respetando el orden de EXTERNAL_PROVIDERS.
@@ -1782,7 +1963,11 @@ const ADBLOCK_HINT_ID = "adblockHint";
 
 function showAdblockHint() {
   const el = document.getElementById(ADBLOCK_HINT_ID);
-  if (el) el.hidden = false;
+  if (!el) return;
+  el.hidden = false;
+  el.innerHTML =
+    "Esta fuente del proveedor puede incluir anuncios. " +
+    "Colevana prioriza fuente local y streams directos cuando existen para evitarlos.";
 }
 
 function hideAdblockHint() {
@@ -1832,10 +2017,13 @@ async function fetchExternalCandidates(embedInfo) {
     if (!script) throw new Error("No data");
 
     const data = JSON.parse(script.textContent);
-    return collectExternalCandidates(data);
+    const directStreams = collectDirectStreams(data);
+    const embedCandidates = collectExternalCandidates(data);
+    playerConsole("info", "[external-player] streams directos:", directStreams);
+    return { directStreams, embedCandidates };
   } catch (e) {
     playerConsole("error", "Error obteniendo candidatos externos:", e);
-    return [];
+    return { directStreams: [], embedCandidates: [] };
   }
 }
 
@@ -1846,12 +2034,7 @@ async function tryHlsWishFallback(showMessage = true) {
     return false;
   }
 
-  // FIX: antes se usaba document.querySelector(".screen-frame"), que tambien
-  // contiene el boton #toggleEpisodeBtn y el panel #episodeGridContainer.
-  // container.replaceChildren(iframe) los borraba junto con el video, por
-  // lo que el menu de episodios desaparecia al caer al Metodo 2 / 3.
-  // Ahora el reemplazo queda acotado al slot del video (#mediaSlot, ver
-  // player.html), y el boton + panel de episodios quedan intactos.
+  // FIX: el reemplazo queda acotado a #mediaSlot para no borrar el menu de episodios.
   const container = document.getElementById("mediaSlot");
   if (!container) {
     if (showMessage) dom.status.textContent = "No se pudo cargar alternativa externa.";
@@ -1860,30 +2043,87 @@ async function tryHlsWishFallback(showMessage = true) {
 
   container.style.cssText = "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
   removeExternalRetryLink();
+  if (state._hls) {
+    try { state._hls.destroy(); } catch (_) {}
+    state._hls = null;
+  }
 
-  let candidates = await fetchExternalCandidates(embedInfo);
-  let index = 0;
+  let { directStreams, embedCandidates } = await fetchExternalCandidates(embedInfo);
+  let streamIndex = 0;
+  let embedIndex = 0;
 
   const tryNextCandidate = async () => {
-    if (index >= candidates.length) {
-      // Se agotaron los candidatos conocidos: en vez de dejar al usuario
-      // sin salida, permitimos volver a consultar vimeus.com por si esta
-      // vez responde con otro resultado.
+    // 1) Streams directos primero → <video> propio → sin preroll del host
+    while (streamIndex < directStreams.length) {
+      const streamUrl = directStreams[streamIndex];
+      streamIndex += 1;
+      playerConsole("info", "[external-player] probando stream directo:", streamUrl);
+      if (showMessage) {
+        dom.status.textContent = "Reproduciendo fuente limpia...";
+        dom.status.style.color = "#e8c468";
+      }
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const ok = await mountDirectStream(container, streamUrl);
+        if (ok) {
+          showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
+            dom.status.textContent = "Probando otra fuente...";
+            await tryNextCandidate();
+          });
+          return true;
+        }
+      } catch (e) {
+        playerConsole("warn", "[direct-stream] fallo:", e);
+      }
+    }
+
+    // 2) Fallback a embeds (pueden incluir anuncios del proveedor)
+    if (embedIndex >= embedCandidates.length) {
       if (showMessage) dom.status.textContent = "No se pudo cargar ninguna alternativa externa.";
       showExternalRetryLink("Reintentar búsqueda de fuentes", async () => {
         dom.status.textContent = "Buscando fuentes de nuevo...";
-        candidates = await fetchExternalCandidates(embedInfo);
-        index = 0;
+        ({ directStreams, embedCandidates } = await fetchExternalCandidates(embedInfo));
+        streamIndex = 0;
+        embedIndex = 0;
         await tryNextCandidate();
       });
       return false;
     }
-    const candidate = candidates[index];
-    index += 1;
-    playerConsole("info", "[external-player] probando candidato:", {
+
+    const candidate = embedCandidates[embedIndex];
+    embedIndex += 1;
+    playerConsole("info", "[external-player] probando embed:", {
       provider: candidate.provider.name,
       url: candidate.url,
     });
+
+    // Intentar extraer m3u8 limpio vía Worker (sin iframe = sin preroll)
+    if (showMessage) {
+      dom.status.textContent = "Resolviendo stream limpio...";
+      dom.status.style.color = "#e8c468";
+    }
+    // eslint-disable-next-line no-await-in-loop
+    const cleanStream = await resolveEmbedStream(candidate.url);
+    if (cleanStream) {
+      playerConsole("info", "[external-player] stream resuelto:", cleanStream);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const okDirect = await mountDirectStream(container, cleanStream);
+        if (okDirect) {
+          if (showMessage) {
+            dom.status.textContent = "Reproduciendo fuente limpia...";
+            dom.status.style.color = "#e8c468";
+          }
+          showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
+            dom.status.textContent = "Probando otra fuente...";
+            await tryNextCandidate();
+          });
+          return true;
+        }
+      } catch (e) {
+        playerConsole("warn", "[direct-stream] stream resuelto fallo:", e);
+      }
+    }
 
     // eslint-disable-next-line no-await-in-loop
     const ok = await mountExternalCandidate(container, candidate);
