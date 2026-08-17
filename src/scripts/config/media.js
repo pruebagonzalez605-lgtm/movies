@@ -1,7 +1,7 @@
 export const MEDIA_CONFIG = {
   // Ejemplo: "https://colevana-media.tu-usuario.workers.dev"
   // Dejalo vacio para usar GitHub Releases directamente.
-  proxyBaseUrl: "https://colevana-media.tall-aristosuchus.workers.dev",
+  proxyBaseUrl: "https://colevana-media.colevana.workers.dev",
 };
 
 export function resolveMediaUrl(src) {

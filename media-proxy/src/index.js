@@ -14,7 +14,39 @@ const EMBED_HOSTS = new Set([
   "www.goodstream.one",
   "hlswish.com",
   "www.hlswish.com",
+  "vimeus.com",
+  "www.vimeus.com",
 ]);
+
+/**
+ * CDNs de video permitidos para /proxy-hls (anti open-proxy).
+ * Incluye hosts vistos en embeds Vimeos / GoodStream / HLSWish.
+ */
+function isAllowedHlsHost(hostname) {
+  const h = String(hostname || "").toLowerCase();
+  if (!h) return false;
+
+  // Dominios base y cualquier subdominio (s12.vimeos.net, p2.vimeos.zip, etc.)
+  const baseDomains = [
+    "vimeos.net",
+    "vimeos.zip",
+    "goodstream.one",
+    "hlswish.com",
+    "vimeus.com",
+    "lamovie.link",
+    "ggpick.com",
+  ];
+  for (const d of baseDomains) {
+    if (h === d || h.endsWith("." + d)) return true;
+  }
+
+  // Patrones frecuentes de CDN de estos hosts
+  if (/^s\d+\./.test(h) && h.includes("vimeos")) return true;
+  if (/^p\d+\./.test(h) && h.includes("vimeos")) return true;
+  if (h.includes("vimeos") || h.includes("goodstream") || h.includes("hlswish")) return true;
+
+  return false;
+}
 
 const STREAM_AD_HINT =
   /preroll|midroll|postroll|aviator|\bad\b|ads?[._/-]|advert|publicidad|promo|vast|ima|betwinner|anuncio/i;
@@ -78,7 +110,6 @@ export function validateUpstream(rawUrl, env) {
 
   if (!isReleaseAsset) throw new Error("forbidden_url");
 
-  // Release assets do not need query parameters. Remove them to keep the cache key stable.
   url.search = "";
   url.hash = "";
   return url;
@@ -101,7 +132,24 @@ export function validateEmbedUrl(rawUrl) {
   return url;
 }
 
-/** Dean Edwards / JW packer: eval(function(p,a,c,k,e,d){...}('p',a,c,'k0|k1'.split('|'))) */
+export function validateHlsUpstream(rawUrl) {
+  if (!rawUrl) throw new Error("missing_hls_url");
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error("invalid_hls_url");
+  }
+  if (url.protocol !== "https:" || url.port || url.username || url.password) {
+    throw new Error("forbidden_hls_url");
+  }
+  if (!isAllowedHlsHost(url.hostname)) {
+    throw new Error("forbidden_hls_host");
+  }
+  return url;
+}
+
+/** Dean Edwards / JW packer */
 function unpackDeanEdwards(html) {
   const re = /eval\(function\(p,a,c,k,e,d\)\{while\(c--\)if\(k\[c\]\)p=p\.replace\(new RegExp\('\\\\b'\+c\.toString\(a\)\+'\\\\b','g'\),k\[c\]\);return p\}\('((?:\\'|[^'])*)',(\d+),(\d+),'((?:\\'|[^'])*)'\.split\('\|'\)\)\)/;
   const m = html.match(re);
@@ -151,9 +199,6 @@ function collectM3u8Candidates(text) {
   return candidates;
 }
 
-/**
- * Extrae la mejor URL de stream limpia del HTML del embed (JWPlayer packer / sources).
- */
 export function extractCleanStreamFromHtml(html) {
   if (!html || typeof html !== "string") return null;
 
@@ -161,7 +206,6 @@ export function extractCleanStreamFromHtml(html) {
   const unpacked = unpackDeanEdwards(html);
   if (unpacked) bags.push(unpacked);
 
-  // file:"https://...m3u8..."
   for (const bag of bags) {
     const fileRe = /file\s*:\s*"([^"]+\.m3u8[^"]*)"/gi;
     let fm;
@@ -175,7 +219,6 @@ export function extractCleanStreamFromHtml(html) {
     candidates.push(...collectM3u8Candidates(bag));
   }
 
-  // dedupe
   const seen = new Set();
   const unique = [];
   for (const u of candidates) {
@@ -211,16 +254,15 @@ function buildUpstreamHeaders(request) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
-  // GitHub a veces responde mejor con un UA de navegador.
   headers.set(
     "User-Agent",
     request.headers.get("User-Agent")
-      || "Mozilla/5.0 (compatible; ColevanaMediaProxy/1.0)",
+      || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   );
   return headers;
 }
 
-function buildResponseHeaders(upstreamResponse, request, env, upstreamUrl) {
+function buildVideoResponseHeaders(upstreamResponse, request, env, upstreamUrl) {
   const headers = new Headers(upstreamResponse.headers);
   const requestUrl = new URL(request.url);
   const wantsDownload = requestUrl.searchParams.get("download") === "1";
@@ -239,6 +281,31 @@ function buildResponseHeaders(upstreamResponse, request, env, upstreamUrl) {
     headers.set(name, value);
   }
   return headers;
+}
+
+/** Reescribe URLs absolutas/relativas de un manifiesto HLS para pasar por /proxy-hls */
+function rewriteM3u8(manifestText, manifestUrl, proxyBase) {
+  const base = new URL(manifestUrl);
+  return manifestText.split("\n").map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      // URI="..." en EXT-X-MEDIA / KEY / etc.
+      return line.replace(/URI="([^"]+)"/gi, (_, uri) => {
+        try {
+          const abs = new URL(uri, base).href;
+          return `URI="${proxyBase}/proxy-hls?url=${encodeURIComponent(abs)}"`;
+        } catch {
+          return `URI="${uri}"`;
+        }
+      });
+    }
+    try {
+      const abs = new URL(trimmed, base).href;
+      return `${proxyBase}/proxy-hls?url=${encodeURIComponent(abs)}`;
+    } catch {
+      return line;
+    }
+  }).join("\n");
 }
 
 async function handleResolveStream(request, env, requestUrl) {
@@ -266,6 +333,7 @@ async function handleResolveStream(request, env, requestUrl) {
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+        Referer: `https://${embedUrl.hostname}/`,
       },
     });
     if (!upstream.ok) {
@@ -281,9 +349,102 @@ async function handleResolveStream(request, env, requestUrl) {
     return jsonResponse(request, env, 404, "stream_not_found");
   }
 
+  // Devolvemos también la URL ya proxificada para que el cliente no pegue al CDN directo.
+  const proxyBase = new URL(request.url).origin;
+  const proxied = `${proxyBase}/proxy-hls?url=${encodeURIComponent(stream)}`;
+
   return jsonResponse(request, env, 200, {
     stream,
+    proxied,
     embed: embedUrl.href,
+  });
+}
+
+async function handleProxyHls(request, env, requestUrl) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return jsonResponse(request, env, 405, "method_not_allowed");
+  }
+
+  let upstreamUrl;
+  try {
+    upstreamUrl = validateHlsUpstream(requestUrl.searchParams.get("url"));
+  } catch (error) {
+    return jsonResponse(request, env, 400, error.message);
+  }
+
+  const headers = buildUpstreamHeaders(request);
+  // Referer/Origin del ecosistema del CDN (hotlink protection)
+  let referer = "https://vimeos.net/";
+  let origin = "https://vimeos.net";
+  const host = upstreamUrl.hostname.toLowerCase();
+  if (host.includes("goodstream")) {
+    referer = "https://goodstream.one/";
+    origin = "https://goodstream.one";
+  } else if (host.includes("hlswish")) {
+    referer = "https://hlswish.com/";
+    origin = "https://hlswish.com";
+  } else if (host.includes("vimeos")) {
+    referer = "https://vimeos.net/";
+    origin = "https://vimeos.net";
+  }
+  headers.set("Referer", referer);
+  headers.set("Origin", origin);
+  headers.set(
+    "Accept",
+    upstreamUrl.pathname.includes(".m3u8")
+      ? "application/vnd.apple.mpegurl,application/x-mpegURL,*/*;q=0.8"
+      : "*/*",
+  );
+
+  let upstreamResponse;
+  try {
+    upstreamResponse = await fetch(upstreamUrl.href, {
+      method: request.method,
+      headers,
+      redirect: "follow",
+    });
+  } catch {
+    return jsonResponse(request, env, 502, "hls_upstream_unavailable");
+  }
+
+  const proxyBase = new URL(request.url).origin;
+  const contentType = (upstreamResponse.headers.get("Content-Type") || "").toLowerCase();
+  const isPlaylist =
+    upstreamUrl.pathname.includes(".m3u8")
+    || contentType.includes("mpegurl")
+    || contentType.includes("m3u8");
+
+  if (isPlaylist && request.method === "GET") {
+    const text = await upstreamResponse.text();
+    const rewritten = rewriteM3u8(text, upstreamUrl.href, proxyBase);
+    const outHeaders = new Headers();
+    for (const [name, value] of Object.entries(corsHeaders(request, env))) {
+      outHeaders.set(name, value);
+    }
+    outHeaders.set("Content-Type", "application/vnd.apple.mpegurl; charset=utf-8");
+    outHeaders.set("Cache-Control", "no-store");
+    outHeaders.set("X-Content-Type-Options", "nosniff");
+    return new Response(rewritten, { status: upstreamResponse.status, headers: outHeaders });
+  }
+
+  // Segmentos .ts / keys / audio: pipe
+  const outHeaders = new Headers(upstreamResponse.headers);
+  outHeaders.delete("Set-Cookie");
+  for (const [name, value] of Object.entries(corsHeaders(request, env))) {
+    outHeaders.set(name, value);
+  }
+  if (!outHeaders.has("Content-Type")) {
+    outHeaders.set("Content-Type", "application/octet-stream");
+  }
+  outHeaders.set("Cache-Control", "public, max-age=60");
+
+  return new Response(request.method === "HEAD" ? null : upstreamResponse.body, {
+    status: upstreamResponse.status,
+    statusText: upstreamResponse.statusText,
+    headers: outHeaders,
   });
 }
 
@@ -314,7 +475,7 @@ async function handleVideo(request, env, requestUrl) {
     return jsonResponse(request, env, 502, "upstream_unavailable");
   }
 
-  const headers = buildResponseHeaders(upstreamResponse, request, env, upstreamUrl);
+  const headers = buildVideoResponseHeaders(upstreamResponse, request, env, upstreamUrl);
   return new Response(request.method === "HEAD" ? null : upstreamResponse.body, {
     status: upstreamResponse.status,
     statusText: upstreamResponse.statusText,
@@ -334,6 +495,10 @@ export async function handleRequest(request, env = {}) {
 
   if (requestUrl.pathname === "/resolve-stream") {
     return handleResolveStream(request, env, requestUrl);
+  }
+
+  if (requestUrl.pathname === "/proxy-hls") {
+    return handleProxyHls(request, env, requestUrl);
   }
 
   if (requestUrl.pathname === "/video") {

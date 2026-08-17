@@ -1834,6 +1834,19 @@ async function mountDirectStream(container, streamUrl) {
 }
 
 
+function viaHlsProxy(streamUrl) {
+  const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
+  if (!proxyBase || !streamUrl) return streamUrl;
+  if (streamUrl.includes("/proxy-hls?")) return streamUrl;
+  try {
+    const u = new URL(streamUrl);
+    if (u.hostname.includes("workers.dev") || u.hostname === "github.com") return streamUrl;
+  } catch {
+    return streamUrl;
+  }
+  return `${proxyBase}/proxy-hls?url=${encodeURIComponent(streamUrl)}`;
+}
+
 async function resolveEmbedStream(embedUrl) {
   try {
     const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
@@ -1841,7 +1854,7 @@ async function resolveEmbedStream(embedUrl) {
 
     const endpoint = `${proxyBase}/resolve-stream?url=${encodeURIComponent(embedUrl)}`;
     const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 10000);
+    const timer = window.setTimeout(() => controller.abort(), 12000);
     try {
       const res = await fetch(endpoint, { signal: controller.signal });
       if (!res.ok) {
@@ -1849,8 +1862,17 @@ async function resolveEmbedStream(embedUrl) {
         return null;
       }
       const data = await res.json();
-      if (data?.stream && /^https:\/\//i.test(data.stream) && /\.m3u8(\?|$)/i.test(data.stream)) {
-        return data.stream;
+      // Preferir stream crudo y envolver SIEMPRE con proxy-hls en el cliente
+      // (así funciona aunque el worker aún no devuelva "proxied").
+      const rawStream = data?.stream || null;
+      if (rawStream && /^https:\/\//i.test(rawStream)) {
+        const finalUrl = viaHlsProxy(rawStream);
+        playerConsole("info", "[resolve-stream] stream:", rawStream);
+        playerConsole("info", "[resolve-stream] proxied:", finalUrl);
+        return finalUrl;
+      }
+      if (data?.proxied && /^https:\/\//i.test(data.proxied)) {
+        return data.proxied;
       }
       return null;
     } finally {
@@ -2064,7 +2086,7 @@ async function tryHlsWishFallback(showMessage = true) {
       }
       try {
         // eslint-disable-next-line no-await-in-loop
-        const ok = await mountDirectStream(container, streamUrl);
+        const ok = await mountDirectStream(container, viaHlsProxy(streamUrl));
         if (ok) {
           showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
             dom.status.textContent = "Probando otra fuente...";
