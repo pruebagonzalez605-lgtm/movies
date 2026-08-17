@@ -1769,6 +1769,52 @@ function loadHlsScript() {
  * Reproduce un stream directo en #mediaSlot con <video> (+ hls.js si hace falta).
  * Evita el iframe del proveedor y por tanto el preroll de JWPlayer.
  */
+
+function preferSpanishAudio(hls) {
+  if (!hls || !Array.isArray(hls.audioTracks) || !hls.audioTracks.length) {
+    playerConsole("info", "[hls] sin pistas de audio aún");
+    return false;
+  }
+  const tracks = hls.audioTracks;
+  playerConsole(
+    "info",
+    "[hls] pistas de audio:",
+    tracks.map((t, i) => ({
+      i,
+      name: t.name,
+      lang: t.lang || t.language,
+      default: t.default,
+    })),
+  );
+
+  const isEs = (t) => {
+    const lang = String(t.lang || t.language || "").toLowerCase();
+    const name = String(t.name || "").toLowerCase();
+    return (
+      lang.startsWith("es")
+      || /espa[nñ]ol|spanish|latino|castellano|dual.?es/.test(name)
+    );
+  };
+
+  // 1) default marcado español  2) cualquier es  3) no tocar
+  let idx = tracks.findIndex((t) => isEs(t) && (t.default === true || t.default === "yes"));
+  if (idx < 0) idx = tracks.findIndex(isEs);
+  if (idx < 0) {
+    playerConsole("warn", "[hls] no hay pista en español");
+    return false;
+  }
+  if (hls.audioTrack !== idx) {
+    playerConsole("info", "[hls] forzando audio ES →", idx, tracks[idx]?.name || tracks[idx]?.lang);
+    try {
+      hls.audioTrack = idx;
+    } catch (e) {
+      playerConsole("warn", "[hls] no se pudo setear audioTrack", e);
+      return false;
+    }
+  }
+  return true;
+}
+
 async function mountDirectStream(container, streamUrl) {
   stopExternalTracking();
   if (state._hls) {
@@ -1809,33 +1855,61 @@ async function mountDirectStream(container, streamUrl) {
     try {
       const Hls = await loadHlsScript();
       if (Hls?.isSupported()) {
-        const hls = new Hls({ enableWorker: true });
+        const hls = new Hls({
+          enableWorker: true,
+          // Fallar rápido si el CDN bloquea segmentos
+          manifestLoadingMaxRetry: 1,
+          levelLoadingMaxRetry: 1,
+          fragLoadingMaxRetry: 1,
+        });
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
         state._hls = hls;
-        const okManifest = await new Promise((resolve) => {
-          const t = window.setTimeout(() => resolve(false), 4000);
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        // No basta MANIFEST_PARSED: a veces el master responde y los .ts dan 403.
+        // Exigimos al menos un fragmento cargado (o 5s de timeout).
+        const okPlayback = await new Promise((resolve) => {
+          let settled = false;
+          const done = (v) => {
+            if (settled) return;
+            settled = true;
             window.clearTimeout(t);
-            resolve(true);
+            resolve(v);
+          };
+          const t = window.setTimeout(() => done(false), 5000);
+          hls.on(Hls.Events.FRAG_LOADED, () => done(true));
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            playerConsole("info", "[hls] manifest ok, esperando fragmento...");
+            preferSpanishAudio(hls);
+          });
+          hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => preferSpanishAudio(hls));
+          hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_, data) => {
+            playerConsole("info", "[hls] audio switched →", data);
           });
           hls.on(Hls.Events.ERROR, (_, data) => {
             const code = data?.response?.code;
             playerConsole("warn", "[hls] error", data?.type, data?.details, code);
-            // 403/404 del CDN: fallar ya para probar mirror o iframe
-            if (data?.fatal || code === 403 || code === 404) {
-              window.clearTimeout(t);
-              resolve(false);
+            if (data?.fatal || code === 403 || code === 404 || code === 401) {
+              done(false);
             }
           });
         });
-        if (!okManifest) {
+        if (!okPlayback) {
           try { hls.destroy(); } catch (_) {}
           state._hls = null;
-          throw new Error("hls_manifest_failed");
+          throw new Error("hls_playback_failed");
         }
+        preferSpanishAudio(hls);
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = streamUrl;
+        // Safari nativo: timeout corto si no arranca
+        const okNative = await new Promise((resolve) => {
+          const t = window.setTimeout(() => resolve(false), 5000);
+          const onOk = () => { window.clearTimeout(t); resolve(true); };
+          const onErr = () => { window.clearTimeout(t); resolve(false); };
+          video.addEventListener("loadeddata", onOk, { once: true });
+          video.addEventListener("error", onErr, { once: true });
+        });
+        if (!okNative) throw new Error("hls_native_failed");
       } else {
         throw new Error("hls_unsupported");
       }
