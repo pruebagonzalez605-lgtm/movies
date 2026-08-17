@@ -80,6 +80,8 @@ const state = {
   autoQuality: true,
   qualityChangeOrigin: null,
   localPlaybackFallbackAttempted: false,
+  externalFallbackInProgress: false,
+  suppressVideoErrorUi: false,
 
   // --- Tracking de progreso para reproducción externa (HLSWish) ---
   playbackMode: "video", // "video" | "external"
@@ -740,7 +742,14 @@ function showResumeModal(progress) {
     }
     const video = syncActiveVideo();
     if (!video) return;
-    video.currentTime = Math.min(Number(progress.time), Math.max(0, video.duration - 1));
+    const t = Number(progress.time);
+    if (!Number.isFinite(t) || t < 0) {
+      video.play().catch(() => { });
+      return;
+    }
+    const dur = Number(video.duration);
+    const maxT = Number.isFinite(dur) && dur > 1 ? dur - 1 : t;
+    video.currentTime = Math.min(t, Math.max(0, maxT));
     video.play().catch(() => { });
   };
   dom.resumeRestart.onclick = () => {
@@ -752,7 +761,9 @@ function showResumeModal(progress) {
     }
     const video = syncActiveVideo();
     if (!video) return;
-    video.currentTime = 0;
+    try {
+      video.currentTime = 0;
+    } catch (_) { /* duration still unknown */ }
     video.play().catch(() => { });
   };
   dom.resumeClose.onclick = closeResumeModal;
@@ -1174,17 +1185,24 @@ function bindVideoEvents(video) {
   });
 
   video.addEventListener("error", () => {
-    // Un error de carga (por ejemplo, la URL local todavia no existe porque
-    // el archivo no fue subido) intenta primero el fallback externo
-    // automáticamente, en vez de rendirse directo con el mensaje genérico.
-    // Solo se intenta una vez por contenido para no quedar en bucle si el
-    // fallback externo también falla.
+    // Durante pruebas de stream limpio / mirrors no mostrar error fatal
+    // ni relanzar fallback (rompe el flujo y deja pantalla negra).
+    if (state.suppressVideoErrorUi || state.externalFallbackInProgress) {
+      playerConsole("warn", "[video] error ignorado durante fallback externo");
+      return;
+    }
+
+    // Un error de carga local intenta el fallback externo una sola vez.
     if (!state.localPlaybackFallbackAttempted && state.playbackMode === "video") {
       state.localPlaybackFallbackAttempted = true;
       dom.status.textContent = "El archivo local no está disponible. Buscando alternativa...";
       tryHlsWishFallback(true);
       return;
     }
+
+    // Si ya hay un iframe de método 2/3, no pisar el status
+    if (state.playbackMode === "external") return;
+    if (document.querySelector("#mediaSlot iframe")) return;
 
     dom.status.replaceChildren();
     const message = document.createElement("span");
@@ -1758,6 +1776,7 @@ async function mountDirectStream(container, streamUrl) {
     state._hls = null;
   }
 
+  state.suppressVideoErrorUi = true;
   state.playbackMode = "video";
   state.currentBaseSrc = streamUrl;
   state.currentOriginalSrc = streamUrl;
@@ -1795,14 +1814,16 @@ async function mountDirectStream(container, streamUrl) {
         hls.attachMedia(video);
         state._hls = hls;
         const okManifest = await new Promise((resolve) => {
-          const t = window.setTimeout(() => resolve(false), 10000);
+          const t = window.setTimeout(() => resolve(false), 4000);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             window.clearTimeout(t);
             resolve(true);
           });
           hls.on(Hls.Events.ERROR, (_, data) => {
-            playerConsole("warn", "[hls] error", data?.type, data?.details, data?.response?.code);
-            if (data?.fatal) {
+            const code = data?.response?.code;
+            playerConsole("warn", "[hls] error", data?.type, data?.details, code);
+            // 403/404 del CDN: fallar ya para probar mirror o iframe
+            if (data?.fatal || code === 403 || code === 404) {
               window.clearTimeout(t);
               resolve(false);
             }
@@ -1844,7 +1865,6 @@ function viaHlsProxy(streamUrl, embedUrl = null) {
   const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
   if (!proxyBase || !streamUrl) return streamUrl;
   if (streamUrl.includes("/proxy-hls?")) {
-    // Asegurar param embed si falta
     if (embedUrl && !streamUrl.includes("embed=")) {
       return `${streamUrl}&embed=${encodeURIComponent(embedUrl)}`;
     }
@@ -1859,6 +1879,54 @@ function viaHlsProxy(streamUrl, embedUrl = null) {
   let out = `${proxyBase}/proxy-hls?url=${encodeURIComponent(streamUrl)}`;
   if (embedUrl) out += `&embed=${encodeURIComponent(embedUrl)}`;
   return out;
+}
+
+/** Genera mirrors del m3u8 (p3.vimeos.zip ↔ s10.vimeos.net, etc.) */
+function expandStreamMirrors(streamUrl) {
+  const out = [];
+  const seen = new Set();
+  const add = (u) => {
+    if (!u || seen.has(u)) return;
+    seen.add(u);
+    out.push(u);
+  };
+  add(streamUrl);
+  try {
+    const u = new URL(streamUrl);
+    const srv = u.searchParams.get("srv");
+    const host = u.hostname.toLowerCase();
+    const qs = u.search || "";
+
+    // p2.vimeos.zip + srv=s10 → s10.vimeos.net
+    if (srv && (host.endsWith("vimeos.zip") || host.includes("vimeos"))) {
+      const alt = new URL(streamUrl);
+      alt.hostname = `${srv}.vimeos.net`;
+      add(alt.href);
+    }
+
+    // .../CODE_,n,h,.urlset/master.m3u8 → variantes simples _h / _n
+    // Ejemplo: /7eectpi8kx1s_,n,h,.urlset/master.m3u8
+    const path = u.pathname;
+    const um = path.match(/^(.*\/)([A-Za-z0-9]+)_,([^/]+),\.(urlset)\/master\.m3u8$/i);
+    if (um) {
+      const [, root, code, quals] = um;
+      const qualities = quals.split(",").filter(Boolean);
+      // Preferir calidad alta primero
+      const ordered = [...qualities].sort((a, b) => (b === "h" ? 1 : 0) - (a === "h" ? 1 : 0));
+      for (const q of ordered.slice(0, 2)) {
+        for (const baseHost of [u.hostname, srv ? `${srv}.vimeos.net` : null].filter(Boolean)) {
+          const a = new URL(streamUrl);
+          a.hostname = baseHost;
+          a.pathname = `${root}${code}_${q}/master.m3u8`;
+          add(a.href);
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  // Máximo 4 intentos para no demorar el iframe
+  return out.slice(0, 4);
 }
 
 async function resolveEmbedStream(embedUrl) {
@@ -1877,16 +1945,14 @@ async function resolveEmbedStream(embedUrl) {
       }
       const data = await res.json();
       const rawStream = data?.stream || null;
-      if (rawStream && /^https:\/\//i.test(rawStream)) {
-        const finalUrl = viaHlsProxy(rawStream, embedUrl);
-        playerConsole("info", "[resolve-stream] stream:", rawStream);
-        playerConsole("info", "[resolve-stream] proxied:", finalUrl);
-        return finalUrl;
+      if (!rawStream || !/^https:\/\//i.test(rawStream)) {
+        if (data?.proxied) return viaHlsProxy(data.proxied, embedUrl);
+        return null;
       }
-      if (data?.proxied && /^https:\/\//i.test(data.proxied)) {
-        return viaHlsProxy(data.proxied, embedUrl);
-      }
-      return null;
+      // Lista de mirrors → el caller prueba en orden
+      const mirrors = expandStreamMirrors(rawStream).map((u) => viaHlsProxy(u, embedUrl));
+      playerConsole("info", "[resolve-stream] candidatos:", mirrors.length, mirrors[0]);
+      return mirrors;
     } finally {
       window.clearTimeout(timer);
     }
@@ -2062,6 +2128,15 @@ async function fetchExternalCandidates(embedInfo) {
 }
 
 async function tryHlsWishFallback(showMessage = true) {
+  // Evitar reentradas (error del <video> local + mountPlayer)
+  if (state.externalFallbackInProgress) {
+    playerConsole("info", "[external-player] fallback ya en curso, ignore");
+    return false;
+  }
+  state.externalFallbackInProgress = true;
+  state.suppressVideoErrorUi = true;
+
+  try {
   const embedInfo = await getExternalEmbedInfo();
   if (!embedInfo) {
     if (showMessage) dom.status.textContent = "No se encontró fuente alternativa.";
@@ -2137,17 +2212,18 @@ async function tryHlsWishFallback(showMessage = true) {
       dom.status.style.color = "#e8c468";
     }
     // eslint-disable-next-line no-await-in-loop
-    const cleanStream = await resolveEmbedStream(candidate.url);
-    if (cleanStream) {
-      playerConsole("info", "[external-player] stream resuelto:", cleanStream);
+    const resolved = await resolveEmbedStream(candidate.url);
+    const cleanList = Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
+    for (const cleanStream of cleanList) {
+      playerConsole("info", "[external-player] probando stream limpio:", cleanStream);
+      if (showMessage) {
+        dom.status.textContent = "Reproduciendo fuente limpia...";
+        dom.status.style.color = "#e8c468";
+      }
       try {
         // eslint-disable-next-line no-await-in-loop
         const okDirect = await mountDirectStream(container, cleanStream);
         if (okDirect) {
-          if (showMessage) {
-            dom.status.textContent = "Reproduciendo fuente limpia...";
-            dom.status.style.color = "#e8c468";
-          }
           showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
             dom.status.textContent = "Probando otra fuente...";
             await tryNextCandidate();
@@ -2155,8 +2231,11 @@ async function tryHlsWishFallback(showMessage = true) {
           return true;
         }
       } catch (e) {
-        playerConsole("warn", "[direct-stream] stream resuelto fallo:", e);
+        playerConsole("warn", "[direct-stream] fallo, probando mirror/iframe:", e?.message || e);
       }
+    }
+    if (cleanList.length && showMessage) {
+      dom.status.textContent = "Fuente limpia no disponible. Cargando embed...";
     }
 
     // eslint-disable-next-line no-await-in-loop
@@ -2177,7 +2256,12 @@ async function tryHlsWishFallback(showMessage = true) {
     return true;
   };
 
-  return tryNextCandidate();
+  return await tryNextCandidate();
+  } finally {
+    state.externalFallbackInProgress = false;
+    // Mantener suppress un momento por si el video residual dispara error
+    window.setTimeout(() => { state.suppressVideoErrorUi = false; }, 1500);
+  }
 }
 
 // ==================== EPISODE GRID FOR SERIES ====================

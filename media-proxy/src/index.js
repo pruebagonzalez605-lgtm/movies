@@ -445,8 +445,9 @@ async function handleProxyHls(request, env, requestUrl) {
     return jsonResponse(request, env, 502, "hls_upstream_unavailable");
   }
 
-  // Si 403, reintentar sin Origin (solo Referer)
+  // Si 403, reintentar sin Origin y con mirrors de host/path
   if (upstreamResponse.status === 403) {
+    const altUrls = [];
     try {
       const headers2 = buildUpstreamHeaders(request);
       headers2.set("Referer", embedReferer);
@@ -457,11 +458,42 @@ async function handleProxyHls(request, env, requestUrl) {
           : "*/*",
       );
       if (cookieHeader) headers2.set("Cookie", cookieHeader);
-      upstreamResponse = await fetch(upstreamUrl.href, {
-        method: request.method,
-        headers: headers2,
-        redirect: "follow",
-      });
+
+      const srv = upstreamUrl.searchParams.get("srv");
+      if (srv) {
+        const a = new URL(upstreamUrl.href);
+        a.hostname = `${srv}.vimeos.net`;
+        altUrls.push(a.href);
+      }
+      // urlset → _h / _n
+      const um = upstreamUrl.pathname.match(/^(.*\/)([A-Za-z0-9]+)_,([^/]+),\.(urlset)\/master\.m3u8$/i);
+      if (um) {
+        const root = um[1];
+        const code = um[2];
+        for (const q of um[3].split(",").filter(Boolean).slice(0, 2)) {
+          const a = new URL(upstreamUrl.href);
+          a.pathname = `${root}${code}_${q}/master.m3u8`;
+          altUrls.push(a.href);
+          if (srv) {
+            const b = new URL(a.href);
+            b.hostname = `${srv}.vimeos.net`;
+            altUrls.push(b.href);
+          }
+        }
+      }
+
+      const tryUrls = [upstreamUrl.href, ...altUrls];
+      for (const tryUrl of tryUrls) {
+        upstreamResponse = await fetch(tryUrl, {
+          method: request.method,
+          headers: headers2,
+          redirect: "follow",
+        });
+        if (upstreamResponse.ok) {
+          upstreamUrl = new URL(tryUrl);
+          break;
+        }
+      }
     } catch {
       return jsonResponse(request, env, 502, "hls_upstream_unavailable");
     }
