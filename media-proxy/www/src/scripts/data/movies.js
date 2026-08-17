@@ -179,7 +179,7 @@ export const MOVIES = [
     tmdbTitle: "White Chicks",
     gradient: ["#3d2a0d", "#8a6a1e"],
     tmdbYear: 2004,
-    src: "",
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.32/DELR.mp4",
   },
   {
     code: "24",
@@ -188,7 +188,7 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2015,
     saga: "la Noche Del Demonio",
-    src: "",
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.33/NDD3.mp4",
   },
   {
     code: "25",
@@ -197,7 +197,7 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2018,
     saga: "la Noche Del Demonio",
-    src: "",
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.34/NDDUL.mp4",
   },
 
   {
