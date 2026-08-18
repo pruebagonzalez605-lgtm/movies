@@ -1,5 +1,5 @@
 import { createSupabaseService } from "./services/supabase.js";
-import { resolveMediaUrl } from "./config/media.js";
+import { resolveMediaUrl, MEDIA_CONFIG } from "./config/media.js";
 import { tmdbFindTvId } from "./services/tmdb.js";
 import {
   buildEpisodePlayerUrl,
@@ -80,6 +80,8 @@ const state = {
   autoQuality: true,
   qualityChangeOrigin: null,
   localPlaybackFallbackAttempted: false,
+  externalFallbackInProgress: false,
+  suppressVideoErrorUi: false,
 
   // --- Tracking de progreso para reproducción externa (HLSWish) ---
   playbackMode: "video", // "video" | "external"
@@ -740,7 +742,14 @@ function showResumeModal(progress) {
     }
     const video = syncActiveVideo();
     if (!video) return;
-    video.currentTime = Math.min(Number(progress.time), Math.max(0, video.duration - 1));
+    const t = Number(progress.time);
+    if (!Number.isFinite(t) || t < 0) {
+      video.play().catch(() => { });
+      return;
+    }
+    const dur = Number(video.duration);
+    const maxT = Number.isFinite(dur) && dur > 1 ? dur - 1 : t;
+    video.currentTime = Math.min(t, Math.max(0, maxT));
     video.play().catch(() => { });
   };
   dom.resumeRestart.onclick = () => {
@@ -752,7 +761,9 @@ function showResumeModal(progress) {
     }
     const video = syncActiveVideo();
     if (!video) return;
-    video.currentTime = 0;
+    try {
+      video.currentTime = 0;
+    } catch (_) { /* duration still unknown */ }
     video.play().catch(() => { });
   };
   dom.resumeClose.onclick = closeResumeModal;
@@ -1174,17 +1185,24 @@ function bindVideoEvents(video) {
   });
 
   video.addEventListener("error", () => {
-    // Un error de carga (por ejemplo, la URL local todavia no existe porque
-    // el archivo no fue subido) intenta primero el fallback externo
-    // automáticamente, en vez de rendirse directo con el mensaje genérico.
-    // Solo se intenta una vez por contenido para no quedar en bucle si el
-    // fallback externo también falla.
+    // Durante pruebas de stream limpio / mirrors no mostrar error fatal
+    // ni relanzar fallback (rompe el flujo y deja pantalla negra).
+    if (state.suppressVideoErrorUi || state.externalFallbackInProgress) {
+      playerConsole("warn", "[video] error ignorado durante fallback externo");
+      return;
+    }
+
+    // Un error de carga local intenta el fallback externo una sola vez.
     if (!state.localPlaybackFallbackAttempted && state.playbackMode === "video") {
       state.localPlaybackFallbackAttempted = true;
       dom.status.textContent = "El archivo local no está disponible. Buscando alternativa...";
       tryHlsWishFallback(true);
       return;
     }
+
+    // Si ya hay un iframe de método 2/3, no pisar el status
+    if (state.playbackMode === "external") return;
+    if (document.querySelector("#mediaSlot iframe")) return;
 
     dom.status.replaceChildren();
     const message = document.createElement("span");
@@ -1663,6 +1681,12 @@ function isExternalEmbedUrl(url, domains, pathPattern) {
 
 const EXTERNAL_PROVIDERS = [
   {
+    name: "HLSWish",
+    label: "Reproduciendo con Metodo 2",
+    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
+    assumeMountedAfterMs: 3000,
+  },
+  {
     name: "Vimeos",
     label: "Reproduciendo con Metodo 3",
     match: (url) => isExternalEmbedUrl(url, VIMEOS_MIRROR_DOMAINS, /^\/embed-/),
@@ -1673,13 +1697,450 @@ const EXTERNAL_PROVIDERS = [
     label: "Reproduciendo con Metodo 3",
     match: (url) => isExternalEmbedUrl(url, GOODSTREAM_MIRROR_DOMAINS, /^\/embed-/),
   },
-  {
-    name: "HLSWish",
-    label: "Reproduciendo con Metodo 2",
-    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
-    assumeMountedAfterMs: 3000,
-  },
 ];
+
+const STREAM_AD_HINT =
+  /preroll|midroll|postroll|aviator|\bad\b|ads?[._/-]|advert|publicidad|promo|vast|ima|betwinner|anuncio/i;
+
+const HLS_JS_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js";
+
+function isPlayableStreamUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    return /\.m3u8(\?|$)/i.test(u.pathname + u.search) || /\.mp4(\?|$)/i.test(u.pathname + u.search);
+  } catch {
+    return false;
+  }
+}
+
+function isCleanStreamUrl(url) {
+  return isPlayableStreamUrl(url) && !STREAM_AD_HINT.test(url);
+}
+
+/** Recorre el JSON de vimeus y junta posibles streams directos (no embeds de player). */
+function collectDirectStreams(data) {
+  const found = [];
+  const seen = new Set();
+
+  function walk(obj) {
+    if (typeof obj === "string") {
+      if (isCleanStreamUrl(obj) && !seen.has(obj)) {
+        seen.add(obj);
+        found.push(obj);
+      }
+      return;
+    }
+    if (Array.isArray(obj)) {
+      obj.forEach(walk);
+      return;
+    }
+    if (obj && typeof obj === "object") {
+      for (const key of ["file", "src", "source", "url", "stream", "hls", "link", "video"]) {
+        if (typeof obj[key] === "string") walk(obj[key]);
+      }
+      Object.values(obj).forEach(walk);
+    }
+  }
+
+  walk(data);
+  found.sort((a, b) => Number(/\.m3u8/i.test(b)) - Number(/\.m3u8/i.test(a)));
+  return found;
+}
+
+function loadHlsScript() {
+  if (window.Hls) return Promise.resolve(window.Hls);
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${HLS_JS_SRC}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.Hls), { once: true });
+      existing.addEventListener("error", () => reject(new Error("hls_load_failed")), { once: true });
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = HLS_JS_SRC;
+    s.onload = () => resolve(window.Hls);
+    s.onerror = () => reject(new Error("hls_load_failed"));
+    document.head.appendChild(s);
+  });
+}
+
+/**
+ * Reproduce un stream directo en #mediaSlot con <video> (+ hls.js si hace falta).
+ * Evita el iframe del proveedor y por tanto el preroll de JWPlayer.
+ */
+
+function preferSpanishAudio(hls) {
+  if (!hls || !Array.isArray(hls.audioTracks) || !hls.audioTracks.length) {
+    playerConsole("info", "[hls] sin pistas de audio aún");
+    return false;
+  }
+  const tracks = hls.audioTracks;
+  console.info(
+    "[hls] pistas de audio:",
+    tracks.map((t, i) => ({
+      i,
+      name: t.name,
+      lang: t.lang || t.language,
+      default: t.default,
+    })),
+  );
+
+  const isEs = (t) => {
+    const lang = String(t.lang || t.language || "").toLowerCase().trim();
+    const name = String(t.name || "").toLowerCase();
+    return (
+      // ISO 639-1 ("es", "es-419", "es-MX"...)
+      lang === "es" || lang.startsWith("es-")
+      // ISO 639-2/B ("spa"), muy comun en streams remuxeados con ffmpeg
+      || lang === "spa" || lang.startsWith("spa-") || lang.startsWith("spa_")
+      || /(^|[^a-z])espa[nñ]ol|spanish|latino|castellano|dual.?es(?![a-z])/.test(name)
+    );
+  };
+
+  // Si hay mas de una pista y ninguna quedo identificada como ingles/otro
+  // idioma reconocible, asumimos que el proveedor uso codigos no estandar
+  // (p. ej. "aud1"/"aud2") y preferimos evitar tocar nada para no romper
+  // el audio que el usuario ya esta escuchando.
+  const isEn = (t) => {
+    const lang = String(t.lang || t.language || "").toLowerCase().trim();
+    const name = String(t.name || "").toLowerCase();
+    return (
+      lang === "en" || lang.startsWith("en-")
+      || lang === "eng" || lang.startsWith("eng-") || lang.startsWith("eng_")
+      || /(^|[^a-z])ingl[eé]s|english(?![a-z])/.test(name)
+    );
+  };
+
+  // 1) default marcado español  2) cualquier es  3) heurística por descarte
+  // 4) no tocar
+  let idx = tracks.findIndex((t) => isEs(t) && (t.default === true || t.default === "yes"));
+  if (idx < 0) idx = tracks.findIndex(isEs);
+  if (idx < 0 && tracks.length > 1) {
+    // El proveedor no etiquetó el idioma con un código/nombre reconocible
+    // (pasa con algunos remuxes: "aud1"/"aud2" sin lang). Si exactamente
+    // una pista es identificable como inglés, asumimos que la(s) otra(s)
+    // es el doblaje y la probamos: es mejor apuesta que quedarse en inglés.
+    const englishTracks = tracks.filter(isEn);
+    const nonEnglish = tracks.filter((t) => !isEn(t));
+    if (englishTracks.length && nonEnglish.length === 1) {
+      idx = tracks.indexOf(nonEnglish[0]);
+      playerConsole("info", "[hls] sin lang explicito, usando pista no-ingles por descarte");
+    }
+  }
+  if (idx < 0) {
+    console.warn(
+      "[hls] no se encontró pista en español entre",
+      tracks.length,
+      "pista(s):",
+      tracks.map((t) => t.lang || t.language || t.name || "?").join(", "),
+    );
+    return false;
+  }
+  if (hls.audioTrack !== idx) {
+    console.info("[hls] forzando audio ES →", idx, tracks[idx]?.name || tracks[idx]?.lang);
+    try {
+      hls.audioTrack = idx;
+    } catch (e) {
+      playerConsole("warn", "[hls] no se pudo setear audioTrack", e);
+      return false;
+    }
+  }
+  return true;
+}
+
+const AUDIO_SELECTOR_ID = "playerAudioTrackSelector";
+
+function removeAudioTrackSelector() {
+  document.getElementById(AUDIO_SELECTOR_ID)?.remove();
+}
+
+// Selector manual de pista de audio: se muestra apenas hls.js reporta 2+
+// pistas, sin importar si la deteccion automatica de idioma (preferSpanishAudio)
+// acerto o no. Es el fallback definitivo para proveedores que etiquetan mal
+// (o no etiquetan) el idioma en el manifest.
+function showAudioTrackSelector(hls) {
+  if (!hls || !Array.isArray(hls.audioTracks) || hls.audioTracks.length < 2) {
+    removeAudioTrackSelector();
+    return;
+  }
+  const tracks = hls.audioTracks;
+
+  const existing = document.getElementById(AUDIO_SELECTOR_ID);
+  const wrap = existing || document.createElement("div");
+  wrap.id = AUDIO_SELECTOR_ID;
+  wrap.style.cssText =
+    "display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;";
+  wrap.innerHTML = "";
+
+  const labelSpan = document.createElement("span");
+  labelSpan.textContent = "Audio:";
+  labelSpan.style.cssText = "color:#9a9a9a;font-size:14px;";
+  wrap.appendChild(labelSpan);
+
+  tracks.forEach((t, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const rawLabel = t.name || t.lang || t.language || `Pista ${i + 1}`;
+    btn.textContent = rawLabel;
+    const active = hls.audioTrack === i;
+    btn.style.cssText =
+      "cursor:pointer;border-radius:6px;padding:4px 10px;font-size:13px;"
+      + (active
+        ? "background:#e8c468;color:#1a1a1a;border:1px solid #e8c468;font-weight:600;"
+        : "background:transparent;color:#e8c468;border:1px solid #e8c468;");
+    btn.addEventListener("click", () => {
+      if (hls.audioTrack === i) return;
+      try {
+        hls.audioTrack = i;
+        console.info("[hls] audio elegido manualmente →", i, rawLabel);
+      } catch (e) {
+        playerConsole("warn", "[hls] no se pudo cambiar audioTrack manualmente", e);
+      }
+      showAudioTrackSelector(hls);
+    });
+    wrap.appendChild(btn);
+  });
+
+  if (!existing) {
+    dom.status.insertAdjacentElement("afterend", wrap);
+  }
+}
+
+async function mountDirectStream(container, streamUrl) {
+  stopExternalTracking();
+  removeAudioTrackSelector();
+  if (state._hls) {
+    try { state._hls.destroy(); } catch (_) {}
+    state._hls = null;
+  }
+
+  state.suppressVideoErrorUi = true;
+  state.playbackMode = "video";
+  state.currentBaseSrc = streamUrl;
+  state.currentOriginalSrc = streamUrl;
+  // Deteccion de HLS mas tolerante: antes exigiamos que la URL *terminara*
+  // en ".m3u8" o ".m3u8?...", pero streams que llegan envueltos (proxy,
+  // parametros extra tipo "&embed=...") no matcheaban y el reproductor
+  // caia silenciosamente a <video src> nativo (sin hls.js, sin seleccion
+  // de audio, sin logs). Ahora basta con que ".m3u8" aparezca en algun
+  // punto de la URL.
+  const looksLikeHls = /\.m3u8/i.test(streamUrl);
+  console.info("[direct-stream] montando:", streamUrl, "→", looksLikeHls ? "HLS (hls.js)" : "video directo (mp4/nativo)");
+  state.availableSources = [{
+    src: streamUrl,
+    type: looksLikeHls ? "application/x-mpegURL" : "video/mp4",
+    size: 1080,
+  }];
+  state.currentQuality = 1080;
+
+  const video = document.createElement("video");
+  video.id = "player";
+  video.className = "plyr-video";
+  video.controls = true;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000;";
+
+  container.style.cssText =
+    "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
+  container.replaceChildren(video);
+  if (dom.nextEpisodeOverlay) container.appendChild(dom.nextEpisodeOverlay);
+
+  dom.video = video;
+  hideAdblockHint();
+  resetCastButton();
+  resetDownloadButton();
+
+  if (looksLikeHls) {
+    try {
+      const Hls = await loadHlsScript();
+      if (Hls?.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          // Fallar rápido si el CDN bloquea segmentos
+          manifestLoadingMaxRetry: 1,
+          levelLoadingMaxRetry: 1,
+          fragLoadingMaxRetry: 1,
+        });
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        state._hls = hls;
+        // No basta MANIFEST_PARSED: a veces el master responde y los .ts dan 403.
+        // Exigimos al menos un fragmento cargado (o 5s de timeout).
+        const okPlayback = await new Promise((resolve) => {
+          let settled = false;
+          const done = (v) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(t);
+            resolve(v);
+          };
+          const t = window.setTimeout(() => done(false), 5000);
+          hls.on(Hls.Events.FRAG_LOADED, () => done(true));
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            playerConsole("info", "[hls] manifest ok, esperando fragmento...");
+            preferSpanishAudio(hls);
+          });
+          hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+            preferSpanishAudio(hls);
+            showAudioTrackSelector(hls);
+          });
+          hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_, data) => {
+            console.info("[hls] audio switched →", data);
+            showAudioTrackSelector(hls);
+          });
+          hls.on(Hls.Events.ERROR, (_, data) => {
+            const code = data?.response?.code;
+            playerConsole("warn", "[hls] error", data?.type, data?.details, code);
+            if (data?.fatal || code === 403 || code === 404 || code === 401) {
+              done(false);
+            }
+          });
+        });
+        if (!okPlayback) {
+          try { hls.destroy(); } catch (_) {}
+          state._hls = null;
+          throw new Error("hls_playback_failed");
+        }
+        preferSpanishAudio(hls);
+        showAudioTrackSelector(hls);
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = streamUrl;
+        // Safari nativo: timeout corto si no arranca
+        const okNative = await new Promise((resolve) => {
+          const t = window.setTimeout(() => resolve(false), 5000);
+          const onOk = () => { window.clearTimeout(t); resolve(true); };
+          const onErr = () => { window.clearTimeout(t); resolve(false); };
+          video.addEventListener("loadeddata", onOk, { once: true });
+          video.addEventListener("error", onErr, { once: true });
+        });
+        if (!okNative) throw new Error("hls_native_failed");
+      } else {
+        throw new Error("hls_unsupported");
+      }
+    } catch (e) {
+      playerConsole("warn", "[direct-stream] HLS fallo:", e);
+      video.src = streamUrl;
+    }
+  } else {
+    video.src = streamUrl;
+  }
+
+  bindVideoEvents(video);
+  try {
+    await video.play();
+  } catch {
+    // Autoplay bloqueado: el usuario usa controles.
+  }
+
+  bindCastButtonForActiveVideo();
+  resetDownloadButton();
+  setTimeout(offerSavedProgress, 600);
+  return true;
+}
+
+
+function viaHlsProxy(streamUrl, embedUrl = null) {
+  const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
+  if (!proxyBase || !streamUrl) return streamUrl;
+  if (streamUrl.includes("/proxy-hls?")) {
+    if (embedUrl && !streamUrl.includes("embed=")) {
+      return `${streamUrl}&embed=${encodeURIComponent(embedUrl)}`;
+    }
+    return streamUrl;
+  }
+  try {
+    const u = new URL(streamUrl);
+    if (u.hostname.includes("workers.dev") || u.hostname === "github.com") return streamUrl;
+  } catch {
+    return streamUrl;
+  }
+  let out = `${proxyBase}/proxy-hls?url=${encodeURIComponent(streamUrl)}`;
+  if (embedUrl) out += `&embed=${encodeURIComponent(embedUrl)}`;
+  return out;
+}
+
+/** Genera mirrors del m3u8 (p3.vimeos.zip ↔ s10.vimeos.net, etc.) */
+function expandStreamMirrors(streamUrl) {
+  const out = [];
+  const seen = new Set();
+  const add = (u) => {
+    if (!u || seen.has(u)) return;
+    seen.add(u);
+    out.push(u);
+  };
+  add(streamUrl);
+  try {
+    const u = new URL(streamUrl);
+    const srv = u.searchParams.get("srv");
+    const host = u.hostname.toLowerCase();
+    const qs = u.search || "";
+
+    // p2.vimeos.zip + srv=s10 → s10.vimeos.net
+    if (srv && (host.endsWith("vimeos.zip") || host.includes("vimeos"))) {
+      const alt = new URL(streamUrl);
+      alt.hostname = `${srv}.vimeos.net`;
+      add(alt.href);
+    }
+
+    // .../CODE_,n,h,.urlset/master.m3u8 → variantes simples _h / _n
+    // Ejemplo: /7eectpi8kx1s_,n,h,.urlset/master.m3u8
+    const path = u.pathname;
+    const um = path.match(/^(.*\/)([A-Za-z0-9]+)_,([^/]+),\.(urlset)\/master\.m3u8$/i);
+    if (um) {
+      const [, root, code, quals] = um;
+      const qualities = quals.split(",").filter(Boolean);
+      // Preferir calidad alta primero
+      const ordered = [...qualities].sort((a, b) => (b === "h" ? 1 : 0) - (a === "h" ? 1 : 0));
+      for (const q of ordered.slice(0, 2)) {
+        for (const baseHost of [u.hostname, srv ? `${srv}.vimeos.net` : null].filter(Boolean)) {
+          const a = new URL(streamUrl);
+          a.hostname = baseHost;
+          a.pathname = `${root}${code}_${q}/master.m3u8`;
+          add(a.href);
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  // Máximo 4 intentos para no demorar el iframe
+  return out.slice(0, 4);
+}
+
+async function resolveEmbedStream(embedUrl) {
+  try {
+    const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
+    if (!proxyBase) return null;
+
+    const endpoint = `${proxyBase}/resolve-stream?url=${encodeURIComponent(embedUrl)}`;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 12000);
+    try {
+      const res = await fetch(endpoint, { signal: controller.signal });
+      if (!res.ok) {
+        playerConsole("warn", "[resolve-stream] HTTP", res.status);
+        return null;
+      }
+      const data = await res.json();
+      const rawStream = data?.stream || null;
+      if (!rawStream || !/^https:\/\//i.test(rawStream)) {
+        if (data?.proxied) return viaHlsProxy(data.proxied, embedUrl);
+        return null;
+      }
+      // Lista de mirrors → el caller prueba en orden
+      const mirrors = expandStreamMirrors(rawStream).map((u) => viaHlsProxy(u, embedUrl));
+      playerConsole("info", "[resolve-stream] candidatos:", mirrors.length, mirrors[0]);
+      return mirrors;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  } catch (e) {
+    playerConsole("warn", "[resolve-stream] fallo:", e);
+    return null;
+  }
+}
 
 // Recolecta TODOS los links de embed encontrados en el JSON (no solo el
 // primero), agrupados por proveedor, respetando el orden de EXTERNAL_PROVIDERS.
@@ -1782,7 +2243,11 @@ const ADBLOCK_HINT_ID = "adblockHint";
 
 function showAdblockHint() {
   const el = document.getElementById(ADBLOCK_HINT_ID);
-  if (el) el.hidden = false;
+  if (!el) return;
+  el.hidden = false;
+  el.innerHTML =
+    "Esta fuente del proveedor puede incluir anuncios. " +
+    "Colevana prioriza fuente local y streams directos cuando existen para evitarlos.";
 }
 
 function hideAdblockHint() {
@@ -1832,26 +2297,33 @@ async function fetchExternalCandidates(embedInfo) {
     if (!script) throw new Error("No data");
 
     const data = JSON.parse(script.textContent);
-    return collectExternalCandidates(data);
+    const directStreams = collectDirectStreams(data);
+    const embedCandidates = collectExternalCandidates(data);
+    playerConsole("info", "[external-player] streams directos:", directStreams);
+    return { directStreams, embedCandidates };
   } catch (e) {
     playerConsole("error", "Error obteniendo candidatos externos:", e);
-    return [];
+    return { directStreams: [], embedCandidates: [] };
   }
 }
 
 async function tryHlsWishFallback(showMessage = true) {
+  // Evitar reentradas (error del <video> local + mountPlayer)
+  if (state.externalFallbackInProgress) {
+    playerConsole("info", "[external-player] fallback ya en curso, ignore");
+    return false;
+  }
+  state.externalFallbackInProgress = true;
+  state.suppressVideoErrorUi = true;
+
+  try {
   const embedInfo = await getExternalEmbedInfo();
   if (!embedInfo) {
     if (showMessage) dom.status.textContent = "No se encontró fuente alternativa.";
     return false;
   }
 
-  // FIX: antes se usaba document.querySelector(".screen-frame"), que tambien
-  // contiene el boton #toggleEpisodeBtn y el panel #episodeGridContainer.
-  // container.replaceChildren(iframe) los borraba junto con el video, por
-  // lo que el menu de episodios desaparecia al caer al Metodo 2 / 3.
-  // Ahora el reemplazo queda acotado al slot del video (#mediaSlot, ver
-  // player.html), y el boton + panel de episodios quedan intactos.
+  // FIX: el reemplazo queda acotado a #mediaSlot para no borrar el menu de episodios.
   const container = document.getElementById("mediaSlot");
   if (!container) {
     if (showMessage) dom.status.textContent = "No se pudo cargar alternativa externa.";
@@ -1860,30 +2332,92 @@ async function tryHlsWishFallback(showMessage = true) {
 
   container.style.cssText = "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
   removeExternalRetryLink();
+  removeAudioTrackSelector();
+  if (state._hls) {
+    try { state._hls.destroy(); } catch (_) {}
+    state._hls = null;
+  }
 
-  let candidates = await fetchExternalCandidates(embedInfo);
-  let index = 0;
+  let { directStreams, embedCandidates } = await fetchExternalCandidates(embedInfo);
+  let streamIndex = 0;
+  let embedIndex = 0;
 
   const tryNextCandidate = async () => {
-    if (index >= candidates.length) {
-      // Se agotaron los candidatos conocidos: en vez de dejar al usuario
-      // sin salida, permitimos volver a consultar vimeus.com por si esta
-      // vez responde con otro resultado.
+    // 1) Streams directos primero → <video> propio → sin preroll del host
+    while (streamIndex < directStreams.length) {
+      const streamUrl = directStreams[streamIndex];
+      streamIndex += 1;
+      playerConsole("info", "[external-player] probando stream directo:", streamUrl);
+      if (showMessage) {
+        dom.status.textContent = "Reproduciendo fuente limpia...";
+        dom.status.style.color = "#e8c468";
+      }
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const ok = await mountDirectStream(container, viaHlsProxy(streamUrl));
+        if (ok) {
+          showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
+            dom.status.textContent = "Probando otra fuente...";
+            await tryNextCandidate();
+          });
+          return true;
+        }
+      } catch (e) {
+        playerConsole("warn", "[direct-stream] fallo:", e);
+      }
+    }
+
+    // 2) Fallback a embeds (pueden incluir anuncios del proveedor)
+    if (embedIndex >= embedCandidates.length) {
       if (showMessage) dom.status.textContent = "No se pudo cargar ninguna alternativa externa.";
       showExternalRetryLink("Reintentar búsqueda de fuentes", async () => {
         dom.status.textContent = "Buscando fuentes de nuevo...";
-        candidates = await fetchExternalCandidates(embedInfo);
-        index = 0;
+        ({ directStreams, embedCandidates } = await fetchExternalCandidates(embedInfo));
+        streamIndex = 0;
+        embedIndex = 0;
         await tryNextCandidate();
       });
       return false;
     }
-    const candidate = candidates[index];
-    index += 1;
-    playerConsole("info", "[external-player] probando candidato:", {
+
+    const candidate = embedCandidates[embedIndex];
+    embedIndex += 1;
+    playerConsole("info", "[external-player] probando embed:", {
       provider: candidate.provider.name,
       url: candidate.url,
     });
+
+    // Intentar extraer m3u8 limpio vía Worker (sin iframe = sin preroll)
+    if (showMessage) {
+      dom.status.textContent = "Resolviendo stream limpio...";
+      dom.status.style.color = "#e8c468";
+    }
+    // eslint-disable-next-line no-await-in-loop
+    const resolved = await resolveEmbedStream(candidate.url);
+    const cleanList = Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
+    for (const cleanStream of cleanList) {
+      playerConsole("info", "[external-player] probando stream limpio:", cleanStream);
+      if (showMessage) {
+        dom.status.textContent = "Reproduciendo fuente limpia...";
+        dom.status.style.color = "#e8c468";
+      }
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const okDirect = await mountDirectStream(container, cleanStream);
+        if (okDirect) {
+          showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
+            dom.status.textContent = "Probando otra fuente...";
+            await tryNextCandidate();
+          });
+          return true;
+        }
+      } catch (e) {
+        playerConsole("warn", "[direct-stream] fallo, probando mirror/iframe:", e?.message || e);
+      }
+    }
+    if (cleanList.length && showMessage) {
+      dom.status.textContent = "Fuente limpia no disponible. Cargando embed...";
+    }
 
     // eslint-disable-next-line no-await-in-loop
     const ok = await mountExternalCandidate(container, candidate);
@@ -1903,7 +2437,12 @@ async function tryHlsWishFallback(showMessage = true) {
     return true;
   };
 
-  return tryNextCandidate();
+  return await tryNextCandidate();
+  } finally {
+    state.externalFallbackInProgress = false;
+    // Mantener suppress un momento por si el video residual dispara error
+    window.setTimeout(() => { state.suppressVideoErrorUi = false; }, 1500);
+  }
 }
 
 // ==================== EPISODE GRID FOR SERIES ====================
