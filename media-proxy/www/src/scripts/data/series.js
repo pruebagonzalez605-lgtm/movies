@@ -571,4 +571,57 @@ export const SERIES = [
       },
     ]
   },
+  {
+    title: "Silo",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Silo",
+    tmdbYear: 2023,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S1x10.mp4",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S2x10.mp4",
+        ]
+      },
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/S3x10.mp4",
+        ]
+      }
+    ]
+  },
 ];
