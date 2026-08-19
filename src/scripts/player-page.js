@@ -98,6 +98,12 @@ const state = {
   nextEpisodeCountdownLeft: 0,
   /** Si true, el próximo mount no muestra "Continuar viendo" y fuerza play */
   autoplayNextEpisode: false,
+  /** Evita que playNextEpisode() se dispare 2 veces en paralelo (boton +
+   *  countdown + evento "ended" pueden solaparse) y deja rastro de si
+   *  veniamos de fullscreen para poder recuperarlo si el navegador lo
+   *  cierra solo durante la transicion. */
+  nextEpisodeTransitioning: false,
+  wasFullscreenBeforeTransition: false,
 };
 
 /** Segundos de cuenta regresiva en el botón (estilo Netflix). */
@@ -468,6 +474,12 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
       src: previewSrc || "",
     },
     i18n: { /* ... tu configuración de i18n ... */ },
+    // Sin esto, Plyr pide fullscreen sobre su propio wrapper `.plyr` y no
+    // sobre #mediaSlot. #nextEpisodeOverlay vive como hermano de `.plyr`
+    // dentro de #mediaSlot, así que en fullscreen real quedaba fuera del
+    // elemento fullscreen y el navegador nunca la pintaba, aunque el JS
+    // le sacara el atributo `hidden` sin tirar ningún error.
+    fullscreen: { enabled: true, fallback: true, iosNative: false, container: "#mediaSlot" },
   });
   initFullscreenOrientationLock(state.playerUi);
   bindVideoEvents(syncActiveVideo());
@@ -963,6 +975,15 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   if (!hasValidLocalSource) {
     dom.status.textContent = "Buscando fuente...";
     const success = await tryHlsWishFallback(true);
+    // offerSavedProgress() (que limpia autoplayNextEpisode/resumePrompted)
+    // solo se llama en el camino de fuente local, mas abajo. Si el episodio
+    // termina en un iframe externo, hay que hacer esa misma limpieza aca o
+    // el flag queda "prendido" y arruina el proximo "Continuar viendo".
+    // Tambien hay que sacar cualquier capa que tape el iframe: si no, el
+    // usuario ve el episodio cargado pero no puede tocar nada.
+    state.autoplayNextEpisode = false;
+    state.resumePrompted = true;
+    ensureWebPlayerInteractable();
     if (success) loadRatingsFor(contentKey);
     return; // Sin fuente local: el stream limpio ya montó el reproductor natural.
   }
@@ -986,7 +1007,19 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   // reproduce mal o "invisible".
   if (dom.mediaSlot) {
     dom.mediaSlot.removeAttribute("style");
-    if (dom.video && dom.video.parentElement !== dom.mediaSlot) {
+    // OJO: cuando Plyr esta activo, envuelve el <video> en su propio
+    // contenedor .plyr (con toda la barra de controles), asi que
+    // dom.video.parentElement deja de ser mediaSlot directamente aunque
+    // todo funcione bien. Antes este chequeo comparaba parentElement contra
+    // mediaSlot, lo que daba "true" (video "perdido") en TODOS los cambios
+    // de episodio despues del primero, y el replaceChildren de mas abajo
+    // arrancaba el <video> de adentro del wrapper de Plyr, destruyendo los
+    // controles (quedaba el video mudo, sin play/pausa/barra, aunque se
+    // siguiera viendo la imagen). Con .contains() solo se dispara la
+    // recuperacion cuando el video de verdad quedo afuera de mediaSlot
+    // (el caso real que este bloque busca arreglar: haber caido al
+    // fallback externo, que reemplaza todo con un iframe).
+    if (dom.video && !dom.mediaSlot.contains(dom.video)) {
       dom.mediaSlot.replaceChildren(...[dom.video, dom.nextEpisodeOverlay].filter(Boolean));
     }
   }
@@ -1167,21 +1200,67 @@ function showNextEpisodeOverlay() {
   dom.nextEpisodeBtn?.focus();
 }
 
-// Cambia de episodio sin recargar la página. Fuerza autoplay del siguiente.
-async function playNextEpisode() {
-  const target = state.nextEpisodeTarget;
-  if (!target) return;
+// Cuanto esperamos como maximo a que cargue el siguiente episodio antes de
+// dar por perdida la transicion in-place y navegar de verdad. Sin esto, si
+// discoverMediaSources/renderEpisodePlayer se cuelga (red lenta, HEAD que
+// nunca responde, etc.) el reproductor queda "trabado" indefinidamente: no
+// hubo reload de pagina, pero tampoco pasa nada y el usuario no puede saber
+// si tocar de nuevo va a servir de algo.
+const NEXT_EPISODE_TRANSITION_TIMEOUT_MS = 12000;
+
+// Cambia de episodio sin recargar la página (usado tanto por el autoplay
+// de "Siguiente episodio" como por la seleccion manual en la grilla de
+// capitulos). Antes, elegir un episodio a mano hacia window.location.reload(),
+// lo que explicaba el mismo sintoma reportado con el autoplay: la pagina
+// "se refresca" y si estabas en fullscreen te saca. Unificar ambos casos en
+// esta funcion evita duplicar el guard de reentrancia y la recuperacion de
+// fullscreen.
+async function transitionToEpisode(serie, seasonNumber, episodeNumber) {
+  if (state.nextEpisodeTransitioning) return;
+  state.nextEpisodeTransitioning = true;
+  state.wasFullscreenBeforeTransition = isPlayerFullscreen();
   hideNextEpisodeOverlay();
+  if (dom.nextEpisodeBtn) dom.nextEpisodeBtn.disabled = true;
   state.autoplayNextEpisode = true;
-  const newUrl = buildEpisodePlayerUrl(target.serie, target.seasonNumber, target.episodeNumber);
+  const newUrl = buildEpisodePlayerUrl(serie, seasonNumber, episodeNumber);
   window.history.replaceState({}, "", newUrl);
+
+  // Si venimos de fullscreen y el navegador lo cierra solo durante la
+  // transicion (algunos moviles/TV lo hacen al resetear el <video> con
+  // load()), lo volvemos a pedir apenas se detecte. Se limpia al terminar
+  // la transicion, sea cual sea el resultado.
+  const restoreFullscreenIfLost = () => {
+    if (!state.wasFullscreenBeforeTransition || isPlayerFullscreen()) return;
+    const target2 = dom.mediaSlot;
+    const requestFs = target2 && (target2.requestFullscreen
+      || target2.webkitRequestFullscreen
+      || target2.mozRequestFullScreen
+      || target2.msRequestFullscreen)?.bind(target2);
+    if (typeof requestFs === "function") {
+      Promise.resolve(requestFs()).catch(() => {
+        // Puede fallar por falta de gesto reciente; el usuario siempre
+        // puede volver a tocar el boton de fullscreen del propio player.
+      });
+    }
+  };
+  document.addEventListener("fullscreenchange", restoreFullscreenIfLost);
+  document.addEventListener("webkitfullscreenchange", restoreFullscreenIfLost);
+
+  let timedOut = false;
+  const timeoutId = window.setTimeout(() => {
+    timedOut = true;
+    playerConsole("warn", "[next-episode] Timeout esperando el siguiente episodio, navegando de verdad.");
+    window.location.href = newUrl;
+  }, NEXT_EPISODE_TRANSITION_TIMEOUT_MS);
+
   try {
-    await renderEpisodePlayer(target.serie, target.seasonNumber, target.episodeNumber);
-    currentSeasonNum = target.seasonNumber;
-    currentEpisodeNum = target.episodeNumber;
+    await renderEpisodePlayer(serie, seasonNumber, episodeNumber);
+    if (timedOut) return; // ya navegamos por timeout, no seguir tocando el DOM viejo
+    currentSeasonNum = seasonNumber;
+    currentEpisodeNum = episodeNumber;
     if (typeof loadSeasonEpisodesGrid === "function") {
-      renderSeasonDropdown(target.seasonNumber);
-      loadSeasonEpisodesGrid(target.seasonNumber);
+      renderSeasonDropdown(seasonNumber);
+      loadSeasonEpisodesGrid(seasonNumber);
     }
     // Autoplay: no esperar gesto. Varios intentos por si el source tarda.
     const tryPlay = () => {
@@ -1195,10 +1274,27 @@ async function playNextEpisode() {
     window.setTimeout(tryPlay, 1200);
     ensureWebPlayerInteractable();
     window.setTimeout(ensureWebPlayerInteractable, 500);
+    window.setTimeout(restoreFullscreenIfLost, 300);
   } catch (err) {
+    if (timedOut) return;
     playerConsole("error", "[next-episode] No se pudo cargar, navegando:", err);
     window.location.href = newUrl;
+  } finally {
+    window.clearTimeout(timeoutId);
+    document.removeEventListener("fullscreenchange", restoreFullscreenIfLost);
+    document.removeEventListener("webkitfullscreenchange", restoreFullscreenIfLost);
+    if (dom.nextEpisodeBtn) dom.nextEpisodeBtn.disabled = false;
+    state.nextEpisodeTransitioning = false;
+    state.wasFullscreenBeforeTransition = false;
   }
+}
+
+// Wrapper que usa el "siguiente episodio" ya calculado (overlay estilo
+// Netflix / countdown / evento "ended").
+function playNextEpisode() {
+  const target = state.nextEpisodeTarget;
+  if (!target) return;
+  return transitionToEpisode(target.serie, target.seasonNumber, target.episodeNumber);
 }
 
 async function renderEpisodePlayer(serie, seasonNumber, episodeNumber) {
@@ -2744,9 +2840,15 @@ async function loadSeasonEpisodesGrid(seasonNum) {
     `;
 
     row.onclick = () => {
-      const newUrl = buildEpisodePlayerUrl(currentSeries, seasonNum, epNum);
-      window.history.replaceState({}, '', newUrl);
-      window.location.reload(); // Recarga para cargar el nuevo episodio
+      // Antes esto hacia window.location.reload(): recargaba toda la
+      // pagina para cambiar de capitulo, lo que sacaba al usuario de
+      // fullscreen. Ahora usa la misma transicion in-place que "Siguiente
+      // episodio", sin refrescar nada.
+      transitionToEpisode(currentSeries, seasonNum, epNum);
+      const container = document.getElementById("episodeGridContainer");
+      const toggleBtn = document.getElementById("toggleEpisodeBtn");
+      container?.classList.remove("open");
+      toggleBtn?.classList.remove("is-hidden");
     };
 
     grid.appendChild(row);

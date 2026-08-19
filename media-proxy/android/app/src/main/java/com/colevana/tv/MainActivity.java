@@ -2,6 +2,7 @@ package com.colevana.tv;
 
 import android.app.UiModeManager;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
@@ -62,6 +63,21 @@ public class MainActivity extends BridgeActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT));
         getBridge().getWebView().setVisibility(View.GONE);
         hideSystemUi();
+
+        // Gira la pantalla a horizontal al entrar a fullscreen. En la web
+        // (celular, navegador normal) esto lo resuelve la Screen
+        // Orientation API de JS (initFullscreenOrientationLock en
+        // player-page.js), pero esa misma API dentro del WebView del APK
+        // no es confiable: muchos WebView de Android la ignoran o la
+        // rechazan en silencio. Por eso lo hacemos aca a nivel nativo,
+        // que es mucho mas confiable: onShowCustomView ya se dispara
+        // exactamente cuando el video entra a fullscreen real (por el
+        // boton de Plyr en celular, o por el teatro forzado en TV), asi
+        // que es el mismo punto donde ya resolvemos ocultar la UI del
+        // sistema. SENSOR_LANDSCAPE permite las dos orientaciones
+        // horizontales (segun como el usuario sostenga el telefono) pero
+        // nunca vuelve a vertical mientras dure el fullscreen.
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
       }
 
       @Override
@@ -75,6 +91,11 @@ public class MainActivity extends BridgeActivity {
           customViewCallback.onCustomViewHidden();
           customViewCallback = null;
         }
+
+        // Al salir de fullscreen, soltamos el bloqueo de orientacion para
+        // que el resto de la app (catalogo, etc.) vuelva a seguir al
+        // sensor/rotacion normal del dispositivo, igual que en la web.
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
       }
     });
 
