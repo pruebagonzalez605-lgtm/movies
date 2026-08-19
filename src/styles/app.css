@@ -2107,8 +2107,15 @@ body.modal-open {
   transform: scale(1.03);
 }
 
-html.tv-locked-fullscreen .next-episode-overlay {
-  display: block !important;
+/* :not([hidden]) es clave: antes esto forzaba "display: block !important"
+   sin condicion, lo que le ganaba a la regla .next-episode-overlay[hidden]
+   { display: none; } de mas arriba y dejaba el boton "Siguiente episodio"
+   visible SIEMPRE en TV (incluso en peliculas, que nunca fijan
+   nextEpisodeTarget y por lo tanto nunca deberian mostrarlo). Esta regla
+   solo debe reposicionar el overlay para TV cuando el JS ya decidio
+   mostrarlo (showNextEpisodeOverlay en player-page.js le saca el atributo
+   hidden); nunca debe decidir la visibilidad por si misma. */
+html.tv-locked-fullscreen .next-episode-overlay:not([hidden]) {
   right: 32px;
   bottom: 96px;
   z-index: 10002;
