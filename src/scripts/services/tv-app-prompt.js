@@ -2,41 +2,17 @@ import {
   fetchLatestApkDownloadUrl,
   RELEASES_PAGE_URL,
 } from "../config/app-distribution.js";
+import { isLikelyTvBrowser } from "../shared/device.js";
 
 const DISMISS_STORAGE_KEY = "colevana:tv-app-prompt-dismissed-at";
 // Si el usuario cierra el aviso, no lo volvemos a mostrar durante este
 // tiempo (en ms). 7 dias.
 const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Palabras clave presentes en el user agent de la mayoria de navegadores
-// y WebViews que corren sobre televisores / dispositivos de sala.
-const TV_USER_AGENT_HINTS = [
-  "android tv",
-  "googletv",
-  "google tv",
-  "smart-tv",
-  "smarttv",
-  "tizen",
-  "web0s",
-  "webos",
-  "hbbtv",
-  "netcast",
-  "viera",
-  "bravia",
-  "aft", // Amazon Fire TV (AFTB, AFTM, AFTT, AFTS...)
-  "roku",
-  "crkey", // Chromecast con navegador embebido
-];
-
 function isRunningInsideNativeApp() {
   // Si esto corre dentro del propio APK (Capacitor), no tiene sentido
   // ofrecer descargarlo: ya esta instalado.
   return typeof window !== "undefined" && Boolean(window.Capacitor);
-}
-
-function isLikelyTvBrowser() {
-  const ua = navigator.userAgent ? navigator.userAgent.toLowerCase() : "";
-  return TV_USER_AGENT_HINTS.some((hint) => ua.includes(hint));
 }
 
 function wasRecentlyDismissed() {

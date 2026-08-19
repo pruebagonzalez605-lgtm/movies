@@ -13,6 +13,7 @@ import {
   slugify,
 } from "./shared/catalog-data.js";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
+import { isLikelyTvBrowser } from "./shared/device.js";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -284,6 +285,17 @@ function isNativeAppShell() {
   return Boolean(window.Capacitor?.isNativePlatform?.());
 }
 
+// El APK es el mismo tanto para Android TV como para celular. El look "TV"
+// (teatro fijo, fullscreen automatico sin gesto, orientacion forzada) solo
+// debe aplicarse cuando el APK corre en un televisor de verdad; si corre en
+// un celular, queremos el mismo comportamiento que ya usa la web movil
+// (que ya esta perfecto), asi que isNativeAppShell() solo no alcanza.
+// Reutiliza el mismo metodo de deteccion por user agent que ya usabamos en
+// tv-app-prompt.js.
+function isTvAppShell() {
+  return isNativeAppShell() && isLikelyTvBrowser();
+}
+
 function lockLandscapeOrientation() {
   const orientation = window.screen?.orientation;
   if (orientation && typeof orientation.lock === "function") {
@@ -295,7 +307,7 @@ function lockLandscapeOrientation() {
 }
 
 function enterAutoFullscreen() {
-  if (!isNativeAppShell()) return;
+  if (!isTvAppShell()) return;
   const target = document.getElementById("mediaSlot");
   if (!target) return;
   if (document.fullscreenElement === target || document.webkitFullscreenElement === target) {
@@ -341,7 +353,7 @@ function enterAutoFullscreen() {
 const TV_THEATER_CLASS = "tv-locked-fullscreen";
 
 function enterTvLockedTheaterMode() {
-  if (!isNativeAppShell()) return;
+  if (!isTvAppShell()) return;
   document.documentElement.classList.add(TV_THEATER_CLASS);
   lockLandscapeOrientation();
   // El play automatico funciona sin gesto porque MainActivity ya desactiva
@@ -370,7 +382,7 @@ function installAutoFullscreenGate() {
 
 /** En navegador: quita capas que tapan el player y el modo TV si se coló. */
 function ensureWebPlayerInteractable() {
-  if (isNativeAppShell()) return;
+  if (isTvAppShell()) return;
   document.documentElement.classList.remove(TV_THEATER_CLASS);
   document.getElementById("autoFullscreenGate")?.remove();
   document.querySelectorAll("#autoFullscreenGate").forEach((el) => el.remove());
@@ -937,7 +949,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   // Se aplica ANTES de saber si la fuente sera local o externa: #mediaSlot
   // es el contenedor comun a ambos casos, asi que el look fullscreen queda
   // parejo sin importar de donde termine viniendo el video.
-  if (isNativeAppShell()) {
+  if (isTvAppShell()) {
     enterTvLockedTheaterMode();
   } else {
     ensureWebPlayerInteractable();
@@ -2176,7 +2188,7 @@ async function mountDirectStream(container, streamUrl) {
   renderQualityControls(state.availableSources);
 
   // APK/TV: teatro a pantalla completa sin gesto (misma ruta que fuente local).
-  if (isNativeAppShell()) {
+  if (isTvAppShell()) {
     enterTvLockedTheaterMode();
   }
 

@@ -1,5 +1,8 @@
 package com.colevana.tv;
 
+import android.app.UiModeManager;
+import android.content.Context;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -88,19 +91,39 @@ public class MainActivity extends BridgeActivity {
     // que el JS (ver tv-locked-fullscreen en player-page.js) ya no depende
     // de la Fullscreen API para el look fullscreen: solo de que el sistema
     // este oculto, que se resuelve aca.
-    hideSystemUi();
+    //
+    // Este mismo APK tambien se instala en celulares (ver LEANBACK_LAUNCHER
+    // + LAUNCHER en el manifest), y ahi NO queremos ocultar la UI del
+    // sistema todo el tiempo: eso es solo para TV. En celular dejamos que
+    // la UI del sistema se comporte normal, igual que en la web movil (que
+    // ya funciona perfecto), y que se oculte solo cuando el video entra a
+    // fullscreen real (eso sigue pasando siempre en onShowCustomView, sin
+    // importar el dispositivo).
+    if (isTvDevice()) {
+      hideSystemUi();
+    }
   }
 
   @Override
   public void onResume() {
     super.onResume();
-    hideSystemUi();
+    if (isTvDevice()) hideSystemUi();
   }
 
   @Override
   public void onWindowFocusChanged(boolean hasFocus) {
     super.onWindowFocusChanged(hasFocus);
-    if (hasFocus) hideSystemUi();
+    if (hasFocus && isTvDevice()) hideSystemUi();
+  }
+
+  // Deteccion oficial de Android para saber si estamos corriendo en un
+  // televisor (Android TV / Google TV): UiModeManager es la forma nativa
+  // recomendada, mas confiable que revisar el user agent del WebView. No
+  // toca nada del comportamiento de TV en si, solo decide cuando aplicarlo.
+  private boolean isTvDevice() {
+    UiModeManager uiModeManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+    return uiModeManager != null
+        && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
   }
 
   // Capacitor 6 no maneja el boton "atras" del control remoto por si solo:
