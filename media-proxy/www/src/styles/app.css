@@ -2689,3 +2689,72 @@ textarea:focus-visible,
   outline-offset: 2px;
   background: rgba(232, 196, 104, 0.18);
 }
+/* ========== Selector de audio (reproductor natural / HLS) ========== */
+.player-audio-tracks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #2a2a32;
+  background: rgba(20, 20, 25, 0.92);
+}
+
+.player-audio-tracks-label {
+  color: var(--text-dim, #8b8a86);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.player-audio-track-btn {
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  background: transparent;
+  color: var(--accent, #e8c468);
+  border: 1px solid rgba(232, 196, 104, 0.55);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.player-audio-track-btn:hover {
+  filter: brightness(1.08);
+}
+
+.player-audio-track-btn.is-active {
+  background: var(--accent, #e8c468);
+  color: #1a1a1a;
+  border-color: var(--accent, #e8c468);
+}
+
+.player-audio-track-btn:focus-visible,
+.player-audio-track-btn.tv-focus {
+  outline: 3px solid var(--accent, #e8c468);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(232, 196, 104, 0.28);
+}
+
+/* APK/TV teatro: audio flotante sobre el video (D-pad) */
+html.tv-locked-fullscreen .player-audio-tracks {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  z-index: 10001;
+  margin: 0;
+  max-width: min(92vw, 640px);
+  justify-content: center;
+  background: rgba(12, 12, 16, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+html.tv-locked-fullscreen .player-native-link,
+html.tv-locked-fullscreen #playerExternalRetryLink {
+  display: none !important;
+}

@@ -1954,10 +1954,21 @@ body.modal-open {
 /* Capa transparente que intercepta el primer toque del usuario para poder
    pedir fullscreen (ver installAutoFullscreenGate en player-page.js). Debe
    cubrir exactamente el video/iframe, por eso vive dentro de #mediaSlot. */
+/* Desactivado: no interceptar clics en el reproductor (web). */
 #autoFullscreenGate {
+  display: none !important;
+  pointer-events: none !important;
   position: absolute;
   inset: 0;
-  z-index: 20;
+  z-index: -1;
+}
+
+/* Controles de Plyr siempre por encima de tarjetas auxiliares */
+.screen-frame .plyr__controls {
+  z-index: 40;
+}
+.screen-frame .plyr__control--overlaid {
+  z-index: 35;
 }
 
 /* Fullscreen automatico del APK (ver enterAutoFullscreen en player-page.js):
@@ -1996,11 +2007,17 @@ body.modal-open {
    catalog-modal, en 9000+). */
 .next-episode-overlay {
   position: absolute;
-  right: 24px;
-  bottom: 24px;
+  right: 20px;
+  /* Encima de la barra de Plyr (~56–72px), no encima de los controles */
+  bottom: 88px;
   z-index: 30;
-  max-width: min(340px, calc(100% - 48px));
+  max-width: min(280px, calc(100% - 40px));
   animation: next-episode-in 0.25s ease;
+  pointer-events: none; /* solo el botón/card reciben clics */
+}
+
+.next-episode-overlay .next-episode-card {
+  pointer-events: auto;
 }
 
 .next-episode-overlay[hidden] {
@@ -2013,49 +2030,74 @@ body.modal-open {
 }
 
 .next-episode-card {
-  background: rgba(10, 10, 14, 0.88);
-  backdrop-filter: blur(6px);
+  background: rgba(12, 12, 16, 0.92);
+  backdrop-filter: blur(8px);
   border: 1px solid #2a2a32;
-  border-radius: 10px;
-  padding: 16px 18px;
-  box-shadow: 0 20px 40px -16px rgba(0, 0, 0, 0.85);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 16px 36px -14px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
+  min-width: 200px;
 }
 
 .next-episode-title {
   font-family: "Montserrat", sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--text);
-  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-dim, #8b8a86);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .next-episode-btn {
+  position: relative;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 12px 16px;
-  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 12px 18px;
+  border-radius: 999px;
   cursor: pointer;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--bg);
+  border: none;
+  background: var(--accent, #e8c468);
+  color: #141419;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
-.next-episode-btn-icon {
-  font-size: 11px;
+.next-episode-btn-label {
+  position: relative;
+  z-index: 1;
+}
+
+/* Barra de progreso del countdown (estilo Netflix simple) */
+.next-episode-btn-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  animation: next-episode-fill 10s linear forwards;
+}
+
+@keyframes next-episode-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.next-episode-btn:hover {
+  filter: brightness(1.06);
 }
 
 .next-episode-btn:focus-visible,
@@ -2063,6 +2105,13 @@ body.modal-open {
   outline: none;
   box-shadow: 0 0 0 3px rgba(232, 196, 104, 0.55);
   transform: scale(1.03);
+}
+
+html.tv-locked-fullscreen .next-episode-overlay {
+  display: block !important;
+  right: 32px;
+  bottom: 96px;
+  z-index: 10002;
 }
 
 /* Modo teatro para la app nativa de TV (ver enterTvLockedTheaterMode en
@@ -2688,4 +2737,91 @@ textarea:focus-visible,
   outline: 3px solid var(--accent);
   outline-offset: 2px;
   background: rgba(232, 196, 104, 0.18);
+}
+/* ========== Selector de audio (reproductor natural / HLS) ========== */
+.player-audio-tracks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #2a2a32;
+  background: rgba(20, 20, 25, 0.92);
+}
+
+.player-audio-tracks-label {
+  color: var(--text-dim, #8b8a86);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.player-audio-track-btn {
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  background: transparent;
+  color: var(--accent, #e8c468);
+  border: 1px solid rgba(232, 196, 104, 0.55);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.player-audio-track-btn:hover {
+  filter: brightness(1.08);
+}
+
+.player-audio-track-btn.is-active {
+  background: var(--accent, #e8c468);
+  color: #1a1a1a;
+  border-color: var(--accent, #e8c468);
+}
+
+.player-audio-track-btn:focus-visible,
+.player-audio-track-btn.tv-focus {
+  outline: 3px solid var(--accent, #e8c468);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(232, 196, 104, 0.28);
+}
+
+/* APK/TV teatro: audio flotante sobre el video (D-pad) */
+html.tv-locked-fullscreen .player-audio-tracks {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  z-index: 10001;
+  margin: 0;
+  max-width: min(92vw, 640px);
+  justify-content: center;
+  background: rgba(12, 12, 16, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+html.tv-locked-fullscreen .player-native-link,
+html.tv-locked-fullscreen #playerExternalRetryLink {
+  display: none !important;
+}
+
+/* === Web: reproductor siempre interactivo === */
+html:not(.tv-locked-fullscreen) #autoFullscreenGate {
+  display: none !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+html:not(.tv-locked-fullscreen) .plyr__controls,
+html:not(.tv-locked-fullscreen) .plyr__control,
+html:not(.tv-locked-fullscreen) .plyr__progress,
+html:not(.tv-locked-fullscreen) .plyr__volume {
+  pointer-events: auto !important;
+  z-index: 50;
+}
+html:not(.tv-locked-fullscreen) .next-episode-overlay {
+  bottom: 96px;
 }
