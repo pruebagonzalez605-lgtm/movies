@@ -93,7 +93,14 @@ const state = {
   // --- "Siguiente episodio" estilo Netflix (ver showNextEpisodeOverlay) ---
   nextEpisodeTarget: null, // { serie, seasonNumber, episodeNumber, title } | null
   nextEpisodeVisible: false,
+  nextEpisodeCountdownTimer: null,
+  nextEpisodeCountdownLeft: 0,
+  /** Si true, el próximo mount no muestra "Continuar viendo" y fuerza play */
+  autoplayNextEpisode: false,
 };
+
+/** Segundos de cuenta regresiva en el botón (estilo Netflix). */
+const NEXT_EPISODE_COUNTDOWN_SECONDS = 10;
 
 // Cuanto antes del final (en segundos) aparece la tarjeta de siguiente
 // episodio. 20s alcanza para que el usuario la vea y pueda tocar OK sin
@@ -354,31 +361,35 @@ function exitTvLockedTheaterMode() {
   document.documentElement.classList.remove(TV_THEATER_CLASS);
 }
 
-// Mantenemos la puerta de gesto original SOLO para cuando esto corre como
-// sitio web comun (navegador de escritorio/mobile), donde si necesitamos
-// la Fullscreen API real y por lo tanto un gesto de usuario genuino.
+// Desactivado en web: la capa #autoFullscreenGate bloqueaba volumen, seek
+// y fullscreen de Plyr. El teatro a pantalla completa solo aplica en APK
+// (enterTvLockedTheaterMode). Esta función solo limpia restos viejos del DOM.
 function installAutoFullscreenGate() {
   document.getElementById("autoFullscreenGate")?.remove();
+}
 
-  const mediaSlot = document.getElementById("mediaSlot");
-  if (!mediaSlot) return;
-
-  const gate = document.createElement("div");
-  gate.id = "autoFullscreenGate";
-  gate.setAttribute("aria-hidden", "true");
-  gate.style.cssText = "background:transparent;cursor:pointer;";
-
-  const onGateTap = () => {
-    enterAutoFullscreen();
-    if (state.playbackMode === "video") {
-      dom.video?.play?.().catch(() => {});
-    }
-    gate.remove();
-  };
-
-  gate.addEventListener("click", onGateTap, { once: true });
-  gate.addEventListener("touchend", onGateTap, { once: true });
-  mediaSlot.appendChild(gate);
+/** En navegador: quita capas que tapan el player y el modo TV si se coló. */
+function ensureWebPlayerInteractable() {
+  if (isNativeAppShell()) return;
+  document.documentElement.classList.remove(TV_THEATER_CLASS);
+  document.getElementById("autoFullscreenGate")?.remove();
+  document.querySelectorAll("#autoFullscreenGate").forEach((el) => el.remove());
+  // Restos de capas full-size transparentes dentro del slot
+  const slot = document.getElementById("mediaSlot");
+  if (slot) {
+    slot.querySelectorAll(":scope > div").forEach((el) => {
+      if (el.id === "nextEpisodeOverlay") return;
+      if (el.id === "autoFullscreenGate") el.remove();
+      const st = el.getAttribute("style") || "";
+      if (el.getAttribute("aria-hidden") === "true" && /inset|100%|absolute/.test(st)) {
+        el.remove();
+      }
+    });
+  }
+  // Asegura que Plyr reciba clics
+  document.querySelectorAll(".plyr, .plyr__controls, .plyr__video-wrapper").forEach((el) => {
+    el.style.pointerEvents = "auto";
+  });
 }
 
 
@@ -402,6 +413,7 @@ function initFullscreenOrientationLock(player) {
   });
 
   player.on("exitfullscreen", () => {
+    hideNextEpisodeOverlay();
     if (typeof orientation.unlock === "function") {
       try { orientation.unlock(); } catch { /* no-op */ }
     }
@@ -770,6 +782,14 @@ function showResumeModal(progress) {
 }
 
 function offerSavedProgress() {
+  // Tras "Siguiente episodio" no interrumpir con el modal de continuar.
+  if (state.autoplayNextEpisode) {
+    state.autoplayNextEpisode = false;
+    state.resumePrompted = true;
+    const video = syncActiveVideo();
+    video?.play?.()?.catch?.(() => {});
+    return;
+  }
   const progress = getProgress(state.currentProgressKey);
   if (!progress) return;
   const duration = state.playbackMode === "external"
@@ -853,7 +873,8 @@ function bindExternalPlaybackTracking(contentKey) {
     state.externalMessageSeen = true;
     if (parsed.ended) {
       clearProgress(state.currentProgressKey);
-      if (state.nextEpisodeTarget) showNextEpisodeOverlay();
+      // Solo en fullscreen: mostrar overlay / no auto-avanzar en ventana normal
+      if (state.nextEpisodeTarget && isPlayerFullscreen()) showNextEpisodeOverlay();
       return;
     }
     state.externalProgress = { time: parsed.time, duration: parsed.duration };
@@ -917,11 +938,9 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   // es el contenedor comun a ambos casos, asi que el look fullscreen queda
   // parejo sin importar de donde termine viniendo el video.
   if (isNativeAppShell()) {
-    // App nativa (APK de TV): sin gesto, sin toque. Ver enterTvLockedTheaterMode.
     enterTvLockedTheaterMode();
   } else {
-    // Sitio web comun: si necesitamos un gesto real para la Fullscreen API.
-    installAutoFullscreenGate();
+    ensureWebPlayerInteractable();
   }
 
   dom.status.textContent = "Buscando fuente...";
@@ -1050,48 +1069,122 @@ async function findNextEpisodeTarget(serie, seasonNumber, episodeNumber, episode
   return null;
 }
 
+
+/** True si el video está en fullscreen real, Plyr fullscreen, o teatro APK. */
+function isPlayerFullscreen() {
+  if (document.documentElement.classList.contains(TV_THEATER_CLASS)) return true;
+  const fs = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fs) {
+    if (fs.id === "mediaSlot" || fs.id === "player") return true;
+    if (fs.closest?.("#mediaSlot") || fs.classList?.contains("plyr")) return true;
+    if (fs === document.documentElement || fs === document.body) return true;
+  }
+  // Plyr marca el contenedor
+  if (document.querySelector(".plyr.plyr--fullscreen-active, .plyr--fullscreen-enabled.plyr--fullscreen-active")) {
+    return true;
+  }
+  try {
+    if (state.playerUi?.fullscreen?.active) return true;
+  } catch (_) { /* ignore */ }
+  return false;
+}
+
+function clearNextEpisodeCountdown() {
+  if (state.nextEpisodeCountdownTimer) {
+    window.clearInterval(state.nextEpisodeCountdownTimer);
+    state.nextEpisodeCountdownTimer = null;
+  }
+  state.nextEpisodeCountdownLeft = 0;
+}
+
+function updateNextEpisodeBtnLabel(secondsLeft) {
+  const btn = dom.nextEpisodeBtn;
+  if (!btn) return;
+  const label = btn.querySelector(".next-episode-btn-label");
+  const text = secondsLeft > 0 ? `Siguiente · ${secondsLeft}s` : "Siguiente episodio";
+  if (label) label.textContent = text;
+  else btn.textContent = text;
+}
+
 function hideNextEpisodeOverlay() {
+  clearNextEpisodeCountdown();
   if (!dom.nextEpisodeOverlay) return;
   dom.nextEpisodeOverlay.hidden = true;
   state.nextEpisodeVisible = false;
+  updateNextEpisodeBtnLabel(0);
+}
+
+function startNextEpisodeCountdown() {
+  clearNextEpisodeCountdown();
+  state.nextEpisodeCountdownLeft = NEXT_EPISODE_COUNTDOWN_SECONDS;
+  updateNextEpisodeBtnLabel(state.nextEpisodeCountdownLeft);
+  state.nextEpisodeCountdownTimer = window.setInterval(() => {
+    state.nextEpisodeCountdownLeft -= 1;
+    if (state.nextEpisodeCountdownLeft <= 0) {
+      clearNextEpisodeCountdown();
+      updateNextEpisodeBtnLabel(0);
+      playNextEpisode();
+      return;
+    }
+    updateNextEpisodeBtnLabel(state.nextEpisodeCountdownLeft);
+  }, 1000);
 }
 
 function showNextEpisodeOverlay() {
   if (!dom.nextEpisodeOverlay || !state.nextEpisodeTarget) return;
-  if (state.nextEpisodeVisible) return; // ya esta visible, no reenfocar en cada tick
-  dom.nextEpisodeTitle.textContent = state.nextEpisodeTarget.title;
+  // Solo en fullscreen (navegador o teatro APK). Fuera de fullscreen no se muestra.
+  if (!isPlayerFullscreen()) {
+    if (state.nextEpisodeVisible) hideNextEpisodeOverlay();
+    return;
+  }
+  if (state.nextEpisodeVisible) return;
+  if (dom.nextEpisodeTitle) {
+    dom.nextEpisodeTitle.textContent = state.nextEpisodeTarget.title || "Siguiente episodio";
+  }
+  // Reinicia la barra de countdown CSS
+  const ring = dom.nextEpisodeBtn?.querySelector(".next-episode-btn-ring");
+  if (ring) {
+    ring.style.animation = "none";
+    // force reflow
+    void ring.offsetWidth;
+    ring.style.animation = "";
+  }
   dom.nextEpisodeOverlay.hidden = false;
   state.nextEpisodeVisible = true;
-  // Auto-foco: el pedido original es que alcance con tocar OK en el control
-  // remoto, sin tener que navegar hasta el boton primero.
+  startNextEpisodeCountdown();
   dom.nextEpisodeBtn?.focus();
 }
 
-// Cambia de episodio SIN salir de player.html: en vez de armar un <a href>
-// que dispare una navegacion completa, actualizamos la URL (para que
-// compartir/recargar la pagina quede en el episodio correcto) y volvemos a
-// correr el mismo flujo de montaje que uso el episodio actual. mountPlayer
-// reusa el <video>/Plyr ya existentes (ver "if (!state.playerUi)"), asi que
-// no hay parpadeo de salir del reproductor ni se pierde el modo teatro de
-// la app de TV.
+// Cambia de episodio sin recargar la página. Fuerza autoplay del siguiente.
 async function playNextEpisode() {
   const target = state.nextEpisodeTarget;
   if (!target) return;
   hideNextEpisodeOverlay();
+  state.autoplayNextEpisode = true;
   const newUrl = buildEpisodePlayerUrl(target.serie, target.seasonNumber, target.episodeNumber);
   window.history.replaceState({}, "", newUrl);
   try {
     await renderEpisodePlayer(target.serie, target.seasonNumber, target.episodeNumber);
-    // Mantiene sincronizado el panel de episodios (boton "Episodios"), que
-    // guarda su propio estado de temporada/episodio actual aparte.
     currentSeasonNum = target.seasonNumber;
     currentEpisodeNum = target.episodeNumber;
     if (typeof loadSeasonEpisodesGrid === "function") {
       renderSeasonDropdown(target.seasonNumber);
       loadSeasonEpisodesGrid(target.seasonNumber);
     }
+    // Autoplay: no esperar gesto. Varios intentos por si el source tarda.
+    const tryPlay = () => {
+      const video = syncActiveVideo();
+      if (!video) return;
+      const p = video.play?.();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    };
+    tryPlay();
+    window.setTimeout(tryPlay, 400);
+    window.setTimeout(tryPlay, 1200);
+    ensureWebPlayerInteractable();
+    window.setTimeout(ensureWebPlayerInteractable, 500);
   } catch (err) {
-    playerConsole("error", "[next-episode] No se pudo cargar en el reproductor, navegando:", err);
+    playerConsole("error", "[next-episode] No se pudo cargar, navegando:", err);
     window.location.href = newUrl;
   }
 }
@@ -1276,10 +1369,10 @@ function bindVideoEvents(video) {
 
   video.addEventListener("ended", () => {
     if (state.currentProgressKey) clearProgress(state.currentProgressKey);
-    // Estilo Netflix: si el usuario no toco "Siguiente episodio" durante
-    // los ultimos NEXT_EPISODE_LEAD_SECONDS, al llegar al final se dispara
-    // solo, sin esperar mas input.
-    if (state.nextEpisodeTarget) playNextEpisode();
+    // Solo en fullscreen: auto-siguiente. En ventana normal el episodio termina y listo.
+    if (state.nextEpisodeTarget && isPlayerFullscreen()) {
+      playNextEpisode();
+    }
   });
 }
 
@@ -1456,6 +1549,15 @@ function bindEvents() {
 
   dom.nextEpisodeBtn?.addEventListener("click", playNextEpisode);
 
+  const onFsChange = () => {
+    if (!isPlayerFullscreen() && state.nextEpisodeVisible) {
+      hideNextEpisodeOverlay();
+    }
+  };
+  document.addEventListener("fullscreenchange", onFsChange);
+  document.addEventListener("webkitfullscreenchange", onFsChange);
+  // Plyr emite enter/exit en el player cuando existe
+
   dom.qualitySelect?.addEventListener("change", () => {
     if (dom.qualitySelect.value === "auto") {
       state.autoQuality = true;
@@ -1551,6 +1653,7 @@ function initRemoteSeekControls() {
 }
 
 async function init() {
+  ensureWebPlayerInteractable();
   initRemoteSeekControls();
   initKickAuthUI({
     onChange: () => {
@@ -1996,7 +2099,7 @@ async function mountDirectStream(container, streamUrl) {
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
         state._hls = hls;
-        // Exigimos al menos un fragmento cargado (o 5s de timeout).
+        // Misma lógica que cuando funcionó: fragmento en ~5s o fallo.
         const okPlayback = await new Promise((resolve) => {
           let settled = false;
           const done = (v) => {
@@ -2037,10 +2140,11 @@ async function mountDirectStream(container, streamUrl) {
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = streamUrl;
         const okNative = await new Promise((resolve) => {
-          const t = window.setTimeout(() => resolve(false), 5000);
+          const t = window.setTimeout(() => resolve(false), 8000);
           const onOk = () => { window.clearTimeout(t); resolve(true); };
           const onErr = () => { window.clearTimeout(t); resolve(false); };
           video.addEventListener("loadeddata", onOk, { once: true });
+          video.addEventListener("canplay", onOk, { once: true });
           video.addEventListener("error", onErr, { once: true });
         });
         if (!okNative) throw new Error("hls_native_failed");
@@ -2171,7 +2275,7 @@ async function resolveEmbedStream(embedUrl) {
 
     const endpoint = `${proxyBase}/resolve-stream?url=${encodeURIComponent(embedUrl)}`;
     const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 12000);
+    const timer = window.setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch(endpoint, { signal: controller.signal });
       if (!res.ok) {
@@ -2410,12 +2514,12 @@ async function tryHlsWishFallback(showMessage = true) {
   let streamIndex = 0;
   let embedIndex = 0;
 
+  // Flujo original que funcionó: limpio primero por candidato, iframe solo si ese limpio falla.
   const tryNextCandidate = async () => {
-    // 1) Streams directos → reproductor natural de player.html (Plyr, sin iframe)
     while (streamIndex < directStreams.length) {
       const streamUrl = directStreams[streamIndex];
       streamIndex += 1;
-      playerConsole("info", "[player] probando stream directo (reproductor natural):", streamUrl);
+      playerConsole("info", "[player] stream directo:", streamUrl);
       if (showMessage) {
         dom.status.textContent = "Cargando reproductor...";
         dom.status.style.color = "";
@@ -2424,16 +2528,14 @@ async function tryHlsWishFallback(showMessage = true) {
         // eslint-disable-next-line no-await-in-loop
         const ok = await mountDirectStream(container, viaHlsProxy(streamUrl));
         if (ok) {
-          // Reproductor natural OK: sin enlace de reintento (molesta si ya ve el video).
           removeExternalRetryLink();
           return true;
         }
       } catch (e) {
-        playerConsole("warn", "[direct-stream] fallo:", e);
+        playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
       }
     }
 
-    // 2) Resolver m3u8 limpio desde embeds y montarlo como reproductor natural
     if (embedIndex >= embedCandidates.length) {
       if (showMessage) dom.status.textContent = "No se pudo cargar ninguna fuente.";
       showExternalRetryLink("Reintentar búsqueda de fuentes", async () => {
@@ -2448,24 +2550,17 @@ async function tryHlsWishFallback(showMessage = true) {
 
     const candidate = embedCandidates[embedIndex];
     embedIndex += 1;
-    playerConsole("info", "[player] resolviendo embed para reproductor natural:", {
-      provider: candidate.provider.name,
-      url: candidate.url,
-    });
-
+    playerConsole("info", "[player] resolviendo embed:", candidate.provider.name, candidate.url);
     if (showMessage) {
       dom.status.textContent = "Cargando reproductor...";
       dom.status.style.color = "";
     }
+
     // eslint-disable-next-line no-await-in-loop
     const resolved = await resolveEmbedStream(candidate.url);
     const cleanList = Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
     for (const cleanStream of cleanList) {
-      playerConsole("info", "[player] montando stream en reproductor natural:", cleanStream);
-      if (showMessage) {
-        dom.status.textContent = "Cargando reproductor...";
-        dom.status.style.color = "";
-      }
+      playerConsole("info", "[player] stream resuelto:", cleanStream);
       try {
         // eslint-disable-next-line no-await-in-loop
         const okDirect = await mountDirectStream(container, cleanStream);
@@ -2474,14 +2569,15 @@ async function tryHlsWishFallback(showMessage = true) {
           return true;
         }
       } catch (e) {
-        playerConsole("warn", "[direct-stream] fallo, probando mirror/iframe:", e?.message || e);
+        playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
       }
     }
-    if (cleanList.length && showMessage) {
-      dom.status.textContent = "Cargando fuente alternativa...";
-    }
 
-    // 3) Último recurso: iframe del proveedor (adblock limpia overlays de la página)
+    // Iframe solo para este candidato si su limpio falló
+    if (showMessage) {
+      dom.status.textContent = "Cargando fuente alternativa...";
+      dom.status.style.color = "#e8c468";
+    }
     // eslint-disable-next-line no-await-in-loop
     const ok = await mountExternalCandidate(container, candidate);
     if (!ok) return tryNextCandidate();
