@@ -734,5 +734,68 @@ export const MOVIES = [
     tmdbYear: 2013,
     saga: "Jackass",
     src: "https://github.com",
+  },
+  {
+    code: "90",
+    title: "Chucky, el muñeco diabólico",
+    tmdbTitle: "Chucky",
+    saga: "Chucky",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 1988,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/",
+  },
+  {
+    code: "91",
+    title: "Chucky: el muñeco diabólico 2 ",
+    tmdbTitle: "Child's Play 2",
+    saga: "Chucky",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 1990,
+    src: "",
+  },
+  {
+    code: "92",
+    title: "Chucky: el muñeco diabólico 3",
+    tmdbTitle: "Child's Play 3",
+    saga: "Chucky",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 1991,
+    src: ""
+  },
+  {
+    code: "93",
+    title: "La novia de Chucky",
+    tmdbTitle: "Bride of Chucky",
+    saga: "Chucky",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 1998,
+    src: ""
+  },
+  {
+    code: "94",
+    title: "El hijo de Chucky",
+    tmdbTitle: "Seed of Chucky",
+    saga: "Chucky",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2004,
+    src: ""
+  },
+  {
+    code: "95",
+    title: "La maldición de Chucky",
+    tmdbTitle: "Curse of Chucky",
+    saga: "Chucky",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2013,
+    src: ""
+  },
+  {
+    code: "96",
+    title: "El culto a Chucky",
+    tmdbTitle: "Cult of Chucky",
+    saga: "Chucky",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2017,
+    src: ""
   }
 ];
