@@ -797,5 +797,77 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2017,
     src: ""
-  }
+  },
+  {
+    code: "97",
+    title: "harry Potter y la piedra filosofal",
+    tmdbTitle: "Harry Potter and the Philosopher's Stone",
+    saga: "Harry Potter",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2001,
+    src: ""
+  },
+  {
+    code: "98",
+    title: "harry Potter y la cámara secreta",
+    tmdbTitle: "Harry Potter and the Chamber of Secrets",
+    saga: "Harry Potter",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2002,
+    src: ""
+  },
+  {
+    code: "99",
+    title: "harry Potter y el prisionero de Azkaban",
+    tmdbTitle: "Harry Potter and the Prisoner of Azkaban",
+    saga: "Harry Potter",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2004,
+    src: ""
+  },
+  {
+    code: "100",
+    title: "harry Potter y el cáliz de fuego",
+    tmdbTitle: "Harry Potter and the Goblet of Fire",
+    saga: "Harry Potter",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2005,
+    src: ""
+  },
+  {
+    code: "101",
+    title: "harry Potter y la orden del fénix",
+    tmdbTitle: "Harry Potter and the Order of the Phoenix",
+    saga: "Harry Potter",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2007,
+    src: ""
+  },
+  {
+    code: "102",
+    title: "harry Potter y el misterio del príncipe",
+    tmdbTitle: "Harry Potter and the Half-Blood Prince",
+    saga: "Harry Potter",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2009,
+    src: ""
+  },
+  {
+    code: "103",
+    title: "harry Potter y las reliquias de la muerte: parte 1",
+    tmdbTitle: "Harry Potter and the Deathly Hallows: Part 1",
+    saga: "Harry Potter",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2010,
+    src: ""
+  },
+  {
+    code: "104",
+    title: "harry Potter y las reliquias de la muerte: parte 2",
+    tmdbTitle: "Harry Potter and the Deathly Hallows: Part 2",
+    saga: "Harry Potter",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2011,
+    src: ""
+  },
 ];
