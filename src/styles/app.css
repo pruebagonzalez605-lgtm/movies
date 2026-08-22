@@ -2030,8 +2030,10 @@ body.modal-open {
 }
 
 /* ==================== CONTROLES RAPIDOS MOBILE ====================
-   Fila de retroceder / play-pausa / adelantar centrada sobre el video
-   en mobile (ver mountPlayerUi en player-page.js). z-index 33: por
+   Fila de retroceder / play-pausa / adelantar centrada sobre el video en
+   mobile (ver mountPlayerUi en player-page.js), con proporciones al estilo
+   Netflix: el boton central es solo el icono (sin circulo ni fondo) y los
+   botones de salto llevan un circulo delgado sin relleno. z-index 33: por
    encima del video y de la tarjeta de "siguiente episodio" (30), por
    debajo de la barra de controles de Plyr (40) para no taparla. */
 .mobile-quick-controls {
@@ -2041,7 +2043,7 @@ body.modal-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(36px, 16vw, 72px);
+  gap: clamp(40px, 18vw, 88px);
   pointer-events: none;
   transition: opacity 0.2s ease;
 }
@@ -2060,36 +2062,44 @@ body.modal-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
-  border: 1.5px solid rgba(255, 255, 255, 0.55);
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.32);
+  background: none;
+  border: none;
   color: #fff;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
   -webkit-tap-highlight-color: transparent;
 }
 
-.mq-btn svg {
-  width: 30px;
-  height: 30px;
+.mq-btn:active {
+  opacity: 0.7;
 }
 
-.mq-btn:active {
-  background: rgba(0, 0, 0, 0.5);
-  transform: scale(0.94);
+.mq-btn.mq-skip {
+  width: 56px;
+  height: 56px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+}
+
+.mq-btn.mq-skip svg {
+  width: 26px;
+  height: 26px;
 }
 
 .mq-btn.mq-play {
-  width: 78px;
-  height: 78px;
-  background: rgba(0, 0, 0, 0.4);
-  border-width: 2px;
+  width: 64px;
+  height: 64px;
+}
+
+/* El boton central de play/pausa nunca debe cambiar de aspecto al
+   presionarlo (sin escalado, sin cambio de fondo/color/opacidad): mismo
+   diseño siempre, oprimas o no. */
+.mq-btn.mq-play:active {
+  opacity: 1;
 }
 
 .mq-btn.mq-play svg {
-  width: 38px;
-  height: 38px;
+  width: 64px;
+  height: 64px;
 }
 
 .mq-icon-pause[hidden] {
