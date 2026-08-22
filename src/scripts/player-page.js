@@ -60,6 +60,10 @@ const dom = {
   nextEpisodeOverlay: document.getElementById("nextEpisodeOverlay"),
   nextEpisodeTitle: document.getElementById("nextEpisodeTitle"),
   nextEpisodeBtn: document.getElementById("nextEpisodeBtn"),
+  mobileQuickControls: document.getElementById("mobileQuickControls"),
+  mqRewindBtn: document.getElementById("mqRewindBtn"),
+  mqPlayPauseBtn: document.getElementById("mqPlayPauseBtn"),
+  mqForwardBtn: document.getElementById("mqForwardBtn"),
 };
 
 const state = {
@@ -483,6 +487,51 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
   });
   initFullscreenOrientationLock(state.playerUi);
   bindVideoEvents(syncActiveVideo());
+  if (compactControls) initMobileQuickControls(state.playerUi);
+}
+
+/**
+ * Fila de retroceder 10s / play-pausa / adelantar 10s centrada sobre el
+ * video, solo para mobile (ver compactControls en mountPlayerUi). Los
+ * botones "rewind"/"fast-forward" nativos de Plyr no se usan en mobile
+ * porque no muestran los 10 segundos, asi que esta capa los reemplaza
+ * visualmente y opera directo sobre la instancia de Plyr para mantener
+ * todo sincronizado (progreso, resume, etc.).
+ */
+function initMobileQuickControls(player) {
+  const { mobileQuickControls, mqRewindBtn, mqPlayPauseBtn, mqForwardBtn } = dom;
+  if (!mobileQuickControls || !mqRewindBtn || !mqPlayPauseBtn || !mqForwardBtn || !player) return;
+
+  const iconPlay = mqPlayPauseBtn.querySelector(".mq-icon-play");
+  const iconPause = mqPlayPauseBtn.querySelector(".mq-icon-pause");
+  const syncPlayIcon = () => {
+    const playing = !player.paused;
+    if (iconPlay) iconPlay.hidden = playing;
+    if (iconPause) iconPause.hidden = !playing;
+    mqPlayPauseBtn.setAttribute("aria-label", playing ? "Pausar" : "Reproducir");
+  };
+
+  mqRewindBtn.addEventListener("click", () => {
+    player.currentTime = Math.max(0, player.currentTime - 10);
+  });
+  mqForwardBtn.addEventListener("click", () => {
+    const max = Number.isFinite(player.duration) ? player.duration : Infinity;
+    player.currentTime = Math.min(max, player.currentTime + 10);
+  });
+  mqPlayPauseBtn.addEventListener("click", () => {
+    player.togglePlay();
+  });
+
+  player.on("play", syncPlayIcon);
+  player.on("pause", syncPlayIcon);
+  // Plyr agrega/saca "plyr--hide-controls" del wrapper .plyr al mostrar u
+  // ocultar su barra de controles; espejamos ese estado en nuestra fila
+  // para que aparezcan y desaparezcan juntas.
+  player.on("controlsshown", () => mobileQuickControls.classList.remove("mq-hidden"));
+  player.on("controlshidden", () => mobileQuickControls.classList.add("mq-hidden"));
+
+  syncPlayIcon();
+  mobileQuickControls.hidden = false;
 }
 
 function mountCastButtonInPlayerControls(btn) {

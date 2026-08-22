@@ -2029,6 +2029,67 @@ body.modal-open {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ==================== CONTROLES RAPIDOS MOBILE ====================
+   Fila de retroceder / play-pausa / adelantar centrada sobre el video
+   en mobile (ver mountPlayerUi en player-page.js). z-index 33: por
+   encima del video y de la tarjeta de "siguiente episodio" (30), por
+   debajo de la barra de controles de Plyr (40) para no taparla. */
+.mobile-quick-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 33;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(28px, 12vw, 56px);
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.mobile-quick-controls[hidden] {
+  display: none;
+}
+
+.mobile-quick-controls.mq-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mq-btn {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mq-btn:active {
+  opacity: 0.6;
+}
+
+.mq-btn.mq-play {
+  width: 60px;
+  height: 60px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.mq-icon-pause[hidden] {
+  display: none;
+}
+
+@media (min-width: 701px) and (pointer: fine) {
+  .mobile-quick-controls {
+    display: none !important;
+  }
+}
+
 .next-episode-card {
   background: rgba(12, 12, 16, 0.92);
   backdrop-filter: blur(8px);
