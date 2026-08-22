@@ -450,7 +450,7 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
   const previewSrc = media.previewThumbnails || media.previewVtt;
   const compactControls = isCoarsePointerViewport();
   const controls = compactControls
-    ? ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "airplay", "fullscreen"]
+    ? ["play", "progress", "current-time", "mute", "volume", "settings", "airplay", "fullscreen"]
     : [
       "play-large", "rewind", "play", "fast-forward", "progress", "current-time",
       "duration", "mute", "volume", "captions", "settings", "pip", "airplay", "fullscreen",
@@ -511,14 +511,17 @@ function initMobileQuickControls(player) {
     mqPlayPauseBtn.setAttribute("aria-label", playing ? "Pausar" : "Reproducir");
   };
 
-  mqRewindBtn.addEventListener("click", () => {
+  mqRewindBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
     player.currentTime = Math.max(0, player.currentTime - 10);
   });
-  mqForwardBtn.addEventListener("click", () => {
+  mqForwardBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
     const max = Number.isFinite(player.duration) ? player.duration : Infinity;
     player.currentTime = Math.min(max, player.currentTime + 10);
   });
-  mqPlayPauseBtn.addEventListener("click", () => {
+  mqPlayPauseBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
     player.togglePlay();
   });
 
