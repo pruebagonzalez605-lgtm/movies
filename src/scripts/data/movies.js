@@ -742,6 +742,7 @@ export const MOVIES = [
     saga: "Chucky",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 1988,
+    tmdbId: 10585,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/",
   },
   {
@@ -870,4 +871,67 @@ export const MOVIES = [
     tmdbYear: 2011,
     src: ""
   },
+  {
+    code: "105",
+    title: "Activida paranormal 1",
+    tmdbTitle: "Paranormal Activity",
+    saga: "Actividad paranormal",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2007,
+    src: ""
+  },
+  {
+    code: "106",
+    title: "Activida paranormal 2",
+    tmdbTitle: "Paranormal Activity 2",
+    saga: "Actividad paranormal",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2010,
+    src: ""
+  },
+  {
+    code: "107",
+    title: "Activida paranormal 3",
+    tmdbTitle: "Paranormal Activity 3",
+    saga: "Actividad paranormal",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2011,
+    src: ""
+  },
+  {
+    code: "108",
+    title: "Activida paranormal 4",
+    tmdbTitle: "Paranormal Activity 4",
+    saga: "Actividad paranormal",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2012,
+    src: ""
+  },
+  {
+    code: "109",
+    title: "Actividad Paranormal: Los Marcados",
+    tmdbTitle: "Paranormal Activity: The Marked Ones",
+    saga: "Actividad paranormal",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2014,
+    src: ""
+  },
+  {
+    code: "110",
+    title: "Actividad Paranormal: Dimensión Fantasma",
+    tmdbTitle: "Paranormal Activity: The Ghost Dimension",
+    saga: "Actividad paranormal",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2015,
+    src: ""
+  },
+  {
+    code: "111",
+    title: "Actividad Paranormal: Vínculos Familiares",
+    tmdbTitle: "Paranormal Activity: Next of Kin",
+    saga: "Actividad paranormal",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2021,
+    src: ""
+  }
 ];
