@@ -375,38 +375,53 @@ async function handleProxyHls(request, env, requestUrl) {
     return jsonResponse(request, env, 400, error.message);
   }
 
-  // Embed opcional: visita previa para cookies / contexto de hotlink
+  const UA =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
   let embedReferer = "https://vimeos.net/";
   let embedOrigin = "https://vimeos.net";
   let cookieHeader = "";
   const embedParam = requestUrl.searchParams.get("embed");
+
   if (embedParam) {
     try {
       const embedUrl = validateEmbedUrl(embedParam);
       embedReferer = embedUrl.href;
       embedOrigin = embedUrl.origin;
+
+      // 1ª visita al embed (cookies de sesión)
       const embedRes = await fetch(embedUrl.href, {
         method: "GET",
         redirect: "follow",
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "User-Agent": UA,
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
           "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+          "Upgrade-Insecure-Requests": "1",
         },
       });
-      // Workers: getSetCookie() si existe
-      const setCookies = typeof embedRes.headers.getSetCookie === "function"
-        ? embedRes.headers.getSetCookie()
-        : [];
+
+      const setCookies =
+        typeof embedRes.headers.getSetCookie === "function"
+          ? embedRes.headers.getSetCookie()
+          : [];
       if (setCookies.length) {
         cookieHeader = setCookies.map((c) => c.split(";")[0]).join("; ");
       } else {
         const sc = embedRes.headers.get("set-cookie");
-        if (sc) cookieHeader = sc.split(",").map((p) => p.split(";")[0].trim()).join("; ");
+        if (sc) {
+          cookieHeader = sc
+            .split(/,(?=[^;]+?=)/)
+            .map((p) => p.split(";")[0].trim())
+            .filter(Boolean)
+            .join("; ");
+        }
       }
-      // consumir body para no colgar
-      try { await embedRes.arrayBuffer(); } catch (_) {}
+      try {
+        await embedRes.arrayBuffer();
+      } catch (_) {}
     } catch (_) {
       // seguir sin cookies
     }
@@ -421,82 +436,131 @@ async function handleProxyHls(request, env, requestUrl) {
     }
   }
 
-  const headers = buildUpstreamHeaders(request);
-  headers.set("Referer", embedReferer);
-  // Algunos CDN 403 si Origin no es el esperado; otros 403 si viene.
-  // Probamos con Origin del embed.
-  headers.set("Origin", embedOrigin);
-  headers.set(
-    "Accept",
-    upstreamUrl.pathname.includes(".m3u8")
-      ? "application/vnd.apple.mpegurl,application/x-mpegURL,*/*;q=0.8"
-      : "*/*",
-  );
-  if (cookieHeader) headers.set("Cookie", cookieHeader);
+  const isM3u8 = upstreamUrl.pathname.includes(".m3u8");
 
-  let upstreamResponse;
+  // Varias combinaciones de headers (orden: más “navegador real” primero)
+  const headerAttempts = [
+    // A) Navegador completo con Origin + cookies
+    () => {
+      const h = new Headers();
+      h.set("User-Agent", UA);
+      h.set("Accept", isM3u8
+        ? "application/vnd.apple.mpegurl,application/x-mpegURL,application/octet-stream,*/*;q=0.8"
+        : "*/*");
+      h.set("Accept-Language", "es-ES,es;q=0.9,en;q=0.8");
+      h.set("Referer", embedReferer);
+      h.set("Origin", embedOrigin);
+      h.set("Sec-Fetch-Dest", isM3u8 ? "empty" : "video");
+      h.set("Sec-Fetch-Mode", "cors");
+      h.set("Sec-Fetch-Site", "cross-site");
+      if (cookieHeader) h.set("Cookie", cookieHeader);
+      return h;
+    },
+    // B) Sin Origin (algunos CDN 403 si viene Origin)
+    () => {
+      const h = new Headers();
+      h.set("User-Agent", UA);
+      h.set("Accept", isM3u8
+        ? "application/vnd.apple.mpegurl,application/x-mpegURL,*/*;q=0.8"
+        : "*/*");
+      h.set("Accept-Language", "es-ES,es;q=0.9,en;q=0.8");
+      h.set("Referer", embedReferer);
+      if (cookieHeader) h.set("Cookie", cookieHeader);
+      return h;
+    },
+    // C) Solo Referer del origen (sin path del embed)
+    () => {
+      const h = new Headers();
+      h.set("User-Agent", UA);
+      h.set("Accept", "*/*");
+      h.set("Referer", embedOrigin + "/");
+      if (cookieHeader) h.set("Cookie", cookieHeader);
+      return h;
+    },
+    // D) Mínimo (último recurso)
+    () => {
+      const h = new Headers();
+      h.set("User-Agent", UA);
+      h.set("Accept", "*/*");
+      h.set("Referer", embedReferer);
+      return h;
+    },
+  ];
+
+  // Mirrors de URL (host + variantes _h / _n)
+  const candidateUrls = [upstreamUrl.href];
   try {
-    upstreamResponse = await fetch(upstreamUrl.href, {
-      method: request.method,
-      headers,
-      redirect: "follow",
-    });
-  } catch {
+    const srv = upstreamUrl.searchParams.get("srv");
+    if (srv) {
+      const a = new URL(upstreamUrl.href);
+      a.hostname = `${srv}.vimeos.net`;
+      candidateUrls.push(a.href);
+    }
+    const um = upstreamUrl.pathname.match(
+      /^(.*\/)([A-Za-z0-9]+)_,([^/]+),\.(urlset)\/master\.m3u8$/i,
+    );
+    if (um) {
+      const [, root, code, quals] = um;
+      for (const q of quals.split(",").filter(Boolean).slice(0, 2)) {
+        const a = new URL(upstreamUrl.href);
+        a.pathname = `${root}${code}_${q}/master.m3u8`;
+        candidateUrls.push(a.href);
+        if (srv) {
+          const b = new URL(a.href);
+          b.hostname = `${srv}.vimeos.net`;
+          candidateUrls.push(b.href);
+        }
+      }
+    }
+  } catch (_) {}
+
+  let upstreamResponse = null;
+  let usedUrl = upstreamUrl.href;
+
+  outer: for (const buildHeaders of headerAttempts) {
+    const headers = buildHeaders();
+    for (const tryUrl of candidateUrls) {
+      try {
+        const res = await fetch(tryUrl, {
+          method: request.method,
+          headers,
+          redirect: "follow",
+        });
+        if (res.ok) {
+          upstreamResponse = res;
+          usedUrl = tryUrl;
+          break outer;
+        }
+        // Guardamos el último 403 por si ninguno funciona
+        if (!upstreamResponse || res.status !== 404) {
+          upstreamResponse = res;
+          usedUrl = tryUrl;
+        }
+      } catch (_) {
+        // siguiente intento
+      }
+    }
+  }
+
+  if (!upstreamResponse) {
     return jsonResponse(request, env, 502, "hls_upstream_unavailable");
   }
 
-  // Si 403, reintentar sin Origin y con mirrors de host/path
+  upstreamUrl = new URL(usedUrl);
+
+  // Si sigue en 403, devolver error claro (el player caerá al iframe)
   if (upstreamResponse.status === 403) {
-    const altUrls = [];
-    try {
-      const headers2 = buildUpstreamHeaders(request);
-      headers2.set("Referer", embedReferer);
-      headers2.set(
-        "Accept",
-        upstreamUrl.pathname.includes(".m3u8")
-          ? "application/vnd.apple.mpegurl,application/x-mpegURL,*/*;q=0.8"
-          : "*/*",
-      );
-      if (cookieHeader) headers2.set("Cookie", cookieHeader);
+    console.log("[proxy-hls] still 403", usedUrl, "cookies=", Boolean(cookieHeader));
+    return jsonResponse(request, env, 403, "hls_forbidden_by_cdn");
+  }
 
-      const srv = upstreamUrl.searchParams.get("srv");
-      if (srv) {
-        const a = new URL(upstreamUrl.href);
-        a.hostname = `${srv}.vimeos.net`;
-        altUrls.push(a.href);
-      }
-      // urlset → _h / _n
-      const um = upstreamUrl.pathname.match(/^(.*\/)([A-Za-z0-9]+)_,([^/]+),\.(urlset)\/master\.m3u8$/i);
-      if (um) {
-        const root = um[1];
-        const code = um[2];
-        for (const q of um[3].split(",").filter(Boolean).slice(0, 2)) {
-          const a = new URL(upstreamUrl.href);
-          a.pathname = `${root}${code}_${q}/master.m3u8`;
-          altUrls.push(a.href);
-          if (srv) {
-            const b = new URL(a.href);
-            b.hostname = `${srv}.vimeos.net`;
-            altUrls.push(b.href);
-          }
-        }
-      }
-
-      const tryUrls = [upstreamUrl.href, ...altUrls];
-      for (const tryUrl of tryUrls) {
-        upstreamResponse = await fetch(tryUrl, {
-          method: request.method,
-          headers: headers2,
-          redirect: "follow",
-        });
-        if (upstreamResponse.ok) {
-          upstreamUrl = new URL(tryUrl);
-          break;
-        }
-      }
-    } catch {
-      return jsonResponse(request, env, 502, "hls_upstream_unavailable");
-    }
+  if (!upstreamResponse.ok) {
+    return jsonResponse(
+      request,
+      env,
+      502,
+      `hls_upstream_${upstreamResponse.status}`,
+    );
   }
 
   const proxyBase = new URL(request.url).origin;
@@ -506,9 +570,8 @@ async function handleProxyHls(request, env, requestUrl) {
     || contentType.includes("mpegurl")
     || contentType.includes("m3u8");
 
-  if (isPlaylist && request.method === "GET" && upstreamResponse.ok) {
+  if (isPlaylist && request.method === "GET") {
     const textBody = await upstreamResponse.text();
-    // Reescribir conservando embed en las URLs hijas
     const embedQ = embedParam ? `&embed=${encodeURIComponent(embedParam)}` : "";
     const rewritten = textBody.split("\n").map((line) => {
       const trimmed = line.trim();
@@ -548,11 +611,10 @@ async function handleProxyHls(request, env, requestUrl) {
   if (!outHeaders.has("Content-Type")) {
     outHeaders.set("Content-Type", "application/octet-stream");
   }
-  outHeaders.set("Cache-Control", "public, max-age=60");
+  outHeaders.set("Cache-Control", "no-store");
 
-  return new Response(request.method === "HEAD" ? null : upstreamResponse.body, {
+  return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,
-    statusText: upstreamResponse.statusText,
     headers: outHeaders,
   });
 }
