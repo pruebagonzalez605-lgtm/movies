@@ -514,6 +514,7 @@ export const MOVIES = [
     tmdbTitle: "Spider-Man 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
+    tmdbId: 558,
     tmdbYear: 2004,
   },
   {
@@ -530,6 +531,7 @@ export const MOVIES = [
     tmdbTitle: "The Amazing Spider-Man",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
+    tmdbId: 1930,
     tmdbYear: 2012,
   },
   {
@@ -538,6 +540,7 @@ export const MOVIES = [
     tmdbTitle: "The Amazing Spider-Man 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
+    tmdbId: 102382,
     tmdbYear: 2014,
   },
   {
