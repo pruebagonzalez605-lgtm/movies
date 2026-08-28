@@ -936,5 +936,13 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2021,
     src: ""
+  },
+  {
+    code: "112",
+    title: "El Precio del Mañana",
+    tmdbTitle: "In Time",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2011,
+    src: ""
   }
 ];
