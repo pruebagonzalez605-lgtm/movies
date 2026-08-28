@@ -944,5 +944,31 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2011,
     src: ""
+  },
+  {
+    code: "113",
+    title: "¡Shazam!",
+    tmdbTitle: "Shazam!",
+    saga: "Shazam",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2019,
+    src: ""
+  },
+    {
+    code: "114",
+    title: "Shazam! La furia de los dioses!",
+    tmdbTitle: "Shazam! Fury of the Gods",
+    saga: "Shazam",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2023,
+    src: ""
+  },
+  {
+    code: "115",
+    title: "Fragmentados",
+    tmdbTitle: "Split",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2016,
+    src: ""
   }
 ];

@@ -2578,8 +2578,8 @@ function showAdblockHint() {
   if (!el) return;
   el.hidden = false;
   el.innerHTML =
-    "Esta fuente alternativa puede incluir anuncios. " +
-    "Colevana prioriza archivos propios y el reproductor natural (sin iframe) cuando es posible.";
+    "Esta fuente alternativa puede incluir anuncios. porfavor usar addblock " +
+    "Colevana prioriza archivos propios y el reproductor natural cuando es posible. usar addblock para evitar anuncios en fuentes externas.";
 }
 
 function hideAdblockHint() {
