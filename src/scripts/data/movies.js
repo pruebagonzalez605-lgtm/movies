@@ -970,5 +970,13 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2016,
     src: ""
+  },
+  {
+    code: "116",
+    title: "Coyote vs. Acme",
+    tmdbTitle: "Coyote vs. Acme",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2026,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.35/CVSA.mp4",
   }
 ];
