@@ -382,6 +382,20 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB2x16.mp4",
         ]
       },
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.25/BIB3x9.mp4"
+        ]
+      },
     ]
   },
   {
