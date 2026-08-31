@@ -199,7 +199,6 @@ export const MOVIES = [
     saga: "la Noche Del Demonio",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.34/NDDUL.mp4",
   },
-
   {
     code: "27",
     title: "La Noche Del Demonio: La Puerta Roja",
@@ -978,5 +977,14 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2026,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.35/CVSA.mp4",
-  }
+  },
+  {
+    code: "117",
+    title: "La noche del demonio: Capítulo 2 ",
+    tmdbTitle: "Insidious: Chapter 2",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2013,
+    saga: "la Noche Del Demonio",
+    src: "",
+  },
 ];
