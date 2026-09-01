@@ -720,6 +720,7 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x8.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x9.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x10.mp4",
+          
         ]
       }
     ]
