@@ -990,6 +990,7 @@ export const MOVIES = [
   {
     code: "118",
     title: "Shrek",
+    addedAt: "2026-09-01",
     tmdbTitle: "Shrek",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2001,
@@ -999,6 +1000,7 @@ export const MOVIES = [
   {
     code: "119",
     title: "Shrek 2",
+    addedAt: "2026-09-01",
     tmdbTitle: "Shrek 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2004,
@@ -1008,6 +1010,7 @@ export const MOVIES = [
   {
     code: "120",
     title: "Shrek Tercero",
+    addedAt: "2026-09-01",
     tmdbTitle: "Shrek the Third",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2007,
@@ -1017,6 +1020,7 @@ export const MOVIES = [
   {
     code: "121",
     title: "Shrek: Felices para siempre",
+    addedAt: "2026-09-01",
     tmdbTitle: "Shrek Forever After",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2010,
