@@ -726,6 +726,7 @@ export const SERIES = [
   },
   {
     title: "Trabajo incógnito",
+    addedAt: "2026-09-01",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Inside Job",
     tmdbYear: 2021,
