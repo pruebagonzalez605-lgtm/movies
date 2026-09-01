@@ -102,8 +102,8 @@
           <!-- ==================== CONTROLES RAPIDOS MOBILE ====================
      Fila de retroceder / play-pausa / adelantar centrada sobre el video,
      solo para viewport mobile (ver compactControls en mountPlayerUi de
-     player-page.js). Estilo inspirado en Netflix: boton central sin
-     circulo/fondo, botones de salto con circulo delgado. Se sincroniza
+     player-page.js). Estilo inspirado en Netflix: todos los botones sin
+     circulo/fondo, solo el icono (mas grande) sobre el video. Se sincroniza
      con el auto-hide de los controles de Plyr mediante los eventos
      controlsshown/controlshidden. -->
           <div class="mobile-quick-controls" id="mobileQuickControls" hidden>
@@ -116,11 +116,11 @@
                   text-anchor="middle" font-family="Montserrat, sans-serif">10</text>
               </svg>
             </button>
-            <button type="button" class="mq-btn mq-play" id="mqPlayPauseBtn" aria-label="Reproducir o pausar">
+            <button type="button" class="mq-btn mq-play" id="mqPlayPauseBtn" aria-label="Reproducir" data-state="paused">
               <svg class="mq-icon-play" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z"></path>
               </svg>
-              <svg class="mq-icon-pause" viewBox="0 0 24 24" fill="currentColor" hidden>
+              <svg class="mq-icon-pause" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M6 5h4v14H6zM14 5h4v14h-4z"></path>
               </svg>
             </button>

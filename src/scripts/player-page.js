@@ -502,12 +502,19 @@ function initMobileQuickControls(player) {
   const { mobileQuickControls, mqRewindBtn, mqPlayPauseBtn, mqForwardBtn } = dom;
   if (!mobileQuickControls || !mqRewindBtn || !mqPlayPauseBtn || !mqForwardBtn || !player) return;
 
-  const iconPlay = mqPlayPauseBtn.querySelector(".mq-icon-play");
-  const iconPause = mqPlayPauseBtn.querySelector(".mq-icon-pause");
+  // Leemos siempre del <video> real (player.media) en vez de player.paused:
+  // el getter .paused de Plyr a veces queda un paso atras del elemento real
+  // (sobre todo justo despues de togglear play/pause en movil).
+  const getVideoEl = () => player.media || dom.video;
+  // Un solo atributo (data-state) decide el icono Y el aria-label en la
+  // misma linea: antes se togleaban dos "hidden" por separado y podian
+  // quedar desincronizados (aria-label decia "Pausar" pero el icono
+  // visible seguia siendo el de play). Ver reglas de .mq-btn.mq-play en
+  // app.css.
   const syncPlayIcon = () => {
-    const playing = !player.paused;
-    if (iconPlay) iconPlay.hidden = playing;
-    if (iconPause) iconPause.hidden = !playing;
+    const video = getVideoEl();
+    const playing = video ? !video.paused && !video.ended : !player.paused;
+    mqPlayPauseBtn.dataset.state = playing ? "playing" : "paused";
     mqPlayPauseBtn.setAttribute("aria-label", playing ? "Pausar" : "Reproducir");
   };
 
@@ -521,12 +528,21 @@ function initMobileQuickControls(player) {
     player.currentTime = Math.min(max, player.currentTime + 10);
   });
   mqPlayPauseBtn.addEventListener("click", (event) => {
+    event.preventDefault();
     event.stopPropagation();
     player.togglePlay();
+    // Reconciliamos varias veces en el instante siguiente al click: el
+    // evento play/pause de Plyr puede llegar con demora en movil, asi
+    // que no alcanza con togglear una vez y confiar en ese evento solo.
+    syncPlayIcon();
+    requestAnimationFrame(syncPlayIcon);
+    setTimeout(syncPlayIcon, 50);
+    setTimeout(syncPlayIcon, 250);
   });
 
   player.on("play", syncPlayIcon);
   player.on("pause", syncPlayIcon);
+  player.on("playing", syncPlayIcon);
   // Plyr agrega/saca "plyr--hide-controls" del wrapper .plyr al mostrar u
   // ocultar su barra de controles; espejamos ese estado en nuestra fila
   // para que aparezcan y desaparezcan juntas.

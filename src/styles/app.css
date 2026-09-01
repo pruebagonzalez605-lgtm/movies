@@ -2032,8 +2032,8 @@ body.modal-open {
 /* ==================== CONTROLES RAPIDOS MOBILE ====================
    Fila de retroceder / play-pausa / adelantar centrada sobre el video en
    mobile (ver mountPlayerUi en player-page.js), con proporciones al estilo
-   Netflix: el boton central es solo el icono (sin circulo ni fondo) y los
-   botones de salto llevan un circulo delgado sin relleno. z-index 33: por
+   Netflix: los tres botones son solo el icono, sin circulo ni fondo, y mas
+   grandes para que se distingan bien sobre el video. z-index 33: por
    encima del video y de la tarjeta de "siguiente episodio" (30), por
    debajo de la barra de controles de Plyr (40) para no taparla. */
 .mobile-quick-controls {
@@ -2074,20 +2074,19 @@ body.modal-open {
 }
 
 .mq-btn.mq-skip {
-  width: 56px;
-  height: 56px;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
+  width: 64px;
+  height: 64px;
 }
 
 .mq-btn.mq-skip svg {
-  width: 26px;
-  height: 26px;
+  width: 44px;
+  height: 44px;
 }
 
 .mq-btn.mq-play {
   width: 64px;
   height: 64px;
+  position: relative;
 }
 
 /* El boton central de play/pausa nunca debe cambiar de aspecto al
@@ -2100,10 +2099,27 @@ body.modal-open {
 .mq-btn.mq-play svg {
   width: 64px;
   height: 64px;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
-.mq-icon-pause[hidden] {
+/* Un solo interruptor para decidir que icono se ve: data-state en el
+   boton, no dos atributos "hidden" por separado en cada svg. Con dos
+   toggles independientes era posible (y paso) que quedaran
+   desincronizados: el aria-label decia "Pausar" pero el icono visible
+   seguia siendo el de play, o viceversa. Con un solo atributo eso ya
+   no puede pasar: el mismo valor decide el icono Y el aria-label. */
+.mq-btn.mq-play .mq-icon-pause {
   display: none;
+}
+
+.mq-btn.mq-play[data-state="playing"] .mq-icon-play {
+  display: none;
+}
+
+.mq-btn.mq-play[data-state="playing"] .mq-icon-pause {
+  display: block;
 }
 
 @media (min-width: 701px) and (pointer: fine) {
