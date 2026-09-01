@@ -671,7 +671,7 @@ export const SERIES = [
       }
     ]
   },
-    {
+  {
     title: "Primal",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Primal",
@@ -724,4 +724,40 @@ export const SERIES = [
       }
     ]
   },
+  {
+    title: "Trabajo incógnito",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Inside Job",
+    tmdbYear: 2021,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x10.mp4",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x8.mp4",
+        ]
+      },
+    ]
+  },  
 ];
