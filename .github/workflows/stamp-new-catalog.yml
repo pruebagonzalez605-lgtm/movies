@@ -44,9 +44,16 @@ jobs:
 
       - name: Commit stamped files
         if: steps.stamp.outputs.changed == 'true'
+        env:
+          # actions/checkout deja el repo en "detached HEAD" (revisa un
+          # commit puntual, no una rama), asi que un "git push" a secas
+          # siempre falla con "You are not currently on a branch". Hay
+          # que empujar el commit actual explicitamente contra el nombre
+          # de la rama que disparo el push.
+          TARGET_BRANCH: ${{ github.ref_name }}
         run: |
           git config user.name "catalog-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/scripts/data/movies.js src/scripts/data/series.js
           git commit -m "chore: stamp addedAt on new catalog items"
-          git push
+          git push origin "HEAD:${TARGET_BRANCH}"
