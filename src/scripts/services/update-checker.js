@@ -9,6 +9,14 @@ import { APP_VERSION } from "../config/app-version.js";
 // aparecer aunque haya descartado una version anterior hace poco.
 const DISMISS_VERSION_KEY = "colevana:update-prompt-dismissed-version";
 
+// Guardamos ademas la version instalada que la app detecto la ULTIMA vez
+// que se abrio. Sirve para notar cuando el usuario acaba de actualizar el
+// APK (la version instalada cambio respecto de la ultima vez) y, en ese
+// caso, limpiar cualquier "descarte" viejo que haya quedado guardado. Sin
+// esto, un descarte guardado antes de actualizar podia quedar "pegado" y
+// mezclarse con la logica de version-mas-nueva de forma confusa.
+const LAST_SEEN_VERSION_KEY = "colevana:last-seen-app-version";
+
 function isRunningInsideNativeApp() {
   // Solo tiene sentido ofrecer "actualizar la app" dentro del propio APK
   // (Capacitor). En el navegador normal no aplica.
@@ -49,6 +57,26 @@ function markDismissedForVersion(version) {
   } catch {
     // Si localStorage no esta disponible, no pasa nada: el modal podria
     // volver a aparecer en la proxima apertura de la app.
+  }
+}
+
+// Compara la version instalada actual (APP_VERSION, la que viene
+// empaquetada en este build del APK) contra la que quedo guardada la
+// ultima vez que la app se abrio. Si son distintas, la app se acaba de
+// actualizar (o es la primera vez que se abre). En ese caso guardamos la
+// version nueva y borramos cualquier "recordar despues" viejo: ese
+// descarte corresponde a un chequeo hecho con la version anterior y no
+// tiene sentido que siga afectando el comportamiento del modal ahora.
+function syncInstalledVersion() {
+  try {
+    const lastSeenVersion = localStorage.getItem(LAST_SEEN_VERSION_KEY);
+    if (lastSeenVersion === APP_VERSION) return;
+
+    localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION);
+    localStorage.removeItem(DISMISS_VERSION_KEY);
+  } catch {
+    // Sin localStorage no podemos recordar nada entre aperturas; el
+    // modal simplemente se comporta como si fuera siempre la primera vez.
   }
 }
 
@@ -108,9 +136,17 @@ function wireModal(overlay, remoteVersion) {
 export async function initUpdateChecker() {
   if (!isRunningInsideNativeApp()) return;
 
+  // Guarda/actualiza la version instalada detectada en este dispositivo y
+  // limpia descartes viejos si la app se acaba de actualizar. Esto pasa
+  // SIEMPRE al abrir la app, antes de consultar si hay algo mas nuevo.
+  syncInstalledVersion();
+
   try {
     const { downloadUrl, version } = await fetchLatestApkDownloadUrl();
     if (!version) return;
+    // Si la version mas reciente publicada es igual a la que ya tenemos
+    // instalada (o mas vieja), no hay nada que ofrecer: no se manda
+    // ninguna alerta de actualizacion.
     if (!isNewerVersion(version, APP_VERSION)) return;
     if (wasDismissedForVersion(version)) return;
 

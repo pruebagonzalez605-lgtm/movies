@@ -1102,6 +1102,40 @@ body.resume-open { overflow: hidden; }
   border-color: #2a2a32;
 }
 
+/* Boton "Volver arriba" que se agrega solo al final de cada apartado
+   (.catalog-section) via nav.js, para volver al inicio de esa seccion
+   sin tener que scrollear a mano. */
+.catalog-back-to-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 18px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid #2a2a32;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.catalog-back-to-top:hover {
+  border-color: var(--accent-dim);
+  color: var(--text);
+  transform: translateY(-2px);
+}
+
+.catalog-back-to-top-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
 .catalog-detail-block {
   padding: 22px;
   min-width: 0;
@@ -2839,6 +2873,8 @@ textarea:focus-visible,
 
 .catalog-link:focus-visible,
 .catalog-link.tv-focus,
+.catalog-back-to-top:focus-visible,
+.catalog-back-to-top.tv-focus,
 .player-back-link:focus-visible,
 .player-back-link.tv-focus,
 .kick-login-btn:focus-visible,

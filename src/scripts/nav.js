@@ -46,3 +46,50 @@ document.addEventListener("keydown", (event) => {
   if (!openNav) return;
   closeOpenNav();
 });
+
+// Boton "Volver arriba" al final de cada apartado (.catalog-section) de
+// la pagina. Cada seccion puede crecer bastante (grillas largas de
+// peliculas/series, temporadas, etc.), asi que este boton hace scroll
+// de vuelta al inicio de ESA seccion puntual, no de toda la pagina.
+function addBackToTopButtons() {
+  document.querySelectorAll(".catalog-section").forEach((section) => {
+    // Ya tiene su boton (por ejemplo si esta funcion corre de nuevo
+    // porque el contenido de la seccion se termino de cargar).
+    if (section.querySelector(":scope > .catalog-back-to-top")) return;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "catalog-back-to-top";
+    button.setAttribute("aria-label", "Volver al inicio de esta seccion");
+    button.innerHTML = '<span class="catalog-back-to-top-icon" aria-hidden="true">&uarr;</span> Volver arriba';
+    button.addEventListener("click", () => {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    section.appendChild(button);
+  });
+}
+
+addBackToTopButtons();
+
+// Varias secciones (por ejemplo "Explorar mas" en movies/series/sagas)
+// arrancan vacias u ocultas y se llenan de forma asincronica despues de
+// que este script corre (ver catalog.js, home.js, suggestions-page.js).
+// Observamos el contenido principal para agregar el boton tambien a esas
+// secciones en cuanto aparecen, sin tener que tocar cada script.
+const catalogMain = document.querySelector(".catalog-main");
+if (catalogMain) {
+  let scheduled = false;
+  const observer = new MutationObserver(() => {
+    if (scheduled) return;
+    scheduled = true;
+    // Agrupamos varias mutaciones seguidas (ej: se insertan 20 tarjetas
+    // de golpe) en una sola pasada, en vez de recorrer el DOM por cada
+    // nodo agregado.
+    requestAnimationFrame(() => {
+      scheduled = false;
+      addBackToTopButtons();
+    });
+  });
+  observer.observe(catalogMain, { childList: true, subtree: true });
+}
