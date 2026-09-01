@@ -995,11 +995,33 @@ body.resume-open { overflow: hidden; }
 }
 
 .catalog-card-art {
+  position: relative;
   aspect-ratio: 2 / 3;
   width: 100%;
   background-size: cover;
   background-position: center;
 }
+
+.catalog-new-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0c0c11;
+  background: var(--accent);
+  box-shadow: 0 6px 16px -6px rgba(232, 196, 104, 0.55);
+  pointer-events: none;
+}
+
 
 .catalog-card-copy {
   padding: 10px 12px 14px;

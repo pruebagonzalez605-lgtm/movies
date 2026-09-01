@@ -2,12 +2,13 @@ import {
   buildEpisodePlayerUrl,
   buildMoviePlayerUrl,
   ensureSeasonEpisodes,
-  getMovies,
+  getMoviesSorted,
   getSagas,
-  getSeries,
+  getSeriesSorted,
   resolveMovieCardPoster,
   resolveSagaCardPoster,
   resolveSeriesCardPoster,
+  isNewItem,
 } from "./shared/catalog-data.js";
 import { initKickAuthUI } from "./shared/kick-auth-ui.js";
 
@@ -122,8 +123,11 @@ function createMovieCard(movie, posterUrl) {
   const link = document.createElement("a");
   link.className = "catalog-card";
   link.href = buildMoviePlayerUrl(movie);
+  const newBadge = isNewItem(movie)
+    ? '<span class="catalog-new-badge">Nuevo</span>'
+    : "";
   link.innerHTML = `
-    <div class="catalog-card-art"></div>
+    <div class="catalog-card-art">${newBadge}</div>
     <div class="catalog-card-copy">
       <span class="catalog-card-code">${movie.code || "Movie"}</span>
       <h3>${movie.title}</h3>
@@ -139,8 +143,11 @@ function createSeriesCard(serie, posterUrl) {
   const card = document.createElement("button");
   card.type = "button";
   card.className = "catalog-card catalog-card-series catalog-select-card";
+  const newBadge = isNewItem(serie)
+    ? '<span class="catalog-new-badge">Nuevo</span>'
+    : "";
   card.innerHTML = `
-    <div class="catalog-card-art"></div>
+    <div class="catalog-card-art">${newBadge}</div>
     <div class="catalog-card-copy">
       <span class="catalog-card-code">Serie</span>
       <h3>${serie.title}</h3>
@@ -195,7 +202,7 @@ function createMovieInlineCard(movie, posterUrl, secondaryText) {
 }
 
 async function renderMoviesPage() {
-  const movies = getMovies();
+  const movies = getMoviesSorted();
   setHeroContent({
     kicker: "Movies",
     title: "Explora la cartelera antes de entrar a reproducir.",
@@ -226,7 +233,7 @@ async function renderMoviesPage() {
 }
 
 async function renderSeriesPage() {
-  const series = getSeries();
+  const series = getSeriesSorted();
   const posters = await Promise.all(series.map((serie) => resolveSeriesCardPoster(serie)));
   setHeroContent({
     kicker: "Series",

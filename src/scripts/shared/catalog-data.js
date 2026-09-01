@@ -7,6 +7,9 @@ import {
   tmdbSearchTvPoster,
 } from "../services/tmdb.js";
 
+/** Dias que un item se considera "nuevo" */
+export const NEW_WINDOW_DAYS = 14;
+
 export function slugify(str) {
   return (str || "")
     .toString()
@@ -35,12 +38,49 @@ function queryMatches(haystack, normalizedQuery) {
   return pattern.test(haystack);
 }
 
+export function parseAddedAt(item) {
+  if (!item?.addedAt) return 0;
+  const t = Date.parse(item.addedAt);
+  return Number.isFinite(t) ? t : 0;
+}
+
+export function isNewItem(item, windowDays = NEW_WINDOW_DAYS) {
+  const t = parseAddedAt(item);
+  if (!t) return false;
+  const ageMs = Date.now() - t;
+  return ageMs >= 0 && ageMs <= windowDays * 24 * 60 * 60 * 1000;
+}
+
+function compareCode(a, b) {
+  const ca = String(a.code || "").padStart(4, "0");
+  const cb = String(b.code || "").padStart(4, "0");
+  return ca.localeCompare(cb, undefined, { numeric: true });
+}
+
+/** Nuevos primero (addedAt desc), luego por code asc */
+export function sortCatalogItems(items) {
+  return [...items].sort((a, b) => {
+    const ta = parseAddedAt(a);
+    const tb = parseAddedAt(b);
+    if (ta !== tb) return tb - ta;
+    return compareCode(a, b);
+  });
+}
+
 export function getMovies() {
   return MOVIES;
 }
 
 export function getSeries() {
   return SERIES;
+}
+
+export function getMoviesSorted() {
+  return sortCatalogItems(MOVIES);
+}
+
+export function getSeriesSorted() {
+  return sortCatalogItems(SERIES);
 }
 
 export function getSagas() {

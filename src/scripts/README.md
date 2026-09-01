@@ -1,20 +1,36 @@
-# Script Modules
+# Sistema "Nuevos" - Catalogo Colevana
 
-This folder is ready for a gradual split of the current inline script in `index.html`.
+## Archivos incluidos
 
-## Modules
+| Archivo | Destino en el repo |
+|---------|--------------------|
+| `src/scripts/shared/catalog-data.js` | Reemplazar el actual |
+| `src/scripts/home.js` | Reemplazar el actual |
+| `src/scripts/catalog.js` | Reemplazar el actual |
+| `src/styles/catalog-new-badge.css` | Pegar el contenido en `src/styles/app.css` (reemplazar `.catalog-card-art`) |
 
-- `app.js`
-  Main entry point
+## Uso
 
-- `config/`
-  App constants and service configuration
+Al agregar una pelicula o serie nueva, incluye el campo:
 
-- `data/`
-  Movie and series catalog data
+```js
+addedAt: "2026-08-31",
+```
 
-- `services/`
-  API integrations and auth helpers
+Ejemplo en `movies.js`:
 
-- `ui/`
-  Rendering logic and player behavior
+```js
+{
+  code: "82",
+  title: "Mi Pelicula Nueva",
+  addedAt: "2026-08-31",
+  gradient: ["#3d0d0d", "#8a6a1e"],
+  src: "https://github.com/...",
+}
+```
+
+## Comportamiento
+
+- Items con `addedAt` reciente aparecen primero
+- Sin `addedAt` o antiguos: orden por `code`
+- Badge **Nuevo** visible durante 14 dias (configurable en `NEW_WINDOW_DAYS`)

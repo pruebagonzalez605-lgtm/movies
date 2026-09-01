@@ -1,11 +1,12 @@
 import {
   buildMoviePlayerUrl,
-  getMovies,
+  getMoviesSorted,
   getSagas,
-  getSeries,
+  getSeriesSorted,
   resolveMovieCardPoster,
   resolveSagaCardPoster,
   resolveSeriesCardPoster,
+  isNewItem,
 } from "./shared/catalog-data.js";
 
 const moviesGrid = document.getElementById("homeMoviesGrid");
@@ -24,12 +25,14 @@ function applyPosterImage(node, posterUrl, gradient) {
   img.src = posterUrl;
 }
 
-function createPosterCard({ href, title, poster, gradient }) {
+function createPosterCard({ href, title, poster, gradient, isNew }) {
   const link = document.createElement("a");
   link.className = "catalog-card catalog-card-poster-only";
   link.href = href;
   link.innerHTML = `
-    <div class="catalog-card-art"></div>
+    <div class="catalog-card-art">
+      ${isNew ? '<span class="catalog-new-badge">Nuevo</span>' : ""}
+    </div>
     <div class="catalog-card-copy">
       <h3>${title}</h3>
     </div>
@@ -40,7 +43,7 @@ function createPosterCard({ href, title, poster, gradient }) {
 
 async function renderMovies() {
   if (!moviesGrid) return;
-  const movies = getMovies().slice(0, 12);
+  const movies = getMoviesSorted().slice(0, 12);
   const cards = await Promise.all(
     movies.map(async (movie) => {
       const poster = await resolveMovieCardPoster(movie);
@@ -49,6 +52,7 @@ async function renderMovies() {
         title: movie.title,
         poster,
         gradient: movie.gradient,
+        isNew: isNewItem(movie),
       });
     }),
   );
@@ -58,7 +62,7 @@ async function renderMovies() {
 
 async function renderSeries() {
   if (!seriesGrid) return;
-  const series = getSeries().slice(0, 12);
+  const series = getSeriesSorted().slice(0, 12);
   const cards = await Promise.all(
     series.map(async (serie) => {
       const poster = await resolveSeriesCardPoster(serie);
@@ -67,6 +71,7 @@ async function renderSeries() {
         title: serie.title,
         poster,
         gradient: serie.gradient,
+        isNew: isNewItem(serie),
       });
     }),
   );
@@ -85,6 +90,7 @@ async function renderSagas() {
         title: saga.name,
         poster,
         gradient: saga.gradient,
+        isNew: false,
       });
     }),
   );
