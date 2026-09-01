@@ -16,7 +16,7 @@ jobs:
   stamp:
     runs-on: ubuntu-latest
     # Solo si el autor NO es el bot de stamp
-    if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, 'chore: stamp addedAt')
+    if: "github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, 'chore: stamp addedAt')"
     permissions:
       contents: write
 
