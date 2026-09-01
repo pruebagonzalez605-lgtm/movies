@@ -736,60 +736,70 @@ export const SERIES = [
         episodes: [
           {
             title: "Sin presidente",
+            addedAt: "2026-09-01",
             description: "Mientras Reagan se prepara para sustituir al presidente por un robot, el ascenso que tanto le ha costado se ve amenazado por un colega incompetente... pero simpático.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921418.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x1.mp4"
           },
           {
             title: "Asesino de clones",
+            addedAt: "2026-09-01",
             description: "Cuando un costoso error exige recortes presupuestarios en Cognito Inc., J. R. les ordena a Reagan y Brett que decidan quién debe ser despedido.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921419.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x2.mp4"
           },
           {
             title: "Sangre azul",
+            addedAt: "2026-09-01",
             description: "Tras un desastre de relaciones públicas relacionado con las personas lagarto, el equipo debe controlar los daños en un evento... ¡donde los abrazos son obligatorios!",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921420.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x3.mp4"
           },
           {
             title: "Máquina sexual",
+            addedAt: "2026-09-01",
             description: "Cognito Inc. compra una aplicación de citas. Reagan le apuesta a su equipo que puede encontrar un novio y crea una versión robótica de su hombre perfecto para practicar.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921421.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x4.mp4"
           },
           {
             title: "El club de Brett",
+            addedAt: "2026-09-01",
             description: "Cuando el equipo se embarca en una misión plagada de nostalgia hacia un pueblo atrapado en los años 80, Brett espera divertirse al máximo.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921423.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x5.mp4"
           },
           {
             title: "Mi gran boda terraplanista",
+            addedAt: "2026-09-01",
             description: "Reagan trama un plan para evitar que su padre se entere de la boda de su madre. J. R. involucra a Brett en una misión personal destinada a vender su megayate.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921424.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x6.mp4"
           },
           {
             title: "Protocolo Fantasma",
+            addedAt: "2026-09-01",
             description: "Reagan pone en marcha un complejo plan para deshacerse de un gallardo agente secreto británico, quien muestra un apego desmesurado hacia ella tras una fugaz aventura.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921425.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x7.mp4"
           },
           {
             title: "Aguafiestas",
+            addedAt: "2026-09-01",
             description: "Desesperada por poner tierra de por medio con su padre, Reagan se ofrece voluntaria para una misión a la luna que quiere establecer contacto con una colonia.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921426.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x8.mp4"
           },
           {
             title: "A la caza del topo",
+            addedAt: "2026-09-01",
             description: "Hay cambios emocionantes en Cognito Inc., pero primero Reagan y su equipo deben encontrar al topo detrás de una filtración de seguridad que podría hundir a la empresa.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921427.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x9.mp4"
           },
           {
             title: "En la mente de Reagan",
+            addedAt: "2026-09-01",
             description: "Para encontrar una contraseña olvidada y salvar Cognito Inc., Reagan se adentra en su mente y accede a recuerdos de su disfuncional infancia.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921428.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB1x10.mp4"
@@ -801,48 +811,56 @@ export const SERIES = [
         episodes: [
           {
             title: "Cómo Reagan recuperó la marcha",
+            addedAt: "2026-09-01",
             description: "Con Rand nuevamente a la cabeza de Cognito Inc., Reagan consigue vengarse —y vivir un romance casual— en un peculiar festival de sociedades secretas.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085742.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x1.mp4"
           },
           {
             title: "Nosferatu",
+            addedAt: "2026-09-01",
             description: "El nuevo novio de Tamiko es una superestrella de Hollywood que ama la sangre, pero eso no impide que Rand quiera separar a la feliz pareja.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085743.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x2.mp4"
           },
           {
             title: "Reagan y Myc",
+            addedAt: "2026-09-01",
             description: "El equipo de Cognito le sigue la corriente a Myc en una reunión de excompañeros, hasta que se pasa de la raya con sus mentiras. Rand encuentra algo asqueroso en su escritorio.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085744.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x3.mp4"
           },
           {
             title: "Amor en un lugar inesperado",
+            addedAt: "2026-09-01",
             description: "Reagan tiene que lograr que el nuevo y moderno papa sea más conservador y prejuicioso, así que va a Italia con un amigo… y encuentra tiempo para el romance.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085745.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x4.mp4"
           },
           {
             title: "Poder que mata",
+            addedAt: "2026-09-01",
             description: "Brett triunfa como anfitrión de un programa de TV de derecha, pero pronto pasa a ser una marioneta política controlada por Rand.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085746.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x5.mp4"
           },
           {
             title: "Rontagio",
+            addedAt: "2026-09-01",
             description: "Reagan, que ahora intima con los Illuminati, decide que ha llegado el momento de que el equipo de Cognito Inc. conozca a Ron y lo convenza de abandonar el barco.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085747.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x6.mp4"
           },
           {
             title: "Proyecto Reinicio",
+            addedAt: "2026-09-01",
             description: "Rand pone en marcha el proyecto Reinicio, y los empleados de Cognito descubren que tienen vidas alternativas… y lo útil que puede ser el papel aluminio.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085748.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x7.mp4"
           },
           {
             title: "Appleton",
+            addedAt: "2026-09-01",
             description: "Cognito corre bajo un nuevo liderazgo, y Reagan se reúne con la orden de las Túnicas Negras para sopesar una asociación, pero también debe tomar una gran decisión sobre su futuro.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085750.jpg",
             src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/INJOB2x8.mp4"
