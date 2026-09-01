@@ -638,4 +638,90 @@ export const SERIES = [
       }
     ]
   },
+  {
+    title: "Cien años de soledad",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Cien años de soledad",
+    tmdbYear: 2024,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x8.mp4",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS2x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS2x7.mp4"
+        ]
+      }
+    ]
+  },
+    {
+    title: "Primal",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Primal",
+    tmdbYear: 2019,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMALx10.mp4",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL2x10.mp4",
+        ]
+      },
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/PRMAL3x10.mp4",
+        ]
+      }
+    ]
+  },
 ];
