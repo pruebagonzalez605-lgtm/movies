@@ -5,7 +5,8 @@
   "description": "Colevana empaquetado con Capacitor para Android TV",
   "scripts": {
     "build:www": "node scripts/build-www.mjs",
-    "cap:sync": "npm run build:www && npx cap sync android",
+    "sync:version": "node scripts/sync-android-version.mjs",
+    "cap:sync": "npm run build:www && npm run sync:version && npx cap sync android",
     "cap:open": "npx cap open android"
   },
   "dependencies": {
