@@ -2,6 +2,7 @@ export const MOVIES = [
   {
     code: "01",
     title: "Toy Story 5",
+    genre: "animacion",
     gradient: ["#0d1b3d", "#1e3a6d"],
     poster: "https://m.media-amazon.com/images/M/MV5BOTNiNWExOTQtZTU1Ny00N2MyLWI4YzMtMWJjMTI1ZWRmNmQ4XkEyXkFqcGc@._V1_FMjpg_UX1080_.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.0/TS5.mp4",
@@ -9,6 +10,7 @@ export const MOVIES = [
   {
     code: "02",
     title: "Scary Movie 6",
+    genre: "terror",
     gradient: ["#1a0507", "#5c1013"],
     texture: "slasher",
     poster: "https://m.media-amazon.com/images/M/MV5BNTJjMDk1NzAtMGVmNS00NTFmLWFlOTQtZDk5M2I2NjZiZDdlXkEyXkFqcGc@._V1_FMjpg_UX878_.jpg",
@@ -30,6 +32,7 @@ export const MOVIES = [
   {
     code: "04",
     title: "Obsession",
+    genre: "thriller",
     tmdbTitle: "Obsession",     // o el título exacto en TMDB
     tmdbYear: 2026,             // año de estreno
     gradient: ["#1a0d1f", "#4a1e52"],
@@ -40,6 +43,7 @@ export const MOVIES = [
   {
     code: "05",
     title: "Los Simpson: Simpsley",
+    genre: "animacion",
     gradient: ["#1a1400", "#5c4a00"],
     poster: "https://m.media-amazon.com/images/M/MV5BODc2MmEyZTItNGY0MS00YTVhLTg2ZDEtNGJhMDc4YjE3ZmVkXkEyXkFqcGc@._V1_FMjpg_UX1080_.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.4/Simpsley.mp4",
@@ -47,6 +51,7 @@ export const MOVIES = [
   {
     code: "06",
     title: "Pretty Woman",
+    genre: "comedia",
     gradient: ["#3d0d1a", "#8a1e4a"],
     poster: "https://m.media-amazon.com/images/M/MV5BYzZiZjAxODItYzJhNi00ZjgyLThlMWEtMWI4NjM3YjNlN2M4XkEyXkFqcGc@._V1_FMjpg_UX1066_.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.5/PW.mp4",
@@ -54,6 +59,7 @@ export const MOVIES = [
   {
     code: "07",
     title: "Super Mario Galaxy",
+    genre: "animacion",
     gradient: ["#0d1f3d", "#1e5a6d"],
     poster: "https://m.media-amazon.com/images/M/MV5BMmY2OWZkOWItNDExMi00YzlhLWJiZmYtNmZmOWNjOGYwNDFiXkEyXkFqcGc@._V1_FMjpg_UY1440_.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.6/SPMG.mp4",
@@ -68,6 +74,7 @@ export const MOVIES = [
   {
     code: "09",
     title: "BackRooms",
+    genre: "terror",
     gradient: ["#2d2a12", "#6b6320"],
     poster: "https://m.media-amazon.com/images/M/MV5BYzQyYjZmMjctMzIyZi00MDI0LWJhNGQtMzQ3MTFlNDgwNGM5XkEyXkFqcGc@._V1_FMjpg_UY3000_.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.8/BROOMS.mp4",
@@ -75,6 +82,7 @@ export const MOVIES = [
   {
     code: "10",
     title: "Cars 3",
+    genre: "animacion",
     gradient: ["#3d0d0d", "#8a1e1e"],
     saga: "Cars",
     poster: "https://m.media-amazon.com/images/M/MV5BZTEyMTJjMzUtYTcyOC00OGVhLWE4YWUtYzM3YWM1Y2JiMzQzXkEyXkFqcGc@._V1_FMjpg_UX770_.jpg",
@@ -83,6 +91,7 @@ export const MOVIES = [
   {
     code: "11",
     title: "Joker",
+    genre: "drama",
     gradient: ["#1a1a1a", "#5c1a5c"],
     poster: "https://m.media-amazon.com/images/M/MV5BYjliNTJlYWYtYTU2Yy00YzI3LWI3NzgtOTJlMzg3YmQ3ZDRhXkEyXkFqcGc@._V1_FMjpg_UY2880_.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.10/JKR.mp4",
@@ -97,6 +106,7 @@ export const MOVIES = [
   {
     code: "13",
     title: "Cars 2",
+    genre: "animacion",
     gradient: ["#3d0d0d", "#8a1e1e"],
     saga: "Cars",
     poster: "https://m.media-amazon.com/images/M/MV5BMTUzNTc3MTU3M15BMl5BanBnXkFtZTcwMzIxNTc3NA@@._V1_FMjpg_UX1086_.jpg",
@@ -105,6 +115,7 @@ export const MOVIES = [
   {
     code: "14",
     title: "Cars",
+    genre: "animacion",
     gradient: ["#3d0d0d", "#8a1e1e"],
     saga: "Cars",
     poster: "https://m.media-amazon.com/images/M/MV5BMTg5NzY0MzA2MV5BMl5BanBnXkFtZTYwNDc3NTc2._V1_FMjpg_UX450_.jpg",
@@ -113,6 +124,7 @@ export const MOVIES = [
   {
     code: "15",
     title: "The Truman Show",
+    genre: "drama",
     gradient: ["#0d2a3d", "#1e6d8a"],
     poster: "https://m.media-amazon.com/images/M/MV5BNzA3ZjZlNzYtMTdjMy00NjMzLTk5ZGYtMTkyYzNiOGM1YmM3XkEyXkFqcGc@._V1_FMjpg_UY2500_.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.14/TRMSHOW.mp4",
@@ -120,6 +132,7 @@ export const MOVIES = [
   {
     code: "16",
     title: "Monsters, Inc.",
+    genre: "animacion",
     gradient: ["#0d3d1f", "#1e8a5a"],
     saga: "Monsters, Inc.",
     tmdbYear: 2001,
@@ -128,6 +141,7 @@ export const MOVIES = [
   {
     code: "17",
     title: "Monsters University",
+    genre: "animacion",
     gradient: ["#0d3d1f", "#1e8a5a"],
     saga: "Monsters, Inc.",
     tmdbYear: 2013,
@@ -136,6 +150,7 @@ export const MOVIES = [
   {
     code: "18",
     title: "Oppenheimer",
+    genre: "drama",
     gradient: ["#1a1408", "#5c4a13"],
     tmdbYear: 2023,
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.19/OPPHMR.mp4",
@@ -143,12 +158,14 @@ export const MOVIES = [
   {
     code: "19",
     title: "Con Todos Menos Contigo",
+    genre: "comedia",
     gradient: ["#1a0d1f", "#4a1e52"],
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CTMC.mp4",
   },
   {
     code: "20",
     title: "American Pie: Tu primera vez",
+    genre: "comedia",
     tmdbTitle: "American Pie",
     gradient: ["#3d2a0d", "#8a6a1e"],
     saga: "American Pie",
@@ -158,6 +175,7 @@ export const MOVIES = [
   {
     code: "21",
     title: "American Pie 2: Tu segunda vez es mejor",
+    genre: "comedia",
     tmdbTitle: "American Pie 2",
     gradient: ["#3d2a0d", "#8a6a1e"],
     saga: "American Pie",
@@ -167,6 +185,7 @@ export const MOVIES = [
   {
     code: "22",
     title: "American Pie 3: La Boda",
+    genre: "comedia",
     tmdbTitle: "American Pie: The Wedding",
     gradient: ["#3d2a0d", "#8a6a1e"],
     saga: "American Pie",
@@ -176,6 +195,7 @@ export const MOVIES = [
     {
     code: "23",
     title: "Y dónde están las rubias?",
+    genre: "comedia",
     tmdbTitle: "White Chicks",
     gradient: ["#3d2a0d", "#8a6a1e"],
     tmdbYear: 2004,
@@ -184,6 +204,7 @@ export const MOVIES = [
   {
     code: "24",
     title: "La Noche Del Demonio: Capítulo 3",
+    genre: "terror",
     tmdbTitle: "Insidious: Chapter 3",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2015,
@@ -193,6 +214,7 @@ export const MOVIES = [
   {
     code: "25",
     title: "La Noche Del Demonio: La Ultima Llave",
+    genre: "terror",
     tmdbTitle: "Insidious: The Last Key",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2018,
@@ -202,6 +224,7 @@ export const MOVIES = [
   {
     code: "27",
     title: "La Noche Del Demonio: La Puerta Roja",
+    genre: "terror",
     tmdbTitle: "Insidious: The Red Door",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2023,
@@ -211,6 +234,7 @@ export const MOVIES = [
     {
     code: "28",
     title: "The Wolverine inmortal",
+    genre: "accion",
     tmdbTitle: "The Wolverine",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2013,
@@ -219,6 +243,7 @@ export const MOVIES = [
     {
     code: "29",
     title: "Los Ilusionistas 3",
+    genre: "thriller",
     tmdbTitle: "Now You See Me: Now You Don't",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2025,
@@ -228,6 +253,7 @@ export const MOVIES = [
       {
     code: "30",
     title: "Los Ilusionistas 2",
+    genre: "thriller",
     tmdbTitle: "Now You See Me 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2016,
@@ -237,6 +263,7 @@ export const MOVIES = [
   {
     code: "31",
     title: "Los Ilusionistas",
+    genre: "thriller",
     tmdbTitle: "Now You See Me",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2013,
@@ -246,6 +273,7 @@ export const MOVIES = [
   {
     code: "32",
     title: "Hazme El Favor",
+    genre: "comedia",
     tmdbTitle: "No Hard Feelings",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2023,
@@ -254,6 +282,7 @@ export const MOVIES = [
   {
     code: "33",
     title: "La Isla Siniestra",
+    genre: "thriller",
     tmdbTitle: "Shutter Island",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2010,
@@ -262,6 +291,7 @@ export const MOVIES = [
   {
     code: "34",
     title: "Batman Begins",
+    genre: "accion",
     tmdbTitle: "Batman Begins",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2005,
@@ -271,6 +301,7 @@ export const MOVIES = [
   {
     code: "35",
     title: "Batman El caballero oscuro",
+    genre: "accion",
     tmdbTitle: "The Dark Knight",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2008,
@@ -280,6 +311,7 @@ export const MOVIES = [
   {
     code: "36",
     title: "Batman El caballero oscuro: La leyenda renace",
+    genre: "accion",
     tmdbTitle: "The Dark Knight Rises",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2012,
@@ -289,6 +321,7 @@ export const MOVIES = [
   {
     code: "37",
     title: "Avatar: Fuego y ceniza",
+    genre: "accion",
     tmdbTitle: "Avatar: Fire and Ash",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2025,
@@ -298,6 +331,7 @@ export const MOVIES = [
   {
     code: "38",
     title: "Avatar: El sentido del agua",
+    genre: "accion",
     tmdbTitle: "Avatar: The Way of Water",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2022,
@@ -307,6 +341,7 @@ export const MOVIES = [
   {
     code: "39",
     title: "Avatar",
+    genre: "accion",
     tmdbTitle: "Avatar",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2009,
@@ -316,6 +351,7 @@ export const MOVIES = [
   {
     code: "40",
     title: "Comando Especial 2",
+    genre: "accion",
     tmdbTitle: "22 Jump Street",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2014,
@@ -325,6 +361,7 @@ export const MOVIES = [
   {
     code: "41",
     title: "Comando Especial",
+    genre: "accion",
     tmdbTitle: "21 Jump Street",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2012,
@@ -334,6 +371,7 @@ export const MOVIES = [
   {
     code: "42",
     title: "American Psycho",
+    genre: "drama",
     tmdbTitle: "American Psycho",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2000,
@@ -342,6 +380,7 @@ export const MOVIES = [
   {
     code: "43",
     title: "Kung Fu Panda",
+    genre: "animacion",
     tmdbTitle: "Kung Fu Panda",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Kung Fu Panda",
@@ -351,6 +390,7 @@ export const MOVIES = [
   {
     code: "44",
     title: "Kung Fu Panda 2",
+    genre: "animacion",
     tmdbTitle: "Kung Fu Panda 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Kung Fu Panda",
@@ -360,6 +400,7 @@ export const MOVIES = [
   {
     code: "45",
     title: "Kung Fu Panda 3",
+    genre: "animacion",
     tmdbTitle: "Kung Fu Panda 3",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Kung Fu Panda",
@@ -369,6 +410,7 @@ export const MOVIES = [
   {
     code: "46",
     title: "Kung Fu Panda 4",
+    genre: "animacion",
     tmdbTitle: "Kung Fu Panda 4",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Kung Fu Panda",
@@ -378,6 +420,7 @@ export const MOVIES = [
   {
     code: "47",
     title: "Coraline y la puerta secreta",
+    genre: "animacion",
     tmdbTitle: "Coraline y la puerta secreta",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2009,
@@ -386,6 +429,7 @@ export const MOVIES = [
   {
     code: "48",
     title: "Prisioneros",
+    genre: "drama",
     tmdbTitle: "Prisoners ",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2013,
@@ -393,6 +437,7 @@ export const MOVIES = [
   {
     code: "49",
     title: "Guerra Mundial Z",
+    genre: "accion",
     tmdbTitle: "World War Z",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2013,
@@ -400,6 +445,7 @@ export const MOVIES = [
   {
     code: "50",
     title: "Halloween",
+    genre: "terror",
     tmdbTitle: "Halloween",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -408,6 +454,7 @@ export const MOVIES = [
   {
     code: "51",
     title: "Halloween II",
+    genre: "terror",
     tmdbTitle: "Halloween 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -416,6 +463,7 @@ export const MOVIES = [
   {
     code: "52",
     title: "Halloween III: El imperio de las brujas",
+    genre: "terror",
     tmdbTitle: "Halloween 3",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -424,6 +472,7 @@ export const MOVIES = [
   {
     code: "53",
     title: "Halloween 4: El regreso de Michael Myers",
+    genre: "terror",
     tmdbTitle: "Halloween 4: The Return of Michael Myers",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -432,6 +481,7 @@ export const MOVIES = [
   {
     code: "54",
     title: "Halloween 5: La venganza de Michael Myers",
+    genre: "terror",
     tmdbTitle: "Halloween 5: The Vengeance of Michael Myers",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -440,6 +490,7 @@ export const MOVIES = [
     {
     code: "55",
     title: "Halloween 6: La maldición de Michael Myers",
+    genre: "terror",
     tmdbTitle: "Halloween 6: The Curse of Michael Myers",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -448,6 +499,7 @@ export const MOVIES = [
   {
     code: "56",
     title: "Halloween H20: Veinte años después",
+    genre: "terror",
     tmdbTitle: "Halloween H20: Twenty Years Later",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -456,6 +508,7 @@ export const MOVIES = [
   {
     code: "57",
     title: "Halloween: Resurrección",
+    genre: "terror",
     tmdbTitle: "Halloween: Resurrection",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -464,6 +517,7 @@ export const MOVIES = [
   {
     code: "58",
     title: "Halloween: El Origen",
+    genre: "terror",
     tmdbTitle: "Halloween",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -472,6 +526,7 @@ export const MOVIES = [
   {
     code: "59",
     title: "Halloween 2",
+    genre: "terror",
     tmdbTitle: "Halloween II",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -480,6 +535,7 @@ export const MOVIES = [
   {
     code: "60",
     title: "Halloween Kills: La noche aún no termina",
+    genre: "terror",
     tmdbTitle: "Halloween Kills",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -488,6 +544,7 @@ export const MOVIES = [
   {
     code: "61",
     title: "Halloween Ends: La noche final",
+    genre: "terror",
     tmdbTitle: "Halloween Ends",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Halloween",
@@ -496,6 +553,7 @@ export const MOVIES = [
   {
     code: "62",
     title: "Spider-Man",
+    genre: "accion",
     tmdbTitle: "Spider-Man",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -510,6 +568,7 @@ export const MOVIES = [
   {
     code: "63",
     title: "Spider-Man 2",
+    genre: "accion",
     tmdbTitle: "Spider-Man 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -519,6 +578,7 @@ export const MOVIES = [
   {
     code: "64",
     title: "Spider-Man 3",
+    genre: "accion",
     tmdbTitle: "Spider-Man 3",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -527,6 +587,7 @@ export const MOVIES = [
   {
     code: "65",
     title: "The Amazing Spider-Man",
+    genre: "accion",
     tmdbTitle: "The Amazing Spider-Man",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -536,6 +597,7 @@ export const MOVIES = [
   {
     code: "66",
     title: "The Amazing Spider-Man 2: El poder de Electro",
+    genre: "accion",
     tmdbTitle: "The Amazing Spider-Man 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -545,6 +607,7 @@ export const MOVIES = [
   {
     code: "67",
     title: "Spider-Man: Homecoming",
+    genre: "accion",
     tmdbTitle: "Spider-Man: Homecoming",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -553,6 +616,7 @@ export const MOVIES = [
   {
     code: "68",
     title: "Spider-Man: Lejos de casa",
+    genre: "accion",
     tmdbTitle: "Spider-Man: Far From Home",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -561,6 +625,7 @@ export const MOVIES = [
   {
     code: "69",
     title: "Spider-Man: No Way Home",
+    genre: "accion",
     tmdbTitle: "Spider-Man: No Way Home",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -569,6 +634,7 @@ export const MOVIES = [
   {
     code: "70",
     title: "Madagascar",
+    genre: "animacion",
     tmdbTitle: "Madagascar",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Madagascar",
@@ -577,6 +643,7 @@ export const MOVIES = [
   {
     code: "71",
     title: "Madagascar 2",
+    genre: "animacion",
     tmdbTitle: "Madagascar: Escape 2 Africa",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Madagascar",
@@ -585,6 +652,7 @@ export const MOVIES = [
   {
     code: "72",
     title: "Madagascar 3",
+    genre: "animacion",
     tmdbTitle: "Madagascar 3: Europe's Most Wanted",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Madagascar",
@@ -593,6 +661,7 @@ export const MOVIES = [
   {
     code: "73",
     title: "Capitán América: Civil War ",
+    genre: "accion",
     tmdbTitle: "Captain America: Civil War",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2016,
@@ -600,6 +669,7 @@ export const MOVIES = [
   {
     code: "74",
     title: "Avengers: Infinity War",
+    genre: "accion",
     tmdbTitle: "Avengers: Infinity War",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2018,
@@ -607,6 +677,7 @@ export const MOVIES = [
   {
     code: "75",
     title: "Avengers: Endgame",
+    genre: "accion",
     tmdbTitle: "Avengers: Endgame",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2019,
@@ -614,6 +685,7 @@ export const MOVIES = [
   {
     code: "76",
     title: "SpiderMan: Brand New Day",
+    genre: "accion",
     tmdbTitle: "SpiderMan: Brand New Day",
     gradient: ["#3d0d0d", "#8a6a1e"],
     saga: "Spiderman",
@@ -631,6 +703,7 @@ export const MOVIES = [
   {
     code: "78",
     title: "La Dama de negro",
+    genre: "terror",
     tmdbTitle: "The Woman in Black",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2012,
@@ -647,6 +720,7 @@ export const MOVIES = [
   {
     code: "80",
     title: "Minions & Monstruos",
+    genre: "animacion",
     tmdbTitle: "Minions & Monsters",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2026,
@@ -660,6 +734,7 @@ export const MOVIES = [
   {
     code: "81",
     title: "Bastardos Sin Gloria",
+    genre: "drama",
     tmdbTitle: "Inglourious Basterds",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2009,
@@ -668,6 +743,7 @@ export const MOVIES = [
   {
     code: "82",
     title: "Insidious",
+    genre: "terror",
     tmdbTitle: "Insidious",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2010,
@@ -677,6 +753,7 @@ export const MOVIES = [
   {
     code: "83",
     title: "Jackass",
+    genre: "comedia",
     tmdbTitle: "Jackass",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2002,
@@ -686,6 +763,7 @@ export const MOVIES = [
   {
     code: "84",
     title: "Jackass número dos",
+    genre: "comedia",
     tmdbTitle: "Jackass Number Two",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2006,
@@ -695,6 +773,7 @@ export const MOVIES = [
   {
     code: "85",
     title: "Jackass 3",
+    genre: "comedia",
     tmdbTitle: "Jackass 3",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2011,
@@ -704,6 +783,7 @@ export const MOVIES = [
   {
     code: "86",
     title: "Jackass por siempre",
+    genre: "comedia",
     tmdbTitle: "Jackass Forever",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2022,
@@ -713,6 +793,7 @@ export const MOVIES = [
   {
     code: "87",
     title: "Jackass: La última y nos vamos",
+    genre: "comedia",
     tmdbTitle: "Jackass: Best and Last",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2026,
@@ -722,6 +803,7 @@ export const MOVIES = [
   {
     code: "88",
     title: "Jackass por siempre 4.5",
+    genre: "comedia",
     tmdbTitle: "Jackass 4.5",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2022,
@@ -731,6 +813,7 @@ export const MOVIES = [
   {
     code: "89",
     title: "El abuelo sinvergüenza",
+    genre: "comedia",
     tmdbTitle: "Jackass Presents: Bad Grandpa",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2013,
@@ -740,6 +823,7 @@ export const MOVIES = [
   {
     code: "90",
     title: "Chucky, el muñeco diabólico",
+    genre: "terror",
     tmdbTitle: "Chucky",
     saga: "Chucky",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -750,6 +834,7 @@ export const MOVIES = [
   {
     code: "91",
     title: "Chucky: el muñeco diabólico 2 ",
+    genre: "terror",
     tmdbTitle: "Child's Play 2",
     saga: "Chucky",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -759,6 +844,7 @@ export const MOVIES = [
   {
     code: "92",
     title: "Chucky: el muñeco diabólico 3",
+    genre: "terror",
     tmdbTitle: "Child's Play 3",
     saga: "Chucky",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -768,6 +854,7 @@ export const MOVIES = [
   {
     code: "93",
     title: "La novia de Chucky",
+    genre: "terror",
     tmdbTitle: "Bride of Chucky",
     saga: "Chucky",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -777,6 +864,7 @@ export const MOVIES = [
   {
     code: "94",
     title: "El hijo de Chucky",
+    genre: "terror",
     tmdbTitle: "Seed of Chucky",
     saga: "Chucky",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -786,6 +874,7 @@ export const MOVIES = [
   {
     code: "95",
     title: "La maldición de Chucky",
+    genre: "terror",
     tmdbTitle: "Curse of Chucky",
     saga: "Chucky",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -795,6 +884,7 @@ export const MOVIES = [
   {
     code: "96",
     title: "El culto a Chucky",
+    genre: "terror",
     tmdbTitle: "Cult of Chucky",
     saga: "Chucky",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -804,6 +894,7 @@ export const MOVIES = [
   {
     code: "97",
     title: "harry Potter y la piedra filosofal",
+    genre: "fantasia",
     tmdbTitle: "Harry Potter and the Philosopher's Stone",
     saga: "Harry Potter",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -813,6 +904,7 @@ export const MOVIES = [
   {
     code: "98",
     title: "harry Potter y la cámara secreta",
+    genre: "fantasia",
     tmdbTitle: "Harry Potter and the Chamber of Secrets",
     saga: "Harry Potter",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -822,6 +914,7 @@ export const MOVIES = [
   {
     code: "99",
     title: "harry Potter y el prisionero de Azkaban",
+    genre: "fantasia",
     tmdbTitle: "Harry Potter and the Prisoner of Azkaban",
     saga: "Harry Potter",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -831,6 +924,7 @@ export const MOVIES = [
   {
     code: "100",
     title: "harry Potter y el cáliz de fuego",
+    genre: "fantasia",
     tmdbTitle: "Harry Potter and the Goblet of Fire",
     saga: "Harry Potter",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -840,6 +934,7 @@ export const MOVIES = [
   {
     code: "101",
     title: "harry Potter y la orden del fénix",
+    genre: "fantasia",
     tmdbTitle: "Harry Potter and the Order of the Phoenix",
     saga: "Harry Potter",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -849,6 +944,7 @@ export const MOVIES = [
   {
     code: "102",
     title: "harry Potter y el misterio del príncipe",
+    genre: "fantasia",
     tmdbTitle: "Harry Potter and the Half-Blood Prince",
     saga: "Harry Potter",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -858,6 +954,7 @@ export const MOVIES = [
   {
     code: "103",
     title: "harry Potter y las reliquias de la muerte: parte 1",
+    genre: "fantasia",
     tmdbTitle: "Harry Potter and the Deathly Hallows: Part 1",
     saga: "Harry Potter",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -867,6 +964,7 @@ export const MOVIES = [
   {
     code: "104",
     title: "harry Potter y las reliquias de la muerte: parte 2",
+    genre: "fantasia",
     tmdbTitle: "Harry Potter and the Deathly Hallows: Part 2",
     saga: "Harry Potter",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -876,6 +974,7 @@ export const MOVIES = [
   {
     code: "105",
     title: "Activida paranormal 1",
+    genre: "terror",
     tmdbTitle: "Paranormal Activity",
     saga: "Actividad paranormal",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -885,6 +984,7 @@ export const MOVIES = [
   {
     code: "106",
     title: "Activida paranormal 2",
+    genre: "terror",
     tmdbTitle: "Paranormal Activity 2",
     saga: "Actividad paranormal",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -894,6 +994,7 @@ export const MOVIES = [
   {
     code: "107",
     title: "Activida paranormal 3",
+    genre: "terror",
     tmdbTitle: "Paranormal Activity 3",
     saga: "Actividad paranormal",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -903,6 +1004,7 @@ export const MOVIES = [
   {
     code: "108",
     title: "Activida paranormal 4",
+    genre: "terror",
     tmdbTitle: "Paranormal Activity 4",
     saga: "Actividad paranormal",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -912,6 +1014,7 @@ export const MOVIES = [
   {
     code: "109",
     title: "Actividad Paranormal: Los Marcados",
+    genre: "terror",
     tmdbTitle: "Paranormal Activity: The Marked Ones",
     saga: "Actividad paranormal",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -921,6 +1024,7 @@ export const MOVIES = [
   {
     code: "110",
     title: "Actividad Paranormal: Dimensión Fantasma",
+    genre: "terror",
     tmdbTitle: "Paranormal Activity: The Ghost Dimension",
     saga: "Actividad paranormal",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -930,6 +1034,7 @@ export const MOVIES = [
   {
     code: "111",
     title: "Actividad Paranormal: Vínculos Familiares",
+    genre: "terror",
     tmdbTitle: "Paranormal Activity: Next of Kin",
     saga: "Actividad paranormal",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -947,6 +1052,7 @@ export const MOVIES = [
   {
     code: "113",
     title: "¡Shazam!",
+    genre: "accion",
     tmdbTitle: "Shazam!",
     saga: "Shazam",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -956,6 +1062,7 @@ export const MOVIES = [
     {
     code: "114",
     title: "Shazam! La furia de los dioses!",
+    genre: "accion",
     tmdbTitle: "Shazam! Fury of the Gods",
     saga: "Shazam",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -965,6 +1072,7 @@ export const MOVIES = [
   {
     code: "115",
     title: "Fragmentados",
+    genre: "drama",
     tmdbTitle: "Split",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2016,
@@ -973,6 +1081,7 @@ export const MOVIES = [
   {
     code: "116",
     title: "Coyote vs. Acme",
+    genre: "animacion",
     tmdbTitle: "Coyote vs. Acme",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2026,
@@ -981,6 +1090,7 @@ export const MOVIES = [
   {
     code: "117",
     title: "La noche del demonio: Capítulo 2 ",
+    genre: "terror",
     tmdbTitle: "Insidious: Chapter 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2013,
@@ -990,6 +1100,7 @@ export const MOVIES = [
   {
     code: "118",
     title: "Shrek",
+    genre: "animacion",
     addedAt: "2026-09-01",
     tmdbTitle: "Shrek",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -1000,6 +1111,7 @@ export const MOVIES = [
   {
     code: "119",
     title: "Shrek 2",
+    genre: "animacion",
     addedAt: "2026-09-01",
     tmdbTitle: "Shrek 2",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -1010,6 +1122,7 @@ export const MOVIES = [
   {
     code: "120",
     title: "Shrek Tercero",
+    genre: "animacion",
     addedAt: "2026-09-01",
     tmdbTitle: "Shrek the Third",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -1020,6 +1133,7 @@ export const MOVIES = [
   {
     code: "121",
     title: "Shrek: Felices para siempre",
+    genre: "animacion",
     addedAt: "2026-09-01",
     tmdbTitle: "Shrek Forever After",
     gradient: ["#3d0d0d", "#8a6a1e"],

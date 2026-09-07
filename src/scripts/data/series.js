@@ -1,6 +1,7 @@
 export const SERIES = [
   {
     title: "Ted",
+    genre: "comedia",
     gradient: ["#8a1e1e", "#3d0d0d"],
     poster: "https://m.media-amazon.com/images/M/MV5BMGJiN2ZhNTktYzllYS00MzQyLTg0OTYtZjA5N2M2MDE2NTFiXkEyXkFqcGc@._V1_FMjpg_UY711_.jpg",
     tmdbShow: "Ted",
@@ -35,6 +36,7 @@ export const SERIES = [
   },
   {
     title: "From",
+    genre: "terror",
     gradient: ["#1a0d08", "#5c3a1e"],
     tmdbShow: "From",
     tmdbYear: 2022,
@@ -47,6 +49,7 @@ export const SERIES = [
   },
   {
     title: "American Horror Story",
+    genre: "terror",
     gradient: ["#1a0808", "#5c0d0d"],
     tmdbShow: "American Horror Story",
     tmdbYear: 2011,
@@ -67,6 +70,7 @@ export const SERIES = [
   },
   {
     title: "Un Show Más: Las Cintas Perdidas",
+    genre: "animacion",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Regular Show: The Lost Tapes",
     tmdbYear: 2026,
@@ -89,6 +93,7 @@ export const SERIES = [
   },
   {
     title: "It: Bienvenidos a Derry",
+    genre: "terror",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "IT: Welcome to Derry",
     tmdbYear: 2025,
@@ -110,6 +115,7 @@ export const SERIES = [
   },
   {
     title: "Rick y Morty",
+    genre: "animacion",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Rick and Morty",
     tmdbYear: 2013,
@@ -252,6 +258,7 @@ export const SERIES = [
   },
   {
     title: "Dark",
+    genre: "crimen",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Dark",
     tmdbYear: 2017,
@@ -301,6 +308,7 @@ export const SERIES = [
   },
   {
     title: "El polígamo",
+    genre: "crimen",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "The Polygamist",
     tmdbYear: 2026,
@@ -336,6 +344,7 @@ export const SERIES = [
   },
   {
     title: "Beauty in Black",
+    genre: "drama",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Beauty in Black",
     tmdbYear: 2024,
@@ -400,6 +409,7 @@ export const SERIES = [
   },
   {
     title: "Breaking Bad",
+    genre: "crimen",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Breaking Bad",
     tmdbYear: 2008,
@@ -513,6 +523,7 @@ export const SERIES = [
   },
   {
     title: "Peaky Blinders",
+    genre: "crimen",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Peaky Blinders",
     tmdbYear: 2013,
@@ -587,6 +598,7 @@ export const SERIES = [
   },
   {
     title: "Silo",
+    genre: "crimen",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Silo",
     tmdbYear: 2023,
@@ -640,6 +652,7 @@ export const SERIES = [
   },
   {
     title: "Cien años de soledad",
+    genre: "crimen",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Cien años de soledad",
     tmdbYear: 2024,
@@ -673,6 +686,7 @@ export const SERIES = [
   },
   {
     title: "Primal",
+    genre: "animacion",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Primal",
     tmdbYear: 2019,
@@ -750,6 +764,7 @@ export const SERIES = [
           },
           {
             title: "Sangre azul",
+    genre: "drama",
             addedAt: "2026-09-01",
             description: "Tras un desastre de relaciones públicas relacionado con las personas lagarto, el equipo debe controlar los daños en un evento... ¡donde los abrazos son obligatorios!",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/368/921420.jpg",
@@ -818,6 +833,7 @@ export const SERIES = [
           },
           {
             title: "Nosferatu",
+    genre: "terror",
             addedAt: "2026-09-01",
             description: "El nuevo novio de Tamiko es una superestrella de Hollywood que ama la sangre, pero eso no impide que Rand quiera separar a la feliz pareja.",
             poster: "https://static.tvmaze.com/uploads/images/original_untouched/434/1085743.jpg",

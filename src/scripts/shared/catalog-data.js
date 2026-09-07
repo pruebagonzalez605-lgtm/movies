@@ -5,7 +5,16 @@ import {
   tmdbFindTvId,
   tmdbGetSeasonEpisodes,
   tmdbSearchTvPoster,
+  tmdbSearchMovieGenres,
+  tmdbSearchTvGenres,
 } from "../services/tmdb.js";
+import {
+  GENRE_DEFINITIONS,
+  GENRE_BY_ID,
+  mapTmdbGenreIds,
+  normalizeGenre,
+  resolveGenreDef,
+} from "../config/genres.js";
 
 /** Dias que un item se considera "nuevo" */
 export const NEW_WINDOW_DAYS = 14;
@@ -99,6 +108,100 @@ export function getSagas() {
     poster: movies[0]?.poster || null,
     gradient: movies[0]?.gradient || ["#1c1c22", "#141419"],
   }));
+}
+
+/* ========== Sistema de géneros (un solo género por título) ========== */
+
+/** Cache en memoria de género ya resuelto en esta sesión */
+const _genreResolveCache = new WeakMap();
+
+/**
+ * Resuelve EL género de un ítem (película o serie).
+ * Prioridad: 1) campo `genre` o `genres` en los datos  2) TMDB
+ * Devuelve un id canónico (ej: "terror") o null.
+ */
+export async function resolveItemGenre(item, kind = "movie") {
+  if (!item) return null;
+
+  if (_genreResolveCache.has(item)) {
+    return _genreResolveCache.get(item);
+  }
+
+  // 1) Campo explícito en los datos (genre string o genres array legacy)
+  const fromData = normalizeGenre(item.genre ?? item.genres);
+  if (fromData) {
+    _genreResolveCache.set(item, fromData);
+    return fromData;
+  }
+
+  // 2) Consultar TMDB
+  try {
+    const title = kind === "series"
+      ? (item.tmdbShow || item.title)
+      : (item.tmdbTitle || item.title);
+    const year = item.tmdbYear || null;
+
+    const tmdbIds = kind === "series"
+      ? await tmdbSearchTvGenres(title, year)
+      : await tmdbSearchMovieGenres(title, year);
+
+    const id = mapTmdbGenreIds(tmdbIds);
+    _genreResolveCache.set(item, id);
+    return id;
+  } catch {
+    _genreResolveCache.set(item, null);
+    return null;
+  }
+}
+
+/** Versión síncrona: solo datos locales */
+export function getItemGenreSync(item) {
+  if (!item) return null;
+  return normalizeGenre(item.genre ?? item.genres);
+}
+
+/**
+ * Filtra por un único género.
+ * Si selectedGenreId es null/vacío, devuelve todos.
+ */
+export function filterItemsByGenre(items, selectedGenreId, resolvedMap) {
+  if (!selectedGenreId) return items;
+  return items.filter((item) => {
+    const genre = resolvedMap?.get(item) ?? getItemGenreSync(item);
+    return genre === selectedGenreId;
+  });
+}
+
+/**
+ * Géneros presentes en el catálogo + conteo (un género por ítem).
+ */
+export function collectAvailableGenres(items, resolvedMap) {
+  const counts = new Map();
+  for (const item of items) {
+    const genre = resolvedMap?.get(item) ?? getItemGenreSync(item);
+    if (!genre) continue;
+    counts.set(genre, (counts.get(genre) || 0) + 1);
+  }
+  return GENRE_DEFINITIONS
+    .filter((g) => counts.has(g.id))
+    .map((g) => ({
+      ...g,
+      count: counts.get(g.id) || 0,
+    }));
+}
+
+/** Pre-resuelve el género de una lista */
+export async function resolveAllGenres(items, kind = "movie") {
+  const map = new Map();
+  const batchSize = 8;
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map((item) => resolveItemGenre(item, kind))
+    );
+    batch.forEach((item, idx) => map.set(item, results[idx]));
+  }
+  return map;
 }
 
 export function findMovieBySlug(slug) {

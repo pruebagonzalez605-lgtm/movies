@@ -2989,3 +2989,165 @@ html:not(.tv-locked-fullscreen) .plyr__volume {
 html:not(.tv-locked-fullscreen) .next-episode-overlay {
   bottom: 96px;
 }
+/* ===== Genre filter system ===== */
+.genre-filter-section {
+  margin: 4px 0 18px;
+  padding: 10px 12px 8px;
+  background: linear-gradient(160deg, rgba(28, 28, 34, 0.92), rgba(18, 18, 24, 0.95));
+  border: 1px solid #2a2a32;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px -16px rgba(0, 0, 0, 0.5);
+}
+
+.genre-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.genre-filter-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.genre-clear-btn {
+  appearance: none;
+  border: 1px solid #3a3a44;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.genre-clear-btn:hover {
+  color: var(--text);
+  border-color: var(--accent-dim);
+  background: rgba(232, 196, 104, 0.08);
+}
+
+.genre-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.genre-chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid #33333c;
+  background: rgba(20, 20, 26, 0.9);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  --genre-color: var(--accent);
+}
+
+.genre-chip:hover {
+  transform: translateY(-1px);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--genre-color) 55%, #444);
+}
+
+.genre-chip.is-active {
+  color: #0b0b0f;
+  background: var(--genre-color);
+  border-color: transparent;
+  box-shadow: 0 3px 12px -5px color-mix(in srgb, var(--genre-color) 70%, transparent);
+}
+
+.genre-chip-all.is-active {
+  --genre-color: var(--accent);
+  background: var(--accent);
+  color: #0b0b0f;
+}
+
+.genre-chip-emoji {
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.genre-chip-count {
+  font-size: 0.62rem;
+  opacity: 0.7;
+  font-weight: 700;
+  min-width: 1em;
+  text-align: center;
+}
+
+.genre-chip.is-active .genre-chip-count {
+  opacity: 0.9;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  padding: 0 5px;
+}
+
+.genre-filter-status {
+  margin: 7px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.genre-empty {
+  grid-column: 1 / -1;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 640px) {
+  .genre-filter-section {
+    padding: 8px 10px 6px;
+    margin-bottom: 14px;
+  }
+
+  .genre-chip {
+    padding: 3px 8px;
+    font-size: 0.68rem;
+  }
+
+  .genre-filter-label {
+    font-size: 0.64rem;
+  }
+}
+
+/* Genre pills on cards */
+.card-genre-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 3px 0 4px;
+}
+
+.card-genre-pill {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: #0b0b0f;
+  background: var(--pill-color, var(--accent));
+  opacity: 0.9;
+  line-height: 1.25;
+}

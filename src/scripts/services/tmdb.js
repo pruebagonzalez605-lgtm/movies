@@ -280,3 +280,52 @@ export async function resolveMoviePoster(movie) {
   const poster = await tmdbSearchMoviePoster(movie.tmdbTitle || movie.title, movie.tmdbYear);
   return poster || movie.poster || null;
 }
+
+/**
+ * Busca una película en TMDB y devuelve sus genre_ids (números TMDB).
+ * Cachea el resultado para no golpear la API en cada carga.
+ */
+export async function tmdbSearchMovieGenres(title, year) {
+  const cacheKey = `moviegenres_${title}_${year || ""}`;
+  const cached = tmdbCacheGet(cacheKey);
+  if (cached !== undefined) return cached;
+
+  try {
+    let url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=${TMDB_LANG}&query=${encodeURIComponent(title)}`;
+    if (year) url += `&year=${year}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    const result = data.results && data.results[0];
+    const genreIds = result && Array.isArray(result.genre_ids) ? result.genre_ids : [];
+    tmdbCacheSet(cacheKey, genreIds);
+    return genreIds;
+  } catch {
+    tmdbCacheSet(cacheKey, [], CACHE_TTL_EMPTY_MS);
+    return [];
+  }
+}
+
+/**
+ * Busca una serie en TMDB y devuelve sus genre_ids.
+ */
+export async function tmdbSearchTvGenres(title, year) {
+  const cacheKey = `tvgenres_${title}_${year || ""}`;
+  const cached = tmdbCacheGet(cacheKey);
+  if (cached !== undefined) return cached;
+
+  try {
+    let url = `https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&language=${TMDB_LANG}&query=${encodeURIComponent(title)}`;
+    if (year) url += `&first_air_date_year=${year}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    const result = data.results && data.results[0];
+    const genreIds = result && Array.isArray(result.genre_ids) ? result.genre_ids : [];
+    tmdbCacheSet(cacheKey, genreIds);
+    return genreIds;
+  } catch {
+    tmdbCacheSet(cacheKey, [], CACHE_TTL_EMPTY_MS);
+    return [];
+  }
+}
