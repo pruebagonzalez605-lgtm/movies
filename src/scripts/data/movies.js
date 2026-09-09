@@ -1144,6 +1144,7 @@ export const MOVIES = [
   {
     code: "122",
     title: "Moana",
+    addedAt: "2026-09-09",
     genre: "Aventura",
     tmdbTitle: "Moana",
     gradient: ["#3d0d0d", "#8a6a1e"],
