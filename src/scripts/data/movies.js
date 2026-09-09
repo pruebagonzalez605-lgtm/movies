@@ -1140,5 +1140,14 @@ export const MOVIES = [
     tmdbYear: 2010,
     saga: "Shrek",
     src: "",
+  },
+  {
+    code: "122",
+    title: "Moana",
+    genre: "Aventura",
+    tmdbTitle: "Moana",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2026,
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.36/MOAN.mp4",
   }
 ];
