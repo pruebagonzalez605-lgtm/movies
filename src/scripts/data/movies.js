@@ -1154,6 +1154,7 @@ export const MOVIES = [
   {
     code: "123",
     title: "Ghostland",
+    addedAt: "2026-09-13",
     genre: "terror",
     tmdbTitle: "Ghostland",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -1163,6 +1164,7 @@ export const MOVIES = [
     {
     code: "124",
     title: "Memorias de un caracol",
+    addedAt: "2026-09-13",
     genre: "Animacion",
     tmdbTitle: "Memoir of a Snail",
     gradient: ["#3d0d0d", "#8a6a1e"],
