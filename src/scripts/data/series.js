@@ -740,8 +740,8 @@ export const SERIES = [
   },
   {
     title: "Trabajo incógnito",
-    addedAt: "2026-09-01",
     gradient: ["#1a3a1a", "#0f2a0f"],
+    genre: "Animacion",
     tmdbShow: "Inside Job",
     tmdbYear: 2021,
     seasons: [
@@ -883,6 +883,90 @@ export const SERIES = [
           },
         ]
       },
+    ]
+  },
+  {
+    title: "Good American Family",
+    genre: "Drama",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Good American Family",
+    tmdbYear: 2025,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x8.mp4",
+        ]
+      }
+    ]
+  },
+    {
+    title: "Gravity Falls",
+    genre: "Animacion",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Gravity Falls",
+    tmdbYear: 2012,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x11.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x12.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x13.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x14.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x15.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x16.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x17.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x18.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x19.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x20.mp4"
+
+
+
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x10.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x11.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x12.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x13.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x14.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x15.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x16.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x17.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x18.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x19.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.20/CAS1x20.mp4"
+        ]
+      }
     ]
   },
 ];
