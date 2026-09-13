@@ -887,6 +887,7 @@ export const SERIES = [
   },
   {
     title: "Good American Family",
+    addedAt: "2026-09-13",
     genre: "Drama",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Good American Family",
@@ -909,6 +910,7 @@ export const SERIES = [
   },
     {
     title: "Gravity Falls",
+    addedAt: "2026-09-13",
     genre: "Animacion",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Gravity Falls",
