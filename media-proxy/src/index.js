@@ -51,6 +51,28 @@ function isAllowedHlsHost(hostname) {
 const STREAM_AD_HINT =
   /preroll|midroll|postroll|aviator|\bad\b|ads?[._/-]|advert|publicidad|promo|vast|ima|betwinner|anuncio/i;
 
+/**
+ * fetch() con limite de tiempo para la fase de conexion/cabeceras.
+ *
+ * El limite solo cubre "hasta que llegan las cabeceras": fetch() en Workers
+ * resuelve la promesa apenas el upstream responde el status/headers, antes
+ * de leer el body, asi que el timer se cancela ahi y NO corta streams
+ * largos (el video o el m3u8 siguen bajando despues sin limite). Antes,
+ * cualquier upstream que se colgara (GitHub, un CDN de un embed muerto)
+ * dejaba la request del worker esperando indefinidamente, y con eso la
+ * pantalla de "Cargando..." del reproductor tambien quedaba trabada sin
+ * que el cliente pudiera saber que reintentar.
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function corsHeaders(request, env) {
   const requestOrigin = request.headers.get("Origin");
   const configuredOrigins = env.ALLOWED_SITE_ORIGIN || "https://colevana.com";
@@ -283,6 +305,79 @@ function buildVideoResponseHeaders(upstreamResponse, request, env, upstreamUrl) 
   return headers;
 }
 
+/**
+ * Quita del manifiesto HLS los tramos de publicidad insertados del lado del
+ * servidor (SSAI / SCTE-35), ademas del filtro que ya existia en
+ * extractCleanStreamFromHtml (que solo decidia QUE m3u8 elegir dentro del
+ * HTML del embed, pero no tocaba el contenido del m3u8 ya elegido).
+ *
+ * Es muy comun que un manifiesto "limpio" en apariencia tenga, en medio del
+ * contenido real, un bloque de 2-4 segmentos de otro CDN (el anuncio) entre
+ * dos marcas de discontinuidad. Antes esos segmentos pasaban de largo hasta
+ * el reproductor.
+ *
+ * Estrategia (conservadora: ante la duda, se deja el segmento):
+ *   1. Todo lo delimitado por #EXT-X-CUE-OUT ... #EXT-X-CUE-IN, o por un
+ *      #EXT-X-DATERANGE cuyo CLASS mencione publicidad, se descarta entero:
+ *      es la señal explicita del proveedor de "esto es un corte".
+ *   2. Cualquier segmento individual cuya URL matchee STREAM_AD_HINT se
+ *      descarta igual, para los proveedores que no marcan el corte.
+ */
+export function stripAdSegmentsFromPlaylist(manifestText, baseUrl) {
+  const AD_DATERANGE_CLASS = /CLASS="[^"]*ad[^"]*"/i;
+  const lines = manifestText.split("\n");
+  const out = [];
+  let removedCount = 0;
+  let inAdBreak = false;
+  let pendingExtinf = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (/^#EXT-X-CUE-OUT/i.test(trimmed)
+      || (/^#EXT-X-DATERANGE/i.test(trimmed) && AD_DATERANGE_CLASS.test(trimmed))) {
+      inAdBreak = true;
+      pendingExtinf = null;
+      continue;
+    }
+    if (/^#EXT-X-CUE-IN/i.test(trimmed)) {
+      inAdBreak = false;
+      continue;
+    }
+    if (inAdBreak) {
+      if (trimmed && !trimmed.startsWith("#")) removedCount += 1;
+      continue;
+    }
+
+    if (/^#EXTINF/i.test(trimmed)) {
+      pendingExtinf = line;
+      continue;
+    }
+
+    if (trimmed && !trimmed.startsWith("#")) {
+      let target = trimmed;
+      try {
+        target = new URL(trimmed, baseUrl).href;
+      } catch {
+        // URL relativa rara; se evalua tal cual vino.
+      }
+      if (STREAM_AD_HINT.test(target)) {
+        removedCount += 1;
+        pendingExtinf = null;
+        continue;
+      }
+      if (pendingExtinf) out.push(pendingExtinf);
+      pendingExtinf = null;
+      out.push(line);
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  return { text: out.join("\n"), removedCount };
+}
+
 /** Reescribe URLs absolutas/relativas de un manifiesto HLS para pasar por /proxy-hls */
 function rewriteM3u8(manifestText, manifestUrl, proxyBase) {
   const base = new URL(manifestUrl);
@@ -308,7 +403,7 @@ function rewriteM3u8(manifestText, manifestUrl, proxyBase) {
   }).join("\n");
 }
 
-async function handleResolveStream(request, env, requestUrl) {
+async function handleResolveStream(request, env, requestUrl, ctx) {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request, env) });
   }
@@ -323,9 +418,21 @@ async function handleResolveStream(request, env, requestUrl) {
     return jsonResponse(request, env, 400, error.message);
   }
 
+  // Cachea el resultado (5 min) por URL de embed: resolverlo implica bajar
+  // el HTML entero de la pagina del proveedor y correrle una regex encima,
+  // que es la parte mas lenta de todo el arranque del reproductor. Si dos
+  // personas (o la misma, al reintentar) piden el mismo embed poco despues,
+  // la segunda vez responde de una y el "Cargando..." dura una fraccion.
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const cacheKey = cache ? new Request(requestUrl.toString(), { method: "GET" }) : null;
+  if (cache && cacheKey) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  }
+
   let html;
   try {
-    const upstream = await fetch(embedUrl.href, {
+    const upstream = await fetchWithTimeout(embedUrl.href, {
       method: "GET",
       redirect: "follow",
       headers: {
@@ -335,13 +442,14 @@ async function handleResolveStream(request, env, requestUrl) {
         "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
         Referer: `https://${embedUrl.hostname}/`,
       },
-    });
+    }, 7000);
     if (!upstream.ok) {
       return jsonResponse(request, env, 502, `embed_fetch_failed_${upstream.status}`);
     }
     html = await upstream.text();
-  } catch {
-    return jsonResponse(request, env, 502, "embed_fetch_unavailable");
+  } catch (error) {
+    const reason = error?.name === "AbortError" ? "embed_fetch_timeout" : "embed_fetch_unavailable";
+    return jsonResponse(request, env, 502, reason);
   }
 
   const stream = extractCleanStreamFromHtml(html);
@@ -353,11 +461,21 @@ async function handleResolveStream(request, env, requestUrl) {
   const proxyBase = new URL(request.url).origin;
   const proxied = `${proxyBase}/proxy-hls?url=${encodeURIComponent(stream)}&embed=${encodeURIComponent(embedUrl.href)}`;
 
-  return jsonResponse(request, env, 200, {
+  const response = jsonResponse(request, env, 200, {
     stream,
     proxied,
     embed: embedUrl.href,
   });
+
+  if (cache && cacheKey) {
+    const toCache = response.clone();
+    toCache.headers.set("Cache-Control", "public, max-age=300");
+    const putPromise = cache.put(cacheKey, toCache);
+    if (ctx?.waitUntil) ctx.waitUntil(putPromise);
+    else await putPromise.catch(() => {});
+  }
+
+  return response;
 }
 
 async function handleProxyHls(request, env, requestUrl) {
@@ -390,7 +508,7 @@ async function handleProxyHls(request, env, requestUrl) {
       embedOrigin = embedUrl.origin;
 
       // 1ª visita al embed (cookies de sesión)
-      const embedRes = await fetch(embedUrl.href, {
+      const embedRes = await fetchWithTimeout(embedUrl.href, {
         method: "GET",
         redirect: "follow",
         headers: {
@@ -401,7 +519,7 @@ async function handleProxyHls(request, env, requestUrl) {
           Pragma: "no-cache",
           "Upgrade-Insecure-Requests": "1",
         },
-      });
+      }, 6000);
 
       const setCookies =
         typeof embedRes.headers.getSetCookie === "function"
@@ -521,11 +639,11 @@ async function handleProxyHls(request, env, requestUrl) {
     const headers = buildHeaders();
     for (const tryUrl of candidateUrls) {
       try {
-        const res = await fetch(tryUrl, {
+        const res = await fetchWithTimeout(tryUrl, {
           method: request.method,
           headers,
           redirect: "follow",
-        });
+        }, 7000);
         if (res.ok) {
           upstreamResponse = res;
           usedUrl = tryUrl;
@@ -537,7 +655,9 @@ async function handleProxyHls(request, env, requestUrl) {
           usedUrl = tryUrl;
         }
       } catch (_) {
-        // siguiente intento
+        // Timeout u otro error de red: probar el siguiente candidato en vez
+        // de dejar la respuesta del worker (y con ella el "Cargando..." del
+        // reproductor) esperando para siempre.
       }
     }
   }
@@ -571,7 +691,17 @@ async function handleProxyHls(request, env, requestUrl) {
     || contentType.includes("m3u8");
 
   if (isPlaylist && request.method === "GET") {
-    const textBody = await upstreamResponse.text();
+    const rawBody = await upstreamResponse.text();
+
+    // Primero se sacan los tramos de publicidad del manifiesto original
+    // (las URLs ahi todavia son las reales del CDN, que es lo que
+    // STREAM_AD_HINT sabe reconocer); recien despues se reescriben las
+    // URLs restantes para que pasen por este mismo proxy.
+    const { text: textBody, removedCount } = stripAdSegmentsFromPlaylist(rawBody, upstreamUrl);
+    if (removedCount > 0) {
+      console.log(`[proxy-hls] ${removedCount} segmento(s) publicitario(s) removido(s) de`, usedUrl);
+    }
+
     const embedQ = embedParam ? `&embed=${encodeURIComponent(embedParam)}` : "";
     const rewritten = textBody.split("\n").map((line) => {
       const trimmed = line.trim();
@@ -637,13 +767,14 @@ async function handleVideo(request, env, requestUrl) {
 
   let upstreamResponse;
   try {
-    upstreamResponse = await fetch(upstreamUrl, {
+    upstreamResponse = await fetchWithTimeout(upstreamUrl, {
       method: request.method,
       headers: buildUpstreamHeaders(request),
       redirect: "follow",
-    });
-  } catch {
-    return jsonResponse(request, env, 502, "upstream_unavailable");
+    }, 15000);
+  } catch (error) {
+    const reason = error?.name === "AbortError" ? "upstream_timeout" : "upstream_unavailable";
+    return jsonResponse(request, env, 502, reason);
   }
 
   const headers = buildVideoResponseHeaders(upstreamResponse, request, env, upstreamUrl);
@@ -654,7 +785,7 @@ async function handleVideo(request, env, requestUrl) {
   });
 }
 
-export async function handleRequest(request, env = {}) {
+export async function handleRequest(request, env = {}, ctx) {
   const requestUrl = new URL(request.url);
 
   if (requestUrl.pathname === "/health") {
@@ -665,7 +796,7 @@ export async function handleRequest(request, env = {}) {
   }
 
   if (requestUrl.pathname === "/resolve-stream") {
-    return handleResolveStream(request, env, requestUrl);
+    return handleResolveStream(request, env, requestUrl, ctx);
   }
 
   if (requestUrl.pathname === "/proxy-hls") {

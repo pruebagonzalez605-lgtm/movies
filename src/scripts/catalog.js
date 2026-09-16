@@ -14,8 +14,13 @@ import {
   filterItemsByGenre,
   getItemGenreSync,
 } from "./shared/catalog-data.js";
-import { GENRE_BY_ID, resolveGenreDef } from "./config/genres.js";
+import { GENRE_BY_ID } from "./config/genres.js";
 import { initKickAuthUI } from "./shared/kick-auth-ui.js";
+import {
+  createGenreFilter,
+  genrePillHtml,
+  applyGenrePillToCard,
+} from "./ui/genre-filter.js";
 
 const page = document.body.dataset.page || "movies";
 const heroKicker = document.getElementById("catalogHeroKicker");
@@ -24,9 +29,7 @@ const heroIntro = document.getElementById("catalogHeroIntro");
 const spotlight = document.getElementById("catalogSpotlight");
 const primaryGrid = document.getElementById("catalogPrimaryGrid");
 const secondarySection = document.getElementById("catalogSecondarySection");
-const genreChipsEl = document.getElementById("genreChips");
-const genreClearBtn = document.getElementById("genreClearBtn");
-const genreFilterStatus = document.getElementById("genreFilterStatus");
+const genreFilterMount = document.querySelector("[data-genre-filter]");
 
 let modalElements = null;
 
@@ -35,9 +38,21 @@ const genreState = {
   selected: null, // string id o null (= todos)
   resolvedMap: null, // Map<item, string|null>
   allItems: [],
-  kind: "movie", // "movie" | "series"
+  kind: "movie", // "movie" | "series" | "saga"
   posters: [],
+  cardsByItem: new Map(), // item -> tarjeta en el DOM (para refrescar pildoras)
 };
+
+/** Instancia unica del filtro visual de generos */
+const genreFilter = genreFilterMount
+  ? createGenreFilter({
+      mount: genreFilterMount,
+      onChange: (selected) => {
+        genreState.selected = selected;
+        applyGenreFilter();
+      },
+    })
+  : null;
 
 function applyPosterImage(node, posterUrl, gradient, options = {}) {
   const overlay = options.overlay || "linear-gradient(180deg, rgba(8,8,12,0.12), rgba(8,8,12,0.85))";
@@ -137,11 +152,15 @@ function openCatalogModal({ kicker, title, intro, buildContent }) {
 }
 
 function buildGenrePillsHtml(item) {
-  const genreId = getItemGenreSync(item);
-  if (!genreId) return "";
-  const def = resolveGenreDef(genreId);
-  if (!def) return "";
-  return `<div class="card-genre-pills"><span class="card-genre-pill" style="--pill-color:${def.color}">${def.name}</span></div>`;
+  return genrePillHtml(genreState.resolvedMap?.get(item) ?? getItemGenreSync(item));
+}
+
+/** Completa las pildoras de las tarjetas ya pintadas una vez resueltos los generos */
+function refreshCardGenrePills() {
+  if (!genreState.resolvedMap) return;
+  genreState.cardsByItem.forEach((card, item) => {
+    applyGenrePillToCard(card, genreState.resolvedMap.get(item) ?? getItemGenreSync(item));
+  });
 }
 
 function createMovieCard(movie, posterUrl) {
@@ -230,54 +249,49 @@ function createMovieInlineCard(movie, posterUrl, secondaryText) {
   return item;
 }
 
-function renderGenreChips(availableGenres) {
-  if (!genreChipsEl) return;
-  genreChipsEl.innerHTML = "";
-
-  // Chip "Todos"
-  const allChip = document.createElement("button");
-  allChip.type = "button";
-  allChip.className = "genre-chip genre-chip-all" + (genreState.selected == null ? " is-active" : "");
-  allChip.dataset.genreId = "";
-  allChip.innerHTML = `<span class="genre-chip-emoji">✨</span> Todos`;
-  allChip.addEventListener("click", () => {
-    genreState.selected = null;
-    applyGenreFilter();
-  });
-  genreChipsEl.appendChild(allChip);
-
-  availableGenres.forEach((g) => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "genre-chip" + (genreState.selected === g.id ? " is-active" : "");
-    chip.dataset.genreId = g.id;
-    chip.style.setProperty("--genre-color", g.color);
-    chip.innerHTML = `<span class="genre-chip-emoji">${g.emoji}</span> ${g.name} <span class="genre-chip-count">${g.count}</span>`;
-    chip.addEventListener("click", () => {
-      // Un solo género a la vez (toggle)
-      genreState.selected = genreState.selected === g.id ? null : g.id;
-      applyGenreFilter();
-    });
-    genreChipsEl.appendChild(chip);
-  });
-
-  if (genreClearBtn) {
-    genreClearBtn.hidden = genreState.selected == null;
-    genreClearBtn.onclick = () => {
-      genreState.selected = null;
-      applyGenreFilter();
-    };
+function updateGenreStatus(visibleCount, totalCount) {
+  if (!genreFilter) return;
+  if (genreState.selected == null) {
+    genreFilter.setStatus(`${totalCount} títulos`);
+  } else {
+    const name = GENRE_BY_ID[genreState.selected]?.name || genreState.selected;
+    genreFilter.setStatus(`${visibleCount} en ${name}`);
   }
 }
 
-function updateGenreStatus(visibleCount, totalCount) {
-  if (!genreFilterStatus) return;
-  if (genreState.selected == null) {
-    genreFilterStatus.textContent = `${totalCount} títulos en el catálogo`;
-  } else {
-    const name = GENRE_BY_ID[genreState.selected]?.name || genreState.selected;
-    genreFilterStatus.textContent = `${visibleCount} de ${totalCount} · Género: ${name}`;
+/** Crea la tarjeta que corresponde al tipo de pagina actual */
+function createCardForItem(item, poster) {
+  if (genreState.kind === "series") {
+    const card = createSeriesCard(item, poster);
+    card.addEventListener("click", () => {
+      [...primaryGrid.children].forEach((node) => node.classList.remove("is-selected"));
+      card.classList.add("is-selected");
+      openSeriesModal(item);
+    });
+    return card;
   }
+  if (genreState.kind === "saga") {
+    return createSagaCard(item, poster);
+  }
+  return createMovieCard(item, poster);
+}
+
+/** Pinta una lista de items en la grilla principal */
+function renderItems(list) {
+  primaryGrid.innerHTML = "";
+  genreState.cardsByItem = new Map();
+
+  if (!list.length) {
+    primaryGrid.innerHTML = `<div class="catalog-empty genre-empty">No hay títulos en este género todavía.</div>`;
+    return;
+  }
+
+  list.forEach((item) => {
+    const idx = genreState.allItems.indexOf(item);
+    const card = createCardForItem(item, genreState.posters[idx]);
+    genreState.cardsByItem.set(item, card);
+    primaryGrid.appendChild(card);
+  });
 }
 
 function applyGenreFilter() {
@@ -286,67 +300,35 @@ function applyGenreFilter() {
     genreState.selected,
     genreState.resolvedMap
   );
+  renderItems(filtered);
+  updateGenreStatus(filtered.length, genreState.allItems.length);
+}
 
-  if (genreChipsEl) {
-    genreChipsEl.querySelectorAll(".genre-chip").forEach((chip) => {
-      const id = chip.dataset.genreId;
-      if (id === "") {
-        chip.classList.toggle("is-active", genreState.selected == null);
-      } else {
-        chip.classList.toggle("is-active", genreState.selected === id);
+/**
+ * Resuelve el genero de cada saga a partir del genero dominante de sus
+ * peliculas (una saga no tiene genero propio en los datos).
+ */
+async function resolveSagaGenres(sagas) {
+  const movies = sagas.flatMap((saga) => saga.movies);
+  const movieGenres = await resolveAllGenres(movies, "movie");
+  const map = new Map();
+  sagas.forEach((saga) => {
+    const counts = new Map();
+    saga.movies.forEach((movie) => {
+      const genre = movieGenres.get(movie);
+      if (genre) counts.set(genre, (counts.get(genre) || 0) + 1);
+    });
+    let best = null;
+    let bestCount = 0;
+    counts.forEach((count, genre) => {
+      if (count > bestCount) {
+        bestCount = count;
+        best = genre;
       }
     });
-  }
-  if (genreClearBtn) genreClearBtn.hidden = genreState.selected == null;
-
-  primaryGrid.innerHTML = "";
-  if (filtered.length === 0) {
-    primaryGrid.innerHTML = `<div class="catalog-empty genre-empty">No hay títulos en este género.</div>`;
-  } else if (genreState.kind === "movie") {
-    filtered.forEach((movie) => {
-      const idx = genreState.allItems.indexOf(movie);
-      primaryGrid.appendChild(createMovieCard(movie, genreState.posters[idx]));
-    });
-  } else {
-    filtered.forEach((serie) => {
-      const idx = genreState.allItems.indexOf(serie);
-      const card = createSeriesCard(serie, genreState.posters[idx]);
-      card.addEventListener("click", () => {
-        [...primaryGrid.children].forEach((node) => node.classList.remove("is-selected"));
-        card.classList.add("is-selected");
-        openCatalogModal({
-          kicker: "Serie",
-          title: serie.title,
-          intro: "Selecciona una temporada y entra al episodio que quieras ver.",
-          buildContent(content) {
-            serie.seasons.forEach((season) => {
-              const block = document.createElement("section");
-              block.className = "catalog-modal-section";
-              block.innerHTML = `
-                <div class="catalog-season-title">Temporada ${season.season}</div>
-                <div class="catalog-inline-grid"><div class="catalog-empty">Cargando episodios...</div></div>
-              `;
-              content.appendChild(block);
-              const grid = block.querySelector(".catalog-inline-grid");
-              ensureSeasonEpisodes(serie, season).then((episodes) => {
-                grid.innerHTML = "";
-                if (!episodes.length) {
-                  grid.innerHTML = '<div class="catalog-empty">Proximamente.</div>';
-                  return;
-                }
-                episodes.forEach((episode, episodeIndex) => {
-                  grid.appendChild(createEpisodeLink(serie, season.season, episode, episodeIndex));
-                });
-              });
-            });
-          },
-        });
-      });
-      primaryGrid.appendChild(card);
-    });
-  }
-
-  updateGenreStatus(filtered.length, genreState.allItems.length);
+    map.set(saga, best);
+  });
+  return map;
 }
 
 async function setupGenreFilters(items, kind) {
@@ -354,14 +336,97 @@ async function setupGenreFilters(items, kind) {
   genreState.kind = kind;
   genreState.selected = null;
 
-  if (genreFilterStatus) {
-    genreFilterStatus.textContent = "Detectando géneros…";
-  }
+  if (!genreFilter) return;
+  genreFilter.setLoading("Detectando géneros…");
 
-  genreState.resolvedMap = await resolveAllGenres(items, kind);
+  genreState.resolvedMap = kind === "saga"
+    ? await resolveSagaGenres(items)
+    : await resolveAllGenres(items, kind);
+
   const available = collectAvailableGenres(items, genreState.resolvedMap);
-  renderGenreChips(available);
+  genreFilter.setGenres(available, { total: items.length });
   updateGenreStatus(items.length, items.length);
+  refreshCardGenrePills();
+}
+
+/** Modal de temporadas/episodios de una serie */
+function openSeriesModal(serie) {
+  openCatalogModal({
+    kicker: "Serie",
+    title: serie.title,
+    intro: "Selecciona una temporada y entra al episodio que quieras ver.",
+    buildContent(content) {
+      serie.seasons.forEach((season) => {
+        const block = document.createElement("section");
+        block.className = "catalog-modal-section";
+        block.innerHTML = `
+          <div class="catalog-season-title">Temporada ${season.season}</div>
+          <div class="catalog-inline-grid"><div class="catalog-empty">Cargando episodios...</div></div>
+        `;
+        content.appendChild(block);
+        const grid = block.querySelector(".catalog-inline-grid");
+        ensureSeasonEpisodes(serie, season).then((episodes) => {
+          grid.innerHTML = "";
+          if (!episodes.length) {
+            grid.innerHTML = '<div class="catalog-empty">Proximamente.</div>';
+            return;
+          }
+          episodes.forEach((episode, episodeIndex) => {
+            grid.appendChild(createEpisodeLink(serie, season.season, episode, episodeIndex));
+          });
+        });
+      });
+    },
+  });
+}
+
+/** Modal con las peliculas de una saga */
+function openSagaModal(saga, posterMap) {
+  openCatalogModal({
+    kicker: "Saga",
+    title: saga.name,
+    intro: "Selecciona la pelicula de la franquicia que quieres abrir.",
+    buildContent(content) {
+      const grid = document.createElement("div");
+      grid.className = "catalog-inline-grid catalog-inline-grid-posters";
+      saga.movies.forEach((movie) => {
+        grid.appendChild(
+          createMovieInlineCard(
+            movie,
+            posterMap.get(movie.title) || movie.poster || null,
+            saga.name,
+          ),
+        );
+      });
+      content.appendChild(grid);
+    },
+  });
+}
+
+let sagaMoviePosterMap = new Map();
+
+function createSagaCard(saga, posterUrl) {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "catalog-card catalog-card-series catalog-select-card";
+  const genrePills = buildGenrePillsHtml(saga);
+  card.innerHTML = `
+    <div class="catalog-card-art"></div>
+    <div class="catalog-card-copy">
+      <span class="catalog-card-code">Saga</span>
+      <h3>${saga.name}</h3>
+      ${genrePills}
+      <p>${saga.movies.length} peliculas agrupadas en una sola vista.</p>
+      <span class="catalog-link catalog-link-ghost">Ver peliculas</span>
+    </div>
+  `;
+  applyPosterImage(card.querySelector(".catalog-card-art"), posterUrl, saga.gradient);
+  card.addEventListener("click", () => {
+    [...primaryGrid.children].forEach((node) => node.classList.remove("is-selected"));
+    card.classList.add("is-selected");
+    openSagaModal(saga, sagaMoviePosterMap);
+  });
+  return card;
 }
 
 async function renderMoviesPage() {
@@ -388,10 +453,9 @@ async function renderMoviesPage() {
 
   const posters = await Promise.all(movies.map((movie) => resolveMovieCardPoster(movie)));
   genreState.posters = posters;
-  primaryGrid.innerHTML = "";
-  movies.forEach((movie, index) => {
-    primaryGrid.appendChild(createMovieCard(movie, posters[index]));
-  });
+  genreState.allItems = movies;
+  genreState.kind = "movie";
+  renderItems(movies);
 
   if (secondarySection) secondarySection.style.display = "none";
 
@@ -403,6 +467,8 @@ async function renderSeriesPage() {
   const series = getSeriesSorted();
   const posters = await Promise.all(series.map((serie) => resolveSeriesCardPoster(serie)));
   genreState.posters = posters;
+  genreState.allItems = series;
+  genreState.kind = "series";
 
   setHeroContent({
     kicker: "Series",
@@ -417,43 +483,7 @@ async function renderSeriesPage() {
     spotlightStyle: "compact",
   });
 
-  primaryGrid.innerHTML = "";
-
-  series.forEach((serie, index) => {
-    const card = createSeriesCard(serie, posters[index]);
-    card.addEventListener("click", () => {
-      [...primaryGrid.children].forEach((node) => node.classList.remove("is-selected"));
-      card.classList.add("is-selected");
-      openCatalogModal({
-        kicker: "Serie",
-        title: serie.title,
-        intro: "Selecciona una temporada y entra al episodio que quieras ver.",
-        buildContent(content) {
-          serie.seasons.forEach((season) => {
-            const block = document.createElement("section");
-            block.className = "catalog-modal-section";
-            block.innerHTML = `
-              <div class="catalog-season-title">Temporada ${season.season}</div>
-              <div class="catalog-inline-grid"><div class="catalog-empty">Cargando episodios...</div></div>
-            `;
-            content.appendChild(block);
-            const grid = block.querySelector(".catalog-inline-grid");
-            ensureSeasonEpisodes(serie, season).then((episodes) => {
-              grid.innerHTML = "";
-              if (!episodes.length) {
-                grid.innerHTML = '<div class="catalog-empty">Proximamente.</div>';
-                return;
-              }
-              episodes.forEach((episode, episodeIndex) => {
-                grid.appendChild(createEpisodeLink(serie, season.season, episode, episodeIndex));
-              });
-            });
-          });
-        },
-      });
-    });
-    primaryGrid.appendChild(card);
-  });
+  renderItems(series);
 
   if (secondarySection) secondarySection.style.display = "none";
 
@@ -463,7 +493,6 @@ async function renderSeriesPage() {
 async function renderSagasPage() {
   const sagas = getSagas();
   const sagaPosters = await Promise.all(sagas.map((saga) => resolveSagaCardPoster(saga)));
-  const sagaPosterMap = new Map(sagas.map((saga, index) => [saga.name, sagaPosters[index]]));
 
   const sagaSpotlight = sagas.slice(0, 3).map((saga, index) => ({
     label: `${saga.movies.length} peliculas`,
@@ -474,7 +503,7 @@ async function renderSagasPage() {
   setHeroContent({
     kicker: "Sagas",
     title: "Agrupa franquicias y entra a cada pelicula desde su propio espacio.",
-    intro: "Las sagas ahora funcionan como colecciones. Primero ves la franquicia, despues eliges la pelicula concreta para abrir su reproduccion.",
+    intro: "Las sagas ahora funcionan como colecciones. Primero ves la franquicia, despues eliges la pelicula concreta para abrir su reproduccion. Filtra por género para ir directo a lo que buscas.",
     spotlight: sagaSpotlight,
     spotlightStyle: "compact",
   });
@@ -484,50 +513,16 @@ async function renderSagasPage() {
       saga.movies.map(async (movie) => [movie.title, await resolveMovieCardPoster(movie)]),
     ),
   );
-  const sagaMoviePosterMap = new Map(sagaMoviePosterEntries);
+  sagaMoviePosterMap = new Map(sagaMoviePosterEntries);
 
-  primaryGrid.innerHTML = "";
-  sagas.forEach((saga) => {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "catalog-card catalog-card-series catalog-select-card";
-    card.innerHTML = `
-      <div class="catalog-card-art"></div>
-      <div class="catalog-card-copy">
-        <span class="catalog-card-code">Saga</span>
-        <h3>${saga.name}</h3>
-        <p>${saga.movies.length} peliculas agrupadas en una sola vista.</p>
-        <span class="catalog-link catalog-link-ghost">Ver peliculas</span>
-      </div>
-    `;
-    applyPosterImage(card.querySelector(".catalog-card-art"), sagaPosterMap.get(saga.name), saga.gradient);
-    card.addEventListener("click", () => {
-      [...primaryGrid.children].forEach((node) => node.classList.remove("is-selected"));
-      card.classList.add("is-selected");
-      openCatalogModal({
-        kicker: "Saga",
-        title: saga.name,
-        intro: "Selecciona la pelicula de la franquicia que quieres abrir.",
-        buildContent(content) {
-          const grid = document.createElement("div");
-          grid.className = "catalog-inline-grid catalog-inline-grid-posters";
-          saga.movies.forEach((movie) => {
-            grid.appendChild(
-              createMovieInlineCard(
-                movie,
-                sagaMoviePosterMap.get(movie.title) || movie.poster || null,
-                saga.name,
-              ),
-            );
-          });
-          content.appendChild(grid);
-        },
-      });
-    });
-    primaryGrid.appendChild(card);
-  });
+  genreState.posters = sagaPosters;
+  genreState.allItems = sagas;
+  genreState.kind = "saga";
+  renderItems(sagas);
 
   if (secondarySection) secondarySection.style.display = "none";
+
+  setupGenreFilters(sagas, "saga");
 }
 
 initKickAuthUI();

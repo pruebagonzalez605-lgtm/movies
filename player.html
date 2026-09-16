@@ -82,6 +82,21 @@
         <div class="media-slot" id="mediaSlot">
           <video id="player" controls preload="metadata" playsinline webkit-playsinline></video>
 
+          <!-- ==================== CARGANDO FUENTE ALTERNATIVA ====================
+     Solo aparece cuando el reproductor propio NO pudo servir el archivo y
+     player-page.js sale a buscar una fuente externa a traves del worker de
+     adblock (tryHlsWishFallback: /resolve-stream + /proxy-hls). Ese camino
+     implica bajar el HTML del embed, extraerle el m3u8 limpio y a veces
+     probar mas de un proveedor, asi que puede tardar unos segundos en los
+     que antes no habia ninguna señal visual mas que el texto de estado
+     debajo del reproductor. Se oculta en cuanto hay algo que mostrar
+     (stream propio montado, iframe cargado, o error final). -->
+          <div class="external-loading-overlay" id="externalLoadingOverlay" hidden aria-live="polite">
+            <div class="external-loading-spinner" aria-hidden="true"></div>
+            <p class="external-loading-text" id="externalLoadingText">Buscando una fuente alternativa…</p>
+            <p class="external-loading-hint">Colevana prioriza el reproductor propio; esto solo pasa cuando no está disponible.</p>
+          </div>
+
           <!-- ==================== SIGUIENTE EPISODIO ====================
      Aparece sobre el video cerca del final de un episodio (ver
      showNextEpisodeOverlay en player-page.js). Vive dentro de #mediaSlot

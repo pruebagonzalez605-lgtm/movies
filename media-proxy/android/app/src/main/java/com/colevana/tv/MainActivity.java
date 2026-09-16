@@ -3,11 +3,14 @@ package com.colevana.tv;
 import android.app.UiModeManager;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 
@@ -102,7 +105,23 @@ public class MainActivity extends BridgeActivity {
     // Evita que el WebView bloquee el fullscreen/autoplay del video por no
     // detectar un gesto de usuario "fresco" justo despues de navegar a
     // player.html (el tap en la portada de la pelicula ya fue el gesto).
-    getBridge().getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);
+    WebSettings webSettings = getBridge().getWebView().getSettings();
+    webSettings.setMediaPlaybackRequiresUserGesture(false);
+
+    // El JS necesita saber si esto es un televisor para poner el
+    // reproductor propio en pantalla completa al abrir una pelicula.
+    // El user agent del WebView en Android TV es el de un Android comun
+    // (no dice "android tv"), asi que la deteccion por UA fallaba y el
+    // televisor se quedaba con el video chico dentro de la pagina.
+    //
+    // Se expone de dos formas para que ninguna pagina quede afuera:
+    //  1. window.ColevanaNative.isTv(): disponible desde el primer script.
+    //  2. Marca en el user agent: sirve de respaldo y ademas la ve
+    //     cualquier codigo que ya mire el UA (shared/device.js).
+    getBridge().getWebView().addJavascriptInterface(new NativeDeviceBridge(), "ColevanaNative");
+    if (isTvDevice()) {
+      webSettings.setUserAgentString(webSettings.getUserAgentString() + " ColevanaTV/1");
+    }
 
     // Esta es una app de TV: la UI del sistema (barra de estado/navegacion)
     // tiene que quedar oculta siempre, no solo cuando la Fullscreen API del
@@ -137,14 +156,35 @@ public class MainActivity extends BridgeActivity {
     if (hasFocus && isTvDevice()) hideSystemUi();
   }
 
+  /**
+   * Puente minimo hacia el JS: solo informa si el aparato es un televisor.
+   * Lo consume shared/device.js (isTvDevice) y, a partir de ahi, el
+   * reproductor decide el modo teatro / pantalla completa y el CSS agranda
+   * los controles pensados para control remoto.
+   */
+  public class NativeDeviceBridge {
+    @JavascriptInterface
+    public boolean isTv() {
+      return isTvDevice();
+    }
+  }
+
   // Deteccion oficial de Android para saber si estamos corriendo en un
   // televisor (Android TV / Google TV): UiModeManager es la forma nativa
   // recomendada, mas confiable que revisar el user agent del WebView. No
   // toca nada del comportamiento de TV en si, solo decide cuando aplicarlo.
   private boolean isTvDevice() {
     UiModeManager uiModeManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
-    return uiModeManager != null
-        && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
+    if (uiModeManager != null
+        && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) {
+      return true;
+    }
+    // Algunos TV box baratos reportan UI_MODE_TYPE_NORMAL pero igual
+    // declaran el feature de TV (leanback) o no tienen pantalla tactil.
+    PackageManager pm = getPackageManager();
+    if (pm == null) return false;
+    return pm.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        || !pm.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN);
   }
 
   // Capacitor 6 no maneja el boton "atras" del control remoto por si solo:

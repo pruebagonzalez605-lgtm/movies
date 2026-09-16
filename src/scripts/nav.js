@@ -93,3 +93,8 @@ if (catalogMain) {
   });
   observer.observe(catalogMain, { childList: true, subtree: true });
 }
+// Marca el documento como "TV" para que el CSS pueda agrandar los controles
+// (chips de genero, pildoras, etc.) en televisores y dentro del APK de TV.
+import("./shared/device.js")
+  .then((mod) => mod.applyDeviceClass())
+  .catch(() => {});

@@ -13,7 +13,7 @@ import {
   slugify,
 } from "./shared/catalog-data.js";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
-import { isLikelyTvBrowser } from "./shared/device.js";
+import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -64,6 +64,8 @@ const dom = {
   mqRewindBtn: document.getElementById("mqRewindBtn"),
   mqPlayPauseBtn: document.getElementById("mqPlayPauseBtn"),
   mqForwardBtn: document.getElementById("mqForwardBtn"),
+  externalLoadingOverlay: document.getElementById("externalLoadingOverlay"),
+  externalLoadingText: document.getElementById("externalLoadingText"),
 };
 
 const state = {
@@ -291,19 +293,21 @@ function isCoarsePointerViewport() {
 // sobre #mediaSlot (el contenedor que aloja tanto al <video> como al
 // <iframe> externo, ver mountPlayer/tryHlsWishFallback) en lugar de pedirlo
 // sobre el <video> o el iframe en si.
-function isNativeAppShell() {
-  return Boolean(window.Capacitor?.isNativePlatform?.());
-}
-
 // El APK es el mismo tanto para Android TV como para celular. El look "TV"
 // (teatro fijo, fullscreen automatico sin gesto, orientacion forzada) solo
-// debe aplicarse cuando el APK corre en un televisor de verdad; si corre en
-// un celular, queremos el mismo comportamiento que ya usa la web movil
-// (que ya esta perfecto), asi que isNativeAppShell() solo no alcanza.
-// Reutiliza el mismo metodo de deteccion por user agent que ya usabamos en
-// tv-app-prompt.js.
-function isTvAppShell() {
-  return isNativeAppShell() && isLikelyTvBrowser();
+// debe aplicarse cuando corremos en un televisor de verdad; en un celular
+// queremos el mismo comportamiento que ya usa la web movil.
+//
+// ANTES: isTvAppShell() = APK + user agent de TV. El problema es que el
+// WebView de Capacitor en un Android TV reporta un user agent de Android
+// comun (sin "android tv"), asi que la condicion daba false y el televisor
+// se quedaba SIN pantalla completa aunque la fuente fuera el player propio.
+// Ahora la deteccion vive en shared/device.js y usa, en orden: la bandera
+// nativa de MainActivity (UiModeManager), el user agent, y por ultimo el
+// tipo de entrada (sin touch ni hover = control remoto).
+/** Televisor, sea el APK de TV o el navegador del propio televisor. */
+function isTvScreen() {
+  return isTvDevice();
 }
 
 function lockLandscapeOrientation() {
@@ -316,11 +320,43 @@ function lockLandscapeOrientation() {
   }
 }
 
-function enterAutoFullscreen() {
-  if (!isTvAppShell()) return;
-  const target = document.getElementById("mediaSlot");
+// Pide pantalla completa REAL sobre #mediaSlot (el contenedor comun al
+// <video> propio y al iframe externo).
+//
+// Solo se usa para el reproductor propio (state.playbackMode === "video"):
+// cuando la fuente es un iframe externo, el fullscreen lo maneja el propio
+// iframe y forzarlo desde afuera rompe sus controles.
+//
+// La Fullscreen API exige un gesto de usuario "fresco". Un control remoto
+// no siempre lo genera, asi que si el pedido se rechaza dejamos armado un
+// reintento que se dispara con la primera tecla/OK/click que llegue. En el
+// APK esto es un extra: el look de pantalla completa ya lo garantiza el
+// modo teatro por CSS (enterTvLockedTheaterMode), que no necesita gesto.
+let pendingFullscreenRetry = null;
+
+function getFullscreenTarget() {
+  return document.getElementById("mediaSlot");
+}
+
+function isRealFullscreen() {
+  const target = getFullscreenTarget();
+  const current = document.fullscreenElement || document.webkitFullscreenElement;
+  return Boolean(target && current === target);
+}
+
+function clearFullscreenRetry() {
+  if (!pendingFullscreenRetry) return;
+  ["keydown", "click", "touchend"].forEach((type) => {
+    document.removeEventListener(type, pendingFullscreenRetry, true);
+  });
+  pendingFullscreenRetry = null;
+}
+
+function requestOwnPlayerFullscreen({ retryOnGesture = true } = {}) {
+  if (state.playbackMode !== "video") return;
+  const target = getFullscreenTarget();
   if (!target) return;
-  if (document.fullscreenElement === target || document.webkitFullscreenElement === target) {
+  if (isRealFullscreen()) {
     lockLandscapeOrientation();
     return;
   }
@@ -333,13 +369,52 @@ function enterAutoFullscreen() {
   if (typeof requestFs !== "function") return;
 
   Promise.resolve(requestFs())
-    .then(lockLandscapeOrientation)
+    .then(() => {
+      clearFullscreenRetry();
+      lockLandscapeOrientation();
+    })
     .catch((err) => {
-      // Si el WebView rechaza el pedido (por ejemplo por falta de gesto de
-      // usuario reciente), no rompemos nada: el usuario puede activar el
-      // fullscreen a mano con los controles del reproductor.
-      playerConsole("warn", "[auto-fullscreen] No se pudo activar automaticamente:", err?.message || err);
+      playerConsole("warn", "[auto-fullscreen] Rechazado, se reintenta con el proximo gesto:", err?.message || err);
+      if (!retryOnGesture || pendingFullscreenRetry) return;
+      pendingFullscreenRetry = () => {
+        clearFullscreenRetry();
+        // Ya estamos dentro de un gesto de usuario: este pedido si lo
+        // acepta el navegador/WebView.
+        requestOwnPlayerFullscreen({ retryOnGesture: false });
+      };
+      ["keydown", "click", "touchend"].forEach((type) => {
+        document.addEventListener(type, pendingFullscreenRetry, true);
+      });
     });
+}
+
+/**
+ * Pantalla completa del reproductor propio en televisor.
+ *
+ * - En el APK de TV alcanza con el modo teatro por CSS (no necesita gesto y
+ *   MainActivity ya oculta la UI del sistema), pero igual intentamos el
+ *   fullscreen real para que el video use el decodificador a pantalla
+ *   completa del sistema.
+ * - En el navegador de un Smart TV el CSS solo no tapa la barra del
+ *   navegador, asi que el fullscreen real es lo que realmente importa.
+ */
+function ensureTvFullscreenForOwnPlayer() {
+  if (!isTvScreen()) return;
+  if (state.playbackMode !== "video") return;
+
+  enterTvLockedTheaterMode();
+
+  // Se intenta varias veces: justo despues de montar Plyr el <video> puede
+  // no estar listo, y algunos WebViews solo aceptan el pedido una vez que
+  // la reproduccion arranco de verdad.
+  requestOwnPlayerFullscreen();
+  window.setTimeout(() => requestOwnPlayerFullscreen(), 600);
+
+  const video = syncActiveVideo();
+  if (video && !video.dataset.tvFullscreenBound) {
+    video.dataset.tvFullscreenBound = "1";
+    video.addEventListener("playing", () => requestOwnPlayerFullscreen(), { once: true });
+  }
 }
 
 // --- Modo teatro fijo para el shell nativo (APK de TV) ---
@@ -363,7 +438,7 @@ function enterAutoFullscreen() {
 const TV_THEATER_CLASS = "tv-locked-fullscreen";
 
 function enterTvLockedTheaterMode() {
-  if (!isTvAppShell()) return;
+  if (!isTvScreen()) return;
   document.documentElement.classList.add(TV_THEATER_CLASS);
   lockLandscapeOrientation();
   // El play automatico funciona sin gesto porque MainActivity ya desactiva
@@ -390,10 +465,8 @@ function installAutoFullscreenGate() {
   document.getElementById("autoFullscreenGate")?.remove();
 }
 
-/** En navegador: quita capas que tapan el player y el modo TV si se coló. */
-function ensureWebPlayerInteractable() {
-  if (isTvAppShell()) return;
-  document.documentElement.classList.remove(TV_THEATER_CLASS);
+/** Quita capas viejas que puedan tapar el player (no toca el modo teatro). */
+function removeStrayPlayerOverlays() {
   document.getElementById("autoFullscreenGate")?.remove();
   document.querySelectorAll("#autoFullscreenGate").forEach((el) => el.remove());
   // Restos de capas full-size transparentes dentro del slot
@@ -412,6 +485,19 @@ function ensureWebPlayerInteractable() {
   document.querySelectorAll(".plyr, .plyr__controls, .plyr__video-wrapper").forEach((el) => {
     el.style.pointerEvents = "auto";
   });
+}
+
+/** En navegador: quita capas que tapan el player y el modo TV si se coló. */
+function ensureWebPlayerInteractable() {
+  if (isTvScreen()) {
+    // En un televisor el modo teatro se mantiene a proposito. En el
+    // navegador del propio TV igual conviene limpiar capas viejas: si algo
+    // queda tapando el player, el control remoto no puede enfocar nada.
+    if (!isNativeAppShell()) removeStrayPlayerOverlays();
+    return;
+  }
+  exitTvLockedTheaterMode();
+  removeStrayPlayerOverlays();
 }
 
 
@@ -1029,7 +1115,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   // Se aplica ANTES de saber si la fuente sera local o externa: #mediaSlot
   // es el contenedor comun a ambos casos, asi que el look fullscreen queda
   // parejo sin importar de donde termine viniendo el video.
-  if (isTvAppShell()) {
+  if (isTvScreen()) {
     enterTvLockedTheaterMode();
   } else {
     ensureWebPlayerInteractable();
@@ -1102,6 +1188,11 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   bindVideoEvents(syncActiveVideo());
   renderQualityControls(sources);
   hideAdblockHint();
+
+  // Fuente local = reproductor propio. En televisor tiene que arrancar a
+  // pantalla completa sin que el usuario toque el boton de fullscreen.
+  ensureTvFullscreenForOwnPlayer();
+
   dom.status.textContent = `Reproduciendo: ${title}`;
 
   loadRatingsFor(contentKey);
@@ -2351,10 +2442,10 @@ async function mountDirectStream(container, streamUrl) {
   bindDownloadButtonForActiveVideo();
   renderQualityControls(state.availableSources);
 
-  // APK/TV: teatro a pantalla completa sin gesto (misma ruta que fuente local).
-  if (isTvAppShell()) {
-    enterTvLockedTheaterMode();
-  }
+  // TV: teatro a pantalla completa sin gesto (misma ruta que fuente local).
+  // Este camino SIEMPRE usa el reproductor propio, asi que ademas pedimos
+  // el fullscreen real.
+  ensureTvFullscreenForOwnPlayer();
 
   try {
     await (syncActiveVideo() || video).play();
@@ -2603,6 +2694,27 @@ function hideAdblockHint() {
   if (el) el.hidden = true;
 }
 
+/**
+ * Overlay de "Buscando fuente alternativa..." sobre #mediaSlot.
+ *
+ * Antes, mientras tryHlsWishFallback() bajaba el HTML del embed, le
+ * resolvia el m3u8 limpio y probaba proveedores, la unica señal era el
+ * texto chico de #playerStatus debajo del reproductor: la caja de video
+ * quedaba negra y sin nada, como si se hubiera trabado. Se muestra al
+ * entrar a ese camino y se oculta apenas hay algo que mostrar (un stream
+ * propio montado, un iframe cargado) o cuando ya no queda nada mas para
+ * probar (el mensaje final / enlace de reintento se encargan de ahi).
+ */
+function showExternalLoadingOverlay(text) {
+  if (!dom.externalLoadingOverlay) return;
+  if (text && dom.externalLoadingText) dom.externalLoadingText.textContent = text;
+  dom.externalLoadingOverlay.hidden = false;
+}
+
+function hideExternalLoadingOverlay() {
+  if (dom.externalLoadingOverlay) dom.externalLoadingOverlay.hidden = true;
+}
+
 
 
 function removeExternalRetryLink() {
@@ -2663,6 +2775,7 @@ async function tryHlsWishFallback(showMessage = true) {
   }
   state.externalFallbackInProgress = true;
   state.suppressVideoErrorUi = true;
+  showExternalLoadingOverlay("Buscando una fuente alternativa…");
 
   try {
   const embedInfo = await getExternalEmbedInfo();
@@ -2716,10 +2829,15 @@ async function tryHlsWishFallback(showMessage = true) {
       if (showMessage) dom.status.textContent = "No se pudo cargar ninguna fuente.";
       showExternalRetryLink("Reintentar búsqueda de fuentes", async () => {
         dom.status.textContent = "Buscando fuentes de nuevo...";
-        ({ directStreams, embedCandidates } = await fetchExternalCandidates(embedInfo));
-        streamIndex = 0;
-        embedIndex = 0;
-        await tryNextCandidate();
+        showExternalLoadingOverlay("Buscando fuentes de nuevo…");
+        try {
+          ({ directStreams, embedCandidates } = await fetchExternalCandidates(embedInfo));
+          streamIndex = 0;
+          embedIndex = 0;
+          await tryNextCandidate();
+        } finally {
+          hideExternalLoadingOverlay();
+        }
       });
       return false;
     }
@@ -2767,13 +2885,19 @@ async function tryHlsWishFallback(showMessage = true) {
     showAdblockHint();
     showExternalRetryLink("¿No carga el video? Probar otra fuente", async () => {
       dom.status.textContent = "Probando otra fuente...";
-      await tryNextCandidate();
+      showExternalLoadingOverlay("Probando otra fuente…");
+      try {
+        await tryNextCandidate();
+      } finally {
+        hideExternalLoadingOverlay();
+      }
     });
     return true;
   };
 
   return await tryNextCandidate();
   } finally {
+    hideExternalLoadingOverlay();
     state.externalFallbackInProgress = false;
     // Mantener suppress un momento por si el video residual dispara error
     window.setTimeout(() => { state.suppressVideoErrorUi = false; }, 1500);

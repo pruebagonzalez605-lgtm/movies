@@ -340,6 +340,10 @@ export async function searchSite(query, options = {}) {
       poster: moviePoster,
       gradient: movie.gradient || ["#1c1c22", "#141419"],
       code: movie.code || "Movie",
+      // Referencia al item original: permite resolver el genero (y filtrar
+      // por genero) tambien en la pagina de busqueda.
+      sourceItem: movie,
+      sourceKind: "movie",
     });
   }
 
@@ -357,6 +361,8 @@ export async function searchSite(query, options = {}) {
       poster: seriePoster,
       gradient: serie.gradient || ["#1c1c22", "#141419"],
       code: "Serie",
+      sourceItem: serie,
+      sourceKind: "series",
     });
   }
 
@@ -374,6 +380,8 @@ export async function searchSite(query, options = {}) {
       poster: sagaPoster,
       gradient: saga.gradient || ["#1c1c22", "#141419"],
       code: "Saga",
+      sourceItem: saga.movies[0] || null,
+      sourceKind: "movie",
     });
   }
 
@@ -399,6 +407,8 @@ export async function searchSite(query, options = {}) {
           poster: episode.poster || serieFallbackPoster || null,
           gradient: serie.gradient || ["#1c1c22", "#141419"],
           code: `E${index + 1}`,
+          sourceItem: serie,
+          sourceKind: "series",
         });
       }
     }

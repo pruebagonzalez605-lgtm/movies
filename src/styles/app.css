@@ -2320,6 +2320,102 @@ html.tv-locked-fullscreen #mediaSlot iframe {
   width: 100vw !important;
   height: 100vh !important;
 }
+/* ==================== OVERLAY "Buscando fuente alternativa" ====================
+   Se muestra solo mientras tryHlsWishFallback() busca un proveedor externo
+   (godstream/hlswish/etc. via el worker de adblock). Vive encima del
+   <video>/iframe, igual que #nextEpisodeOverlay. */
+.external-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: radial-gradient(120% 120% at 50% 40%, rgba(28, 28, 34, 0.94), rgba(8, 8, 12, 0.97));
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.external-loading-overlay[hidden] {
+  display: none;
+}
+
+.external-loading-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid rgba(232, 196, 104, 0.22);
+  border-top-color: var(--accent);
+  animation: externalLoadingSpin 0.85s linear infinite;
+}
+
+@keyframes externalLoadingSpin {
+  to { transform: rotate(360deg); }
+}
+
+.external-loading-text {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text);
+  max-width: 32ch;
+}
+
+.external-loading-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  max-width: 34ch;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .external-loading-spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+/* En el modo teatro (TV) el overlay ocupa toda la pantalla como el resto
+   de #mediaSlot, y se agranda para verse bien de lejos. */
+html.tv-locked-fullscreen .external-loading-overlay {
+  gap: 20px;
+}
+
+html.tv-locked-fullscreen .external-loading-spinner {
+  width: 64px;
+  height: 64px;
+  border-width: 5px;
+}
+
+html.tv-locked-fullscreen .external-loading-text {
+  font-size: 1.3rem;
+  max-width: 40ch;
+}
+
+html.tv-locked-fullscreen .external-loading-hint {
+  font-size: 0.95rem;
+  max-width: 46ch;
+}
+
+@media (max-width: 640px) {
+  .external-loading-spinner {
+    width: 34px;
+    height: 34px;
+  }
+  .external-loading-text {
+    font-size: 0.82rem;
+  }
+  .external-loading-hint {
+    font-size: 0.66rem;
+  }
+}
+
+
 /* ==================== PANEL DE EPISODIOS (esquina del reproductor) ==================== */
 .sr-only {
   position: absolute;
@@ -2989,165 +3085,606 @@ html:not(.tv-locked-fullscreen) .plyr__volume {
 html:not(.tv-locked-fullscreen) .next-episode-overlay {
   bottom: 96px;
 }
-/* ===== Genre filter system ===== */
+
+/* =========================================================================
+   SISTEMA DE GENEROS  ·  rediseño (web · celular · TV)
+   Paleta por género vía --genre-color / --genre-rgb (inyectadas por JS).
+   Se usa rgba(var(--genre-rgb), x) en vez de color-mix() para que también
+   funcione en WebViews viejos de Android TV.
+   ========================================================================= */
+
 .genre-filter-section {
-  margin: 4px 0 18px;
-  padding: 10px 12px 8px;
-  background: linear-gradient(160deg, rgba(28, 28, 34, 0.92), rgba(18, 18, 24, 0.95));
-  border: 1px solid #2a2a32;
-  border-radius: 10px;
-  box-shadow: 0 8px 28px -16px rgba(0, 0, 0, 0.5);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 6px 0 24px;
+  padding: 14px 16px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(130% 160% at 0% 0%, rgba(232, 196, 104, 0.09), transparent 58%),
+    linear-gradient(165deg, rgba(32, 32, 41, 0.94), rgba(13, 13, 18, 0.96));
+  box-shadow:
+    0 22px 44px -32px rgba(0, 0, 0, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --active-rgb: 232, 196, 104;
 }
 
+/* Halo de color del género activo */
+.genre-filter-glow {
+  position: absolute;
+  inset: -60% -10% auto -10%;
+  height: 230px;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  background: radial-gradient(
+    55% 100% at 50% 0%,
+    rgba(var(--active-rgb), 0.3),
+    transparent 72%
+  );
+}
+
+.genre-filter-section.has-active .genre-filter-glow {
+  opacity: 1;
+}
+
+/* Línea superior que toma el color del género activo */
+.genre-filter-section::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--active-rgb), 0.85),
+    transparent
+  );
+  opacity: 0.5;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.genre-filter-section.has-active::after {
+  opacity: 1;
+}
+
+/* ---------- Encabezado ---------- */
 .genre-filter-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.genre-filter-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.genre-filter-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  flex: 0 0 auto;
+  color: #0b0b0f;
+  background: linear-gradient(140deg, rgba(var(--active-rgb), 1), rgba(var(--active-rgb), 0.62));
+  box-shadow: 0 6px 14px -8px rgba(var(--active-rgb), 0.95);
+  transition: background 0.35s ease, box-shadow 0.35s ease;
 }
 
 .genre-filter-label {
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--text);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.genre-filter-status {
+  font-size: 0.66rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .genre-clear-btn {
   appearance: none;
-  border: 1px solid #3a3a44;
-  background: transparent;
-  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(var(--active-rgb), 0.45);
+  background: rgba(var(--active-rgb), 0.12);
+  color: var(--text);
   font: inherit;
   font-size: 0.68rem;
-  font-weight: 600;
-  padding: 3px 9px;
+  font-weight: 700;
+  padding: 5px 12px;
   border-radius: 999px;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  flex: 0 0 auto;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .genre-clear-btn:hover {
-  color: var(--text);
-  border-color: var(--accent-dim);
-  background: rgba(232, 196, 104, 0.08);
+  background: rgba(var(--active-rgb), 0.22);
+  transform: translateY(-1px);
+}
+
+/* ---------- Riel de chips ---------- */
+.genre-rail {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .genre-chips {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  padding: 5px 2px 9px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
 }
 
+.genre-chips::-webkit-scrollbar {
+  display: none;
+}
+
+/* Difuminado en los bordes para insinuar que hay más géneros */
+.genre-rail::before,
+.genre-rail::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 34px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.genre-rail::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(14, 14, 19, 0.96), transparent);
+}
+
+.genre-rail::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(14, 14, 19, 0.96), transparent);
+}
+
+.genre-filter-section.can-scroll:not(.at-start) .genre-rail::before,
+.genre-filter-section.can-scroll:not(.at-end) .genre-rail::after {
+  opacity: 1;
+}
+
+.genre-rail-arrow {
+  appearance: none;
+  display: none;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(22, 22, 28, 0.96);
+  color: var(--text);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding-bottom: 3px;
+  cursor: pointer;
+  z-index: 3;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.genre-rail-arrow:hover {
+  background: rgba(var(--active-rgb), 0.9);
+  border-color: transparent;
+  color: #0b0b0f;
+  transform: scale(1.08);
+}
+
+/* Las flechas solo tienen sentido con mouse (web de escritorio) */
+@media (hover: hover) and (pointer: fine) {
+  .genre-filter-section.can-scroll .genre-rail-arrow {
+    display: grid;
+  }
+  .genre-filter-section.at-start .genre-rail-arrow-prev,
+  .genre-filter-section.at-end .genre-rail-arrow-next {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+}
+
+/* ---------- Chip de género ---------- */
 .genre-chip {
   appearance: none;
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  scroll-margin-inline: 44px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 9px;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
   border-radius: 999px;
-  border: 1px solid #33333c;
-  background: rgba(20, 20, 26, 0.9);
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.25;
-  cursor: pointer;
-  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-  --genre-color: var(--accent);
-}
-
-.genre-chip:hover {
-  transform: translateY(-1px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(145deg, rgba(var(--genre-rgb), 0.18), rgba(20, 20, 26, 0.94) 62%);
   color: var(--text);
-  border-color: color-mix(in srgb, var(--genre-color) 55%, #444);
-}
-
-.genre-chip.is-active {
-  color: #0b0b0f;
-  background: var(--genre-color);
-  border-color: transparent;
-  box-shadow: 0 3px 12px -5px color-mix(in srgb, var(--genre-color) 70%, transparent);
-}
-
-.genre-chip-all.is-active {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1),
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background 0.25s ease,
+    color 0.2s ease;
   --genre-color: var(--accent);
-  background: var(--accent);
-  color: #0b0b0f;
+  --genre-rgb: 232, 196, 104;
 }
 
 .genre-chip-emoji {
-  font-size: 0.85em;
+  display: inline-grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  font-size: 0.86rem;
   line-height: 1;
+  background: radial-gradient(
+    circle at 32% 26%,
+    rgba(var(--genre-rgb), 0.95),
+    rgba(var(--genre-rgb), 0.42)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 5px 12px -7px rgba(var(--genre-rgb), 1);
+  transition: transform 0.2s ease;
+}
+
+.genre-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .genre-chip-count {
   font-size: 0.62rem;
-  opacity: 0.7;
-  font-weight: 700;
-  min-width: 1em;
-  text-align: center;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.genre-chip:hover {
+  transform: translateY(-2px);
+  color: #fff;
+  border-color: rgba(var(--genre-rgb), 0.6);
+  box-shadow: 0 14px 26px -18px rgba(var(--genre-rgb), 1);
+}
+
+.genre-chip:hover .genre-chip-emoji {
+  transform: scale(1.08);
+}
+
+.genre-chip:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.genre-chip.is-active {
+  color: #0b0b0f;
+  border-color: transparent;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--genre-rgb), 1),
+    rgba(var(--genre-rgb), 0.7)
+  );
+  box-shadow:
+    0 12px 28px -14px rgba(var(--genre-rgb), 1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.genre-chip.is-active .genre-chip-emoji {
+  background: rgba(0, 0, 0, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
 
 .genre-chip.is-active .genre-chip-count {
-  opacity: 0.9;
-  background: rgba(0, 0, 0, 0.18);
-  border-radius: 999px;
-  padding: 0 5px;
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(0, 0, 0, 0.72);
 }
 
-.genre-filter-status {
-  margin: 7px 0 0;
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  font-weight: 500;
-  letter-spacing: 0.02em;
+/* Destello único al activar (no se repite: no distrae) */
+.genre-chip.is-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(255, 255, 255, 0.5) 46%,
+    transparent 62%
+  );
+  transform: translateX(-130%);
+  animation: genreChipShine 0.85s ease-out 1;
+  pointer-events: none;
+}
+
+@keyframes genreChipShine {
+  to {
+    transform: translateX(130%);
+  }
+}
+
+/* Esqueleto de carga */
+.genre-chip-skeleton {
+  width: 108px;
+  height: 37px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.04) 30%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 70%
+  );
+  background-size: 250% 100%;
+  animation: genreSkeleton 1.3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.genre-chip-skeleton:nth-child(2) { width: 132px; }
+.genre-chip-skeleton:nth-child(3) { width: 96px; }
+.genre-chip-skeleton:nth-child(4) { width: 146px; }
+
+@keyframes genreSkeleton {
+  from { background-position: 180% 0; }
+  to { background-position: -80% 0; }
 }
 
 .genre-empty {
   grid-column: 1 / -1;
-  padding: 32px 16px;
+  padding: 44px 18px;
   text-align: center;
   color: var(--text-dim);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
-@media (max-width: 640px) {
+/* =========================  FOCO (TV / teclado)  ========================= */
+.genre-chip:focus-visible,
+.genre-chip.tv-focus {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 16px 32px -16px rgba(var(--genre-rgb), 1);
+  z-index: 3;
+}
+
+.genre-clear-btn:focus-visible,
+.genre-clear-btn.tv-focus,
+.genre-rail-arrow:focus-visible,
+.genre-rail-arrow.tv-focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* =========================  TELEVISOR  ========================= */
+html.tv-device .genre-filter-section {
+  padding: 20px 22px 16px;
+  border-radius: 26px;
+  margin-bottom: 30px;
+}
+
+html.tv-device .genre-filter-label {
+  font-size: 0.95rem;
+}
+
+html.tv-device .genre-filter-status {
+  font-size: 0.82rem;
+  padding: 5px 12px;
+}
+
+html.tv-device .genre-filter-icon {
+  width: 30px;
+  height: 30px;
+}
+
+html.tv-device .genre-chips {
+  gap: 14px;
+  padding: 8px 4px 14px;
+}
+
+html.tv-device .genre-chip {
+  font-size: 1.02rem;
+  padding: 9px 20px 9px 9px;
+  gap: 11px;
+  scroll-margin-inline: 90px;
+}
+
+html.tv-device .genre-chip-emoji {
+  width: 34px;
+  height: 34px;
+  font-size: 1.15rem;
+}
+
+html.tv-device .genre-chip-count {
+  font-size: 0.78rem;
+  padding: 2px 9px;
+}
+
+html.tv-device .genre-clear-btn {
+  font-size: 0.85rem;
+  padding: 8px 16px;
+}
+
+/* En TV el foco se ve de lejos: borde grueso + escala mayor */
+html.tv-device .genre-chip:focus-visible,
+html.tv-device .genre-chip.tv-focus {
+  outline-width: 4px;
+  transform: translateY(-4px) scale(1.07);
+}
+
+/* =========================  CELULAR  ========================= */
+@media (max-width: 720px) {
   .genre-filter-section {
-    padding: 8px 10px 6px;
-    margin-bottom: 14px;
+    margin: 4px 0 18px;
+    padding: 12px 12px 8px;
+    border-radius: 16px;
   }
 
-  .genre-chip {
-    padding: 3px 8px;
-    font-size: 0.68rem;
+  .genre-filter-header {
+    margin-bottom: 8px;
+    gap: 8px;
   }
 
   .genre-filter-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+  }
+
+  .genre-filter-status {
+    font-size: 0.6rem;
+    padding: 2px 7px;
+  }
+
+  .genre-chips {
+    gap: 7px;
+    padding: 4px 2px 8px;
+    /* que el carrusel llegue al borde de la pantalla */
+    margin: 0 -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+    scroll-padding-left: 12px;
+  }
+
+  .genre-chip {
+    font-size: 0.73rem;
+    padding: 5px 12px 5px 5px;
+    gap: 7px;
+  }
+
+  .genre-chip-emoji {
+    width: 22px;
+    height: 22px;
+    font-size: 0.78rem;
+  }
+
+  .genre-chip-count {
+    font-size: 0.58rem;
+    padding: 1px 6px;
+  }
+
+  .genre-clear-btn {
     font-size: 0.64rem;
+    padding: 4px 10px;
   }
 }
 
-/* Genre pills on cards */
+@media (prefers-reduced-motion: reduce) {
+  .genre-chip,
+  .genre-chip-emoji,
+  .genre-clear-btn,
+  .genre-filter-glow {
+    transition: none;
+  }
+  .genre-chip.is-active::after,
+  .genre-chip-skeleton {
+    animation: none;
+  }
+  .genre-chips {
+    scroll-behavior: auto;
+  }
+}
+
+/* =========================================================================
+   PILDORAS DE GENERO EN LAS TARJETAS
+   ========================================================================= */
 .card-genre-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
-  margin: 3px 0 4px;
+  gap: 5px;
+  margin: 5px 0 6px;
 }
 
 .card-genre-pill {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 1px 6px;
+  padding: 3px 9px 3px 6px;
   border-radius: 999px;
-  color: #0b0b0f;
-  background: var(--pill-color, var(--accent));
-  opacity: 0.9;
-  line-height: 1.25;
+  line-height: 1.3;
+  color: rgb(var(--pill-rgb, 232, 196, 104));
+  background: rgba(var(--pill-rgb, 232, 196, 104), 0.14);
+  border: 1px solid rgba(var(--pill-rgb, 232, 196, 104), 0.38);
+  box-shadow: 0 4px 12px -8px rgba(var(--pill-rgb, 232, 196, 104), 1);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.card-genre-pill-emoji {
+  font-size: 0.78em;
+  line-height: 1;
+  filter: saturate(1.15);
+}
+
+.catalog-card:hover .card-genre-pill,
+.catalog-card.tv-focus .card-genre-pill,
+.search-result-card:hover .card-genre-pill {
+  background: rgba(var(--pill-rgb, 232, 196, 104), 0.24);
+  border-color: rgba(var(--pill-rgb, 232, 196, 104), 0.6);
+}
+
+html.tv-device .card-genre-pill {
+  font-size: 0.7rem;
+  padding: 4px 11px 4px 8px;
+}
+
+@media (max-width: 720px) {
+  .card-genre-pill {
+    font-size: 0.55rem;
+    padding: 2px 8px 2px 5px;
+  }
 }

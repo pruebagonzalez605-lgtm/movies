@@ -7,7 +7,10 @@ import {
   resolveSagaCardPoster,
   resolveSeriesCardPoster,
   isNewItem,
+  resolveItemGenre,
+  getItemGenreSync,
 } from "./shared/catalog-data.js";
+import { genrePillHtml, applyGenrePillToCard } from "./ui/genre-filter.js";
 
 const moviesGrid = document.getElementById("homeMoviesGrid");
 const seriesGrid = document.getElementById("homeSeriesGrid");
@@ -25,7 +28,7 @@ function applyPosterImage(node, posterUrl, gradient) {
   img.src = posterUrl;
 }
 
-function createPosterCard({ href, title, poster, gradient, isNew }) {
+function createPosterCard({ href, title, poster, gradient, isNew, item, kind }) {
   const link = document.createElement("a");
   link.className = "catalog-card catalog-card-poster-only";
   link.href = href;
@@ -35,9 +38,19 @@ function createPosterCard({ href, title, poster, gradient, isNew }) {
     </div>
     <div class="catalog-card-copy">
       <h3>${title}</h3>
+      ${genrePillHtml(getItemGenreSync(item))}
     </div>
   `;
   applyPosterImage(link.querySelector(".catalog-card-art"), poster, gradient || ["#1c1c22", "#141419"]);
+
+  // Si el genero no estaba en los datos locales, se completa despues con TMDB
+  // sin bloquear el pintado de la portada.
+  if (item && !getItemGenreSync(item)) {
+    Promise.resolve(resolveItemGenre(item, kind || "movie"))
+      .then((genreId) => applyGenrePillToCard(link, genreId))
+      .catch(() => {});
+  }
+
   return link;
 }
 
@@ -53,6 +66,8 @@ async function renderMovies() {
         poster,
         gradient: movie.gradient,
         isNew: isNewItem(movie),
+        item: movie,
+        kind: "movie",
       });
     }),
   );
@@ -72,6 +87,8 @@ async function renderSeries() {
         poster,
         gradient: serie.gradient,
         isNew: isNewItem(serie),
+        item: serie,
+        kind: "series",
       });
     }),
   );
@@ -91,6 +108,8 @@ async function renderSagas() {
         poster,
         gradient: saga.gradient,
         isNew: false,
+        item: saga.movies[0] || null,
+        kind: "movie",
       });
     }),
   );
