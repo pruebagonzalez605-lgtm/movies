@@ -194,3 +194,67 @@ test("/video responds with a clear reason when the upstream never answers", asyn
   assert.equal(response.status, 502);
   assert.equal(body.error, "upstream_timeout");
 });
+
+test("/proxy-hls self-heals by re-resolving the embed when every mirror is 403", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    const urlStr = typeof url === "string" ? url : url.toString();
+    calls.push(urlStr);
+
+    if (urlStr.includes("embed-test.html")) {
+      // Re-resolver el embed entrega una firma nueva.
+      return new Response(
+        '<script>file: "https://vimeos.net/fresh/master.m3u8?sig=NEW"</script>',
+        { status: 200 },
+      );
+    }
+    if (urlStr.includes("/fresh/master.m3u8")) {
+      return new Response(
+        "#EXTM3U\n#EXTINF:6.0,\nseg1.ts\n",
+        { status: 200, headers: { "Content-Type": "application/vnd.apple.mpegurl" } },
+      );
+    }
+    // La URL original (y todos sus mirrors) siguen 403 para siempre.
+    return new Response("forbidden", { status: 403 });
+  };
+
+  const staleUrl = "https://vimeos.net/old/master.m3u8?sig=OLD";
+  const embed = "https://vimeos.net/embed-test.html";
+  const request = new Request(
+    `https://proxy.example/proxy-hls?url=${encodeURIComponent(staleUrl)}&embed=${encodeURIComponent(embed)}`,
+    { headers: { Origin: "https://colevana.com" } },
+  );
+
+  const response = await handleRequest(request, env);
+  const body = await response.text();
+
+  assert.equal(response.status, 200, "el self-heal deberia haber conseguido una respuesta valida");
+  assert.ok(body.includes("/proxy-hls?url="), "el segmento se reescribe para pasar por el proxy");
+  assert.ok(
+    calls.some((u) => u.includes("embed-test.html")),
+    "debe haber vuelto a resolver el embed",
+  );
+});
+
+test("/proxy-hls returns the original 403 when self-heal also fails", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+
+  globalThis.fetch = async () => new Response("forbidden", { status: 403 });
+
+  const staleUrl = "https://vimeos.net/old/master.m3u8?sig=OLD";
+  const embed = "https://vimeos.net/embed-test.html";
+  const request = new Request(
+    `https://proxy.example/proxy-hls?url=${encodeURIComponent(staleUrl)}&embed=${encodeURIComponent(embed)}`,
+    { headers: { Origin: "https://colevana.com" } },
+  );
+
+  const response = await handleRequest(request, env);
+  const body = await response.json();
+
+  assert.equal(response.status, 403);
+  assert.equal(body.error, "hls_forbidden_by_cdn");
+});

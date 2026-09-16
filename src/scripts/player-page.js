@@ -2366,7 +2366,7 @@ async function mountDirectStream(container, streamUrl) {
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
         state._hls = hls;
-        // Misma lógica que cuando funcionó: fragmento en ~5s o fallo.
+        // result: true = ok, false = fallo genérico, "cdn403" = CDN bloquea IP del Worker
         const okPlayback = await new Promise((resolve) => {
           let settled = false;
           const done = (v) => {
@@ -2392,11 +2392,20 @@ async function mountDirectStream(container, streamUrl) {
           hls.on(Hls.Events.ERROR, (_, data) => {
             const code = data?.response?.code;
             playerConsole("warn", "[hls] error", data?.type, data?.details, code);
+            if (code === 403 && isProxyHlsCdnBlockedUrl(streamUrl)) {
+              done("cdn403");
+              return;
+            }
             if (data?.fatal || code === 403 || code === 404 || code === 401) {
               done(false);
             }
           });
         });
+        if (okPlayback === "cdn403") {
+          try { hls.destroy(); } catch (_) {}
+          state._hls = null;
+          throw new Error("hls_forbidden_by_cdn");
+        }
         if (!okPlayback) {
           try { hls.destroy(); } catch (_) {}
           state._hls = null;
@@ -2485,6 +2494,26 @@ function viaHlsProxy(streamUrl, embedUrl = null) {
   let out = `${proxyBase}/proxy-hls?url=${encodeURIComponent(streamUrl)}`;
   if (embedUrl) out += `&embed=${encodeURIComponent(embedUrl)}`;
   return out;
+}
+
+/**
+ * True si la URL apunta a /proxy-hls de un CDN que bloquea IPs de datacenter
+ * (vimeos / goodstream / hlswish). Ante el primer 403 no vale reintentar mirrors.
+ */
+function isProxyHlsCdnBlockedUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  try {
+    // Puede venir como URL del Worker: .../proxy-hls?url=<encoded>
+    if (url.includes("/proxy-hls")) {
+      const u = new URL(url, window.location.origin);
+      const target = u.searchParams.get("url") || "";
+      return /vimeos|goodstream|hlswish/i.test(target || url);
+    }
+    // O la URL cruda del CDN
+    return /vimeos|goodstream|hlswish/i.test(url);
+  } catch {
+    return /vimeos|goodstream|hlswish/i.test(url);
+  }
 }
 
 /** Genera mirrors del m3u8 (p3.vimeos.zip ↔ s10.vimeos.net, etc.) */
@@ -2822,6 +2851,8 @@ async function tryHlsWishFallback(showMessage = true) {
         }
       } catch (e) {
         playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
+        // CDN anti-datacenter: más mirrors del mismo proveedor también fallarán
+        if (e?.message === "hls_forbidden_by_cdn") break;
       }
     }
 
@@ -2864,6 +2895,11 @@ async function tryHlsWishFallback(showMessage = true) {
         }
       } catch (e) {
         playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
+        // Primer 403 de vimeos/goodstream/hlswish vía Worker → no probar más mirrors
+        if (e?.message === "hls_forbidden_by_cdn") {
+          playerConsole("info", "[player] CDN bloquea Worker; saltando mirrors → iframe");
+          break;
+        }
       }
     }
 

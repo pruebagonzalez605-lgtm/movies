@@ -48,6 +48,21 @@ function isAllowedHlsHost(hostname) {
   return false;
 }
 
+/**
+ * CDNs que bloquean IPs de datacenter (Cloudflare Workers).
+ * Ante el primer 403 no tiene sentido reintentar headers/mirrors ni self-heal:
+ * el navegador del usuario (IP residencial) sí puede, el Worker no.
+ */
+function isCdnIpBlockedHost(hostname) {
+  const h = String(hostname || "").toLowerCase();
+  if (!h) return false;
+  return (
+    h.includes("vimeos") ||
+    h.includes("goodstream") ||
+    h.includes("hlswish")
+  );
+}
+
 const STREAM_AD_HINT =
   /preroll|midroll|postroll|aviator|\bad\b|ads?[._/-]|advert|publicidad|promo|vast|ima|betwinner|anuncio/i;
 
@@ -478,6 +493,87 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
   return response;
 }
 
+/**
+ * Variantes de una misma URL de m3u8 que suelen resolver al mismo contenido
+ * (mismo host con "srv=" distinto, o las variantes de calidad "_h"/"_n" del
+ * patron ".../CODE_,n,h,.urlset/master.m3u8"). Se prueban todas antes de
+ * darse por vencido: cual anda depende del CDN especifico y cambia de un
+ * link firmado a otro.
+ */
+function buildMirrorCandidates(url) {
+  const candidates = [url.href];
+  try {
+    const srv = url.searchParams.get("srv");
+    if (srv) {
+      const a = new URL(url.href);
+      a.hostname = `${srv}.vimeos.net`;
+      candidates.push(a.href);
+    }
+    const um = url.pathname.match(
+      /^(.*\/)([A-Za-z0-9]+)_,([^/]+),\.(urlset)\/master\.m3u8$/i,
+    );
+    if (um) {
+      const [, root, code, quals] = um;
+      for (const q of quals.split(",").filter(Boolean).slice(0, 2)) {
+        const a = new URL(url.href);
+        a.pathname = `${root}${code}_${q}/master.m3u8`;
+        candidates.push(a.href);
+        if (srv) {
+          const b = new URL(a.href);
+          b.hostname = `${srv}.vimeos.net`;
+          candidates.push(b.href);
+        }
+      }
+    }
+  } catch (_) {
+    // Si el patron no matchea, se prueba solo la URL tal cual vino.
+  }
+  return candidates;
+}
+
+/**
+ * Prueba cada combinacion de headers contra cada URL candidata, en orden,
+ * hasta que una responda ok. Devuelve la respuesta y la URL que funciono, o
+ * null si ninguna sirvio (se queda con el ultimo intento "no 404" para
+ * poder reportar el motivo real, tipico un 403 del CDN).
+ *
+ * Si el CDN es de la familia vimeos/goodstream/hlswish y responde 403,
+ * corta de inmediato: esos hosts bloquean IPs de datacenter y más
+ * intentos solo alargan el "Cargando..." del player.
+ */
+async function attemptPlaylistFetch(candidateUrls, headerBuilders, method, timeoutMs = 7000) {
+  let best = null;
+  for (const buildHeaders of headerBuilders) {
+    const headers = buildHeaders();
+    for (const tryUrl of candidateUrls) {
+      try {
+        const res = await fetchWithTimeout(tryUrl, { method, headers, redirect: "follow" }, timeoutMs);
+        if (res.ok) return { response: res, usedUrl: tryUrl };
+
+        if (!best || res.status !== 404) best = { response: res, usedUrl: tryUrl };
+
+        // Primer 403 de CDN anti-datacenter → definitivo, no seguir
+        if (res.status === 403) {
+          try {
+            if (isCdnIpBlockedHost(new URL(tryUrl).hostname)) {
+              console.log(
+                "[proxy-hls] still 403 (cdn blocks datacenter IP)",
+                tryUrl,
+              );
+              return best;
+            }
+          } catch (_) {
+            // URL malformada rara; seguir con el resto de candidatos
+          }
+        }
+      } catch (_) {
+        // Timeout u otro error de red: se sigue con el siguiente candidato.
+      }
+    }
+  }
+  return best;
+}
+
 async function handleProxyHls(request, env, requestUrl) {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -606,59 +702,78 @@ async function handleProxyHls(request, env, requestUrl) {
   ];
 
   // Mirrors de URL (host + variantes _h / _n)
-  const candidateUrls = [upstreamUrl.href];
-  try {
-    const srv = upstreamUrl.searchParams.get("srv");
-    if (srv) {
-      const a = new URL(upstreamUrl.href);
-      a.hostname = `${srv}.vimeos.net`;
-      candidateUrls.push(a.href);
-    }
-    const um = upstreamUrl.pathname.match(
-      /^(.*\/)([A-Za-z0-9]+)_,([^/]+),\.(urlset)\/master\.m3u8$/i,
-    );
-    if (um) {
-      const [, root, code, quals] = um;
-      for (const q of quals.split(",").filter(Boolean).slice(0, 2)) {
-        const a = new URL(upstreamUrl.href);
-        a.pathname = `${root}${code}_${q}/master.m3u8`;
-        candidateUrls.push(a.href);
-        if (srv) {
-          const b = new URL(a.href);
-          b.hostname = `${srv}.vimeos.net`;
-          candidateUrls.push(b.href);
-        }
-      }
-    }
-  } catch (_) {}
+  const candidateUrls = buildMirrorCandidates(upstreamUrl);
 
   let upstreamResponse = null;
   let usedUrl = upstreamUrl.href;
 
-  outer: for (const buildHeaders of headerAttempts) {
-    const headers = buildHeaders();
-    for (const tryUrl of candidateUrls) {
-      try {
-        const res = await fetchWithTimeout(tryUrl, {
-          method: request.method,
-          headers,
-          redirect: "follow",
-        }, 7000);
-        if (res.ok) {
-          upstreamResponse = res;
-          usedUrl = tryUrl;
-          break outer;
+  const firstAttempt = await attemptPlaylistFetch(candidateUrls, headerAttempts, request.method);
+  if (firstAttempt) {
+    upstreamResponse = firstAttempt.response;
+    usedUrl = firstAttempt.usedUrl;
+  }
+
+  // --- "Self-heal": la URL fallo en TODOS los mirrors ---
+  // Estas URLs de m3u8 vienen firmadas (parametros tipo s=/e=/v= en la
+  // query) y todo indica que la firma queda atada al momento/IP de la
+  // resolucion original (la que hizo handleResolveStream). Si esa
+  // resolucion y esta llamada a /proxy-hls terminan corriendo en distintos
+  // nodos de Cloudflare (algo normal: cada request puede caer en un edge
+  // distinto), la firma deja de ser valida y el CDN devuelve 403 SIEMPRE,
+  // sin importar cuantos mirrors o combinaciones de headers se prueben.
+  //
+  // La solucion es volver a resolver el embed DESDE ACA (misma invocacion,
+  // mismo request saliente) para conseguir una firma nueva atada a este
+  // mismo contexto, y probarla antes de rendirse.
+  //
+  // EXCEPCION: si el 403 viene de un CDN que bloquea IPs de datacenter
+  // (vimeos / goodstream / hlswish), el self-heal no puede ayudar: la
+  // firma nueva también saldrá del mismo Worker y el CDN la rechazará
+  // igual. En ese caso devolvemos 403 de inmediato para que el player
+  // caiga al iframe sin más demora.
+  const isIpBlocked403 =
+    upstreamResponse?.status === 403 &&
+    isCdnIpBlockedHost(upstreamUrl.hostname);
+
+  const needsSelfHeal =
+    !isIpBlocked403 &&
+    (!upstreamResponse || !upstreamResponse.ok);
+
+  if (needsSelfHeal && embedParam && isM3u8) {
+    try {
+      const embedUrl = validateEmbedUrl(embedParam);
+      const freshHtml = await fetchWithTimeout(embedUrl.href, {
+        method: "GET",
+        redirect: "follow",
+        headers: {
+          "User-Agent": UA,
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+          Referer: embedUrl.href,
+        },
+      }, 6000).then((res) => (res.ok ? res.text() : null));
+
+      const freshStream = freshHtml ? extractCleanStreamFromHtml(freshHtml) : null;
+      if (freshStream) {
+        const freshUrl = validateHlsUpstream(freshStream);
+        const freshCandidates = buildMirrorCandidates(freshUrl);
+        // Solo los dos primeros juegos de headers (los mas propensos a
+        // funcionar): esto ya es un segundo intento completo, no vale la
+        // pena repetir los 4 x N combinaciones de nuevo.
+        const healed = await attemptPlaylistFetch(freshCandidates, headerAttempts.slice(0, 2), request.method);
+        if (healed?.response?.ok) {
+          console.log("[proxy-hls] self-heal ok, firma renovada para", embedUrl.href);
+          upstreamResponse = healed.response;
+          usedUrl = healed.usedUrl;
+        } else if (!upstreamResponse && healed) {
+          upstreamResponse = healed.response;
+          usedUrl = healed.usedUrl;
         }
-        // Guardamos el último 403 por si ninguno funciona
-        if (!upstreamResponse || res.status !== 404) {
-          upstreamResponse = res;
-          usedUrl = tryUrl;
-        }
-      } catch (_) {
-        // Timeout u otro error de red: probar el siguiente candidato en vez
-        // de dejar la respuesta del worker (y con ella el "Cargando..." del
-        // reproductor) esperando para siempre.
       }
+    } catch (err) {
+      console.log("[proxy-hls] self-heal fallo:", err?.message || err);
     }
   }
 
@@ -670,7 +785,10 @@ async function handleProxyHls(request, env, requestUrl) {
 
   // Si sigue en 403, devolver error claro (el player caerá al iframe)
   if (upstreamResponse.status === 403) {
-    console.log("[proxy-hls] still 403", usedUrl, "cookies=", Boolean(cookieHeader));
+    const reason = isCdnIpBlockedHost(upstreamUrl.hostname)
+      ? "cdn blocks datacenter IP"
+      : "forbidden";
+    console.log("[proxy-hls] still 403", `(${reason})`, usedUrl, "cookies=", Boolean(cookieHeader));
     return jsonResponse(request, env, 403, "hls_forbidden_by_cdn");
   }
 
