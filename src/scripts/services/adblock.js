@@ -1,79 +1,69 @@
 /**
- * Adblock interno de Colevana
- * -----------------------
- * Bloquea overlays, countdowns y anuncios de "espera X segundos para saltar"
- * que se inyectan en la misma página (no puede modificar iframes cross-origin
- * de proveedores externos por la política same-origin del navegador).
+ * Adblock interno de Colevana — modo máximo OPTIMIZADO
+ * ----------------------------------------------------
+ * Evita congelar la página ("La página no responde"):
+ * - Polling más suave + throttle de MutationObserver
+ * - querySelectorAll por lotes, no en cada tick completo
+ * - Skip/overlays solo sobre nodos visibles recientes
+ * - No escanea miles de nodos en un solo frame
  *
- * Uso:
- *   import { initAdblock } from "./services/adblock.js";
- *   initAdblock({ root: document.getElementById("mediaSlot") || document.body });
+ * Limitación: no puede modificar el interior de iframes cross-origin.
  */
 
 const SKIP_TEXT_RE =
-  /\b(saltar|skip|continuar|omitir|cerrar|close|continuar\s*sin\s*anuncios?|skip\s*ad|skip\s*ads|saltar\s*anuncio)\b/i;
+  /\b(saltar|skip|continuar|omitir|cerrar|close|continuar\s*sin\s*anuncios?|skip\s*ad|skip\s*ads|saltar\s*anuncio|ver\s*ahora|ver\s*video|play\s*now)\b/i;
 
 const WAIT_TEXT_RE =
-  /\b(espera|wait|segundos?|seconds?|anuncio|advertisement|publicidad|ad\s*in|skip\s*in|puedes\s*saltar|podrás\s*saltar|podras\s*saltar)\b/i;
+  /\b(espera|wait|segundos?|seconds?|anuncio|advertisement|publicidad|ad\s*in|skip\s*in|puedes\s*saltar|podrás\s*saltar|podras\s*saltar|please\s*wait|loading\s*ad)\b/i;
 
 const COUNTDOWN_RE = /(\d+)\s*(s|seg|secs?|seconds?|segundos?)?/i;
 
-/** Selectores frecuentes de overlays / banners de anuncios en embeds y páginas */
-const AD_SELECTORS = [
-  // Genericos
-  "[id*='ad-']",
-  "[id*='ads-']",
-  "[id*='advert']",
-  "[class*='ad-overlay']",
-  "[class*='ad-banner']",
-  "[class*='ad-container']",
-  "[class*='ad-wrapper']",
-  "[class*='adsbox']",
-  "[class*='advertisement']",
-  "[class*='sponsored']",
-  "[data-ad]",
-  "[data-ads]",
+/** Selectores prioritarios (pocos, de alto impacto) */
+const AD_SELECTORS_FAST = [
   "iframe[src*='doubleclick']",
   "iframe[src*='googlesyndication']",
   "iframe[src*='adservice']",
   "iframe[src*='adnxs']",
-  "iframe[src*='advertising']",
-  // Temporizadores / skip gates
-  "[class*='skip-ad']",
-  "[class*='skipad']",
-  "[class*='skip_ad']",
-  "[class*='ad-skip']",
-  "[class*='countdown']",
-  "[class*='timer-ad']",
-  "[id*='skip']",
-  "[id*='countdown']",
-  // Popunders / intersticiales comunes
+  "iframe[src*='popads']",
+  "iframe[src*='propeller']",
+  "iframe[src*='clickadu']",
+  "iframe[src*='exoclick']",
+  "iframe[src*='juicyads']",
+  "iframe[src*='adsterra']",
+  "iframe[src*='mgid']",
+  "iframe[src*='taboola']",
+  "[data-ad]",
+  "[data-ads]",
+  "[data-ad-slot]",
   ".popup-ad",
   ".interstitial",
   ".pre-roll",
   ".preroll",
   ".midroll",
   ".overlay-ad",
-  // Redes conocidas en sitios de streaming LATAM
+  "[class*='ad-overlay']",
+  "[class*='ad-banner']",
+  "[class*='skip-ad']",
+  "[class*='skipad']",
   "[id*='ts_ad']",
   "[class*='ts_ad']",
-  "[id*='float'][class*='ad']",
+  "[class*='popunder']",
+  "[id*='popunder']",
 ];
 
-/** Atributos o clases que marcan un nodo como “ya procesado” para no re-escanearlo en bucle */
 const PROCESSED_ATTR = "data-cv-adblock";
 
 let observer = null;
 let tickTimer = null;
 let rootEl = null;
+let mutationQueued = false;
+let lastFullSweep = 0;
 let options = {
-  /** Intervalo de re-escaneo activo (ms) mientras haya nodos sospechosos */
-  pollMs: 400,
-  /** Auto-clickear botones de saltar cuando el texto indique que ya se puede */
+  pollMs: 600,
   autoClickSkip: true,
-  /** Quitar overlays de espera aunque el countdown no haya terminado */
   forceRemoveWaitOverlays: true,
-  /** Log en consola (útil para depurar) */
+  aggressiveSkip: true,
+  blockPopunders: true,
   debug: false,
 };
 
@@ -83,35 +73,27 @@ function log(...args) {
 
 function textOf(el) {
   if (!el) return "";
-  return (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+  return (el.textContent || "").replace(/\s+/g, " ").trim();
 }
 
-function isVisible(el) {
+function isVisibleCheap(el) {
   if (!(el instanceof Element)) return false;
-  const style = window.getComputedStyle(el);
-  if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
-    return false;
-  }
+  if (el.hasAttribute("hidden") || el.getAttribute("aria-hidden") === "true") return false;
   const rect = el.getBoundingClientRect();
   return rect.width > 8 && rect.height > 8;
 }
 
 function isInsidePlayerChrome(el) {
-  // No tocar controles legítimos de Plyr / UI propia de Colevana
   return Boolean(
-    el.closest?.(".plyr") ||
-      el.closest?.(".site-header") ||
-      el.closest?.(".site-nav") ||
-      el.closest?.(".episode-grid-container") ||
-      el.closest?.(".rating-panel") ||
-      el.closest?.(".resume-overlay") ||
-      el.closest?.("[data-cv-keep]")
+    el.closest?.(
+      ".plyr, .site-header, .site-nav, .episode-grid-container, .rating-panel, .resume-overlay, .next-episode-overlay, .mobile-quick-controls, .external-loading-overlay, .player-quick-settings, [data-cv-keep]"
+    )
   );
 }
 
-function markProcessed(el) {
+function markProcessed(el, value = "1") {
   try {
-    el.setAttribute(PROCESSED_ATTR, "1");
+    el.setAttribute(PROCESSED_ATTR, value);
   } catch {
     // ignore
   }
@@ -120,6 +102,7 @@ function markProcessed(el) {
 function neutralize(el, reason) {
   if (!el || el.getAttribute?.(PROCESSED_ATTR) === "removed") return;
   if (isInsidePlayerChrome(el)) return;
+  if (el.tagName === "IFRAME" && el.parentElement?.id === "mediaSlot") return;
 
   log("neutralize", reason, el);
 
@@ -129,16 +112,13 @@ function neutralize(el, reason) {
     el.style.setProperty("pointer-events", "none", "important");
     el.style.setProperty("opacity", "0", "important");
     el.setAttribute("aria-hidden", "true");
-    el.setAttribute(PROCESSED_ATTR, "removed");
+    markProcessed(el, "removed");
 
-    // Si es un overlay a pantalla casi completa, también intentar eliminarlo del DOM
-    const rect = el.getBoundingClientRect?.();
-    const coversViewport =
-      rect &&
-      rect.width >= window.innerWidth * 0.6 &&
-      rect.height >= window.innerHeight * 0.35;
-
-    if (coversViewport || /overlay|interstitial|preroll|popup/i.test(el.className || "")) {
+    const classId = `${el.className || ""} ${el.id || ""}`;
+    if (
+      el.tagName === "IFRAME" ||
+      /overlay|interstitial|preroll|popup|banner|ad-/i.test(classId)
+    ) {
       el.remove();
     }
   } catch {
@@ -150,7 +130,6 @@ function looksLikeWaitOverlay(el) {
   const text = textOf(el);
   if (!text || text.length > 400) return false;
   if (!WAIT_TEXT_RE.test(text)) return false;
-  // Debe mencionar tiempo o “saltar” en contexto de anuncio
   const hasCountdown = COUNTDOWN_RE.test(text) || /\b\d+\b/.test(text);
   const hasSkipContext = SKIP_TEXT_RE.test(text) || /anuncio|ad\b|publicidad/i.test(text);
   return hasCountdown || hasSkipContext;
@@ -160,18 +139,15 @@ function looksLikeSkipButton(el) {
   if (!(el instanceof HTMLElement)) return false;
   const tag = el.tagName;
   if (tag !== "BUTTON" && tag !== "A" && tag !== "DIV" && tag !== "SPAN") return false;
-  if (!isVisible(el)) return false;
+  if (!isVisibleCheap(el)) return false;
 
   const text = textOf(el);
   if (!text || text.length > 80) return false;
   if (!SKIP_TEXT_RE.test(text)) return false;
-
-  // Evitar “Saltar intro” legítimo del reproductor propio si estuviera marcado
   if (el.closest?.("[data-cv-keep]")) return false;
 
-  // Si el botón aún dice "espera Xs" / "skip in Xs", no está listo
-  if (/\b(espera|wait|in)\b/i.test(text) && COUNTDOWN_RE.test(text)) {
-    return false;
+  if (!options.aggressiveSkip) {
+    if (/\b(espera|wait|in)\b/i.test(text) && COUNTDOWN_RE.test(text)) return false;
   }
   return true;
 }
@@ -187,159 +163,252 @@ function clickSkip(el) {
 }
 
 function scanSelectorHits(root) {
-  for (const selector of AD_SELECTORS) {
+  for (const selector of AD_SELECTORS_FAST) {
     let nodes;
     try {
       nodes = root.querySelectorAll(selector);
     } catch {
       continue;
     }
-    nodes.forEach((node) => {
-      if (node.getAttribute?.(PROCESSED_ATTR) === "removed") return;
-      if (isInsidePlayerChrome(node)) return;
-      // Solo neutralizar si parece publicidad o está oculto como ad clásico
+    const max = Math.min(nodes.length, 40);
+    for (let i = 0; i < max; i += 1) {
+      const node = nodes[i];
+      if (node.getAttribute?.(PROCESSED_ATTR) === "removed") continue;
+      if (isInsidePlayerChrome(node)) continue;
+      if (node.tagName === "IFRAME" && node.parentElement?.id === "mediaSlot") continue;
+
+      const name = `${node.id || ""} ${node.className || ""}`;
       const text = textOf(node);
       const suspicious =
+        node.tagName === "IFRAME" ||
         WAIT_TEXT_RE.test(text) ||
         SKIP_TEXT_RE.test(text) ||
-        /ad|ads|advert|banner|sponsor|publicidad/i.test(
-          `${node.id || ""} ${node.className || ""}`
-        );
-      if (suspicious || node.tagName === "IFRAME") {
-        neutralize(node, `selector:${selector}`);
-      }
-    });
+        /ad|ads|advert|banner|sponsor|publicidad|popunder|preroll|midroll/i.test(name);
+
+      if (suspicious) neutralize(node, `selector:${selector}`);
+    }
   }
 }
 
 function scanTextOverlays(root) {
-  // Buscar candidatos a overlay de espera: fixed/absolute grandes con texto de countdown
-  const candidates = root.querySelectorAll("div, section, aside, dialog");
-  candidates.forEach((el) => {
-    if (el.getAttribute?.(PROCESSED_ATTR) === "removed") return;
-    if (isInsidePlayerChrome(el)) return;
-    if (!isVisible(el)) return;
-
-    const style = window.getComputedStyle(el);
-    const positioned =
-      style.position === "fixed" ||
-      style.position === "absolute" ||
-      style.position === "sticky";
-    if (!positioned && !looksLikeWaitOverlay(el)) return;
+  const candidates = root.querySelectorAll(
+    "div[style*='fixed'], div[style*='absolute'], section[style*='fixed'], [class*='overlay'], [class*='modal'], [class*='popup'], [class*='countdown'], [class*='wait']"
+  );
+  const max = Math.min(candidates.length, 50);
+  for (let i = 0; i < max; i += 1) {
+    const el = candidates[i];
+    if (el.getAttribute?.(PROCESSED_ATTR) === "removed") continue;
+    if (isInsidePlayerChrome(el)) continue;
+    if (!isVisibleCheap(el)) continue;
 
     if (looksLikeWaitOverlay(el) && options.forceRemoveWaitOverlays) {
       neutralize(el, "wait-overlay");
-      return;
+      continue;
     }
 
-    // Overlay grande fixed con z-index alto y poco texto → probable intersticial
-    const z = Number.parseInt(style.zIndex, 10);
     const rect = el.getBoundingClientRect();
     const large =
-      rect.width >= window.innerWidth * 0.5 && rect.height >= window.innerHeight * 0.3;
-    if (positioned && large && Number.isFinite(z) && z >= 1000) {
-      const text = textOf(el);
-      if (WAIT_TEXT_RE.test(text) || SKIP_TEXT_RE.test(text) || /anuncio|publicidad|\bad\b/i.test(text)) {
-        neutralize(el, "large-fixed-ad");
-      }
+      rect.width >= window.innerWidth * 0.45 &&
+      rect.height >= window.innerHeight * 0.25;
+    if (!large) continue;
+
+    const text = textOf(el);
+    if (WAIT_TEXT_RE.test(text) || SKIP_TEXT_RE.test(text) || /anuncio|publicidad|\bad\b/i.test(text)) {
+      neutralize(el, "large-overlay");
     }
-  });
+  }
+
+  const bodyKids = document.body?.children;
+  if (!bodyKids) return;
+  const limit = Math.min(bodyKids.length, 30);
+  for (let i = 0; i < limit; i += 1) {
+    const el = bodyKids[i];
+    if (!(el instanceof HTMLElement)) continue;
+    if (el.getAttribute?.(PROCESSED_ATTR) === "removed") continue;
+    if (isInsidePlayerChrome(el)) continue;
+    if (el.id === "mediaSlot" || el.classList?.contains("screen-frame")) continue;
+
+    let pos = "";
+    try {
+      pos = window.getComputedStyle(el).position;
+    } catch {
+      continue;
+    }
+    if (pos !== "fixed" && pos !== "absolute") continue;
+    if (!isVisibleCheap(el)) continue;
+
+    const rect = el.getBoundingClientRect();
+    const large =
+      rect.width >= window.innerWidth * 0.4 &&
+      rect.height >= window.innerHeight * 0.22;
+    if (!large) continue;
+
+    const text = textOf(el);
+    if (looksLikeWaitOverlay(el) || WAIT_TEXT_RE.test(text) || SKIP_TEXT_RE.test(text)) {
+      neutralize(el, "body-fixed-overlay");
+    }
+  }
 }
 
 function scanSkipButtons(root) {
   if (!options.autoClickSkip) return;
-  const clickables = root.querySelectorAll("button, a, [role='button'], div[onclick], span[onclick]");
-  clickables.forEach((el) => {
-    if (el.getAttribute?.(PROCESSED_ATTR) === "clicked") return;
-    if (isInsidePlayerChrome(el)) return;
+  const clickables = root.querySelectorAll(
+    "button, a[role='button'], [role='button'], div[class*='skip'], span[class*='skip'], button[class*='skip']"
+  );
+  const max = Math.min(clickables.length, 40);
+  for (let i = 0; i < max; i += 1) {
+    const el = clickables[i];
+    if (el.getAttribute?.(PROCESSED_ATTR) === "clicked") continue;
+    if (isInsidePlayerChrome(el)) continue;
     if (looksLikeSkipButton(el)) {
-      markProcessed(el);
-      el.setAttribute(PROCESSED_ATTR, "clicked");
+      markProcessed(el, "clicked");
       clickSkip(el);
-      // Algunos anuncios solo habilitan el botón tras el countdown:
-      // si aún hay un padre overlay, intentar neutralizarlo también.
       const parentOverlay = el.closest("div, section, aside");
       if (parentOverlay && looksLikeWaitOverlay(parentOverlay)) {
         neutralize(parentOverlay, "parent-of-skip");
       }
     }
-  });
+  }
 }
 
-/** Fuerza el “fin” de countdowns visibles mutando texto y disparando clicks */
 function accelerateCountdowns(root) {
-  const nodes = root.querySelectorAll("div, span, p, button, a");
-  nodes.forEach((el) => {
-    if (isInsidePlayerChrome(el)) return;
+  const nodes = root.querySelectorAll(
+    "[class*='countdown'], [class*='timer'], [id*='countdown'], [id*='timer']"
+  );
+  const max = Math.min(nodes.length, 30);
+  for (let i = 0; i < max; i += 1) {
+    const el = nodes[i];
+    if (isInsidePlayerChrome(el)) continue;
     const text = textOf(el);
-    if (!text || text.length > 120) return;
-    if (!WAIT_TEXT_RE.test(text)) return;
-    if (!COUNTDOWN_RE.test(text)) return;
-
-    // Si el nodo solo contiene el número del countdown, poner 0
+    if (!text || text.length > 100) continue;
     if (/^\s*\d+\s*(s|seg|secs?|seconds?|segundos?)?\s*$/i.test(text)) {
       el.textContent = "0";
-      log("countdown zeroed", el);
     }
-  });
+  }
 }
 
-function sweep(root = rootEl || document.body) {
+function installPopunderGuard() {
+  if (!options.blockPopunders) return;
+  if (window.__cvPopunderGuarded) return;
+  window.__cvPopunderGuarded = true;
+
+  window.open = function guardedOpen() {
+    log("blocked window.open");
+    return null;
+  };
+
+  document.addEventListener(
+    "click",
+    (e) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      if (isInsidePlayerChrome(t)) return;
+      const a = t.closest?.("a[target='_blank']");
+      if (
+        !a ||
+        a.closest?.("#mediaSlot") ||
+        a.closest?.(".site-header") ||
+        a.closest?.(".adblock-hint")
+      ) {
+        return;
+      }
+      const href = a.getAttribute("href") || "";
+      if (
+        href &&
+        !href.startsWith("./") &&
+        !href.startsWith("/") &&
+        !href.includes("colevana") &&
+        /ad|ads|click|pop|banner|tracker|doubleclick/i.test(href)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        neutralize(a, "ad-link-click");
+      }
+    },
+    true
+  );
+}
+
+function sweep(mode = "fast") {
+  const root = rootEl || document.body;
   if (!root) return;
+
   scanSelectorHits(root);
-  scanTextOverlays(root);
-  accelerateCountdowns(root);
-  scanSkipButtons(root);
+
+  if (mode === "full") {
+    scanTextOverlays(root);
+    accelerateCountdowns(root);
+    scanSkipButtons(root);
+    lastFullSweep = Date.now();
+  } else {
+    scanSkipButtons(root);
+  }
+}
+
+function scheduleSweepFromMutation() {
+  if (mutationQueued) return;
+  mutationQueued = true;
+  requestAnimationFrame(() => {
+    mutationQueued = false;
+    const now = Date.now();
+    if (now - lastFullSweep > 1200) {
+      sweep("full");
+    } else {
+      sweep("fast");
+    }
+  });
 }
 
 function onMutations(mutations) {
-  let needsSweep = false;
   for (const mutation of mutations) {
     if (mutation.type === "childList" && mutation.addedNodes.length) {
-      needsSweep = true;
-      break;
+      scheduleSweepFromMutation();
+      return;
     }
     if (mutation.type === "attributes") {
-      needsSweep = true;
-      break;
+      const t = mutation.target;
+      if (t instanceof Element && isInsidePlayerChrome(t)) continue;
+      scheduleSweepFromMutation();
+      return;
     }
   }
-  if (needsSweep) sweep();
 }
 
-/**
- * Inicializa el adblock interno.
- * @param {{ root?: Element, pollMs?: number, autoClickSkip?: boolean, forceRemoveWaitOverlays?: boolean, debug?: boolean }} opts
- */
 export function initAdblock(opts = {}) {
   options = { ...options, ...opts };
+  if (options.pollMs < 400) options.pollMs = 400;
+
   rootEl = opts.root instanceof Element ? opts.root : document.body;
 
-  // Barrido inmediato
-  sweep(rootEl);
+  installPopunderGuard();
+  sweep("full");
 
-  // Observar inyecciones dinámicas
   if (observer) observer.disconnect();
   observer = new MutationObserver(onMutations);
   observer.observe(rootEl, {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["class", "style", "id", "hidden"],
+    attributeFilter: ["class", "style", "id", "hidden", "src"],
   });
 
-  // Poll suave: algunos scripts de ads mutan texto del countdown sin tocar atributos
   if (tickTimer) window.clearInterval(tickTimer);
-  tickTimer = window.setInterval(() => sweep(rootEl), options.pollMs);
+  tickTimer = window.setInterval(() => {
+    const now = Date.now();
+    if (now - lastFullSweep > 1800) sweep("full");
+    else sweep("fast");
+  }, options.pollMs);
 
-  // También al volver a la pestaña
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") sweep(rootEl);
+    if (document.visibilityState === "visible") sweep("full");
   });
 
-  log("activo", { root: rootEl, options });
+  window.setTimeout(() => sweep("full"), 800);
+  window.setTimeout(() => sweep("full"), 2500);
+
+  log("activo (máximo optimizado)", { root: rootEl, options });
   return {
-    sweep: () => sweep(rootEl),
+    sweep: () => sweep("full"),
     stop: stopAdblock,
   };
 }
@@ -355,7 +424,6 @@ export function stopAdblock() {
   }
 }
 
-/** Arranque automático si se carga como script clásico (sin module) */
 if (typeof window !== "undefined") {
   window.ColevanaAdblock = { initAdblock, stopAdblock };
 }

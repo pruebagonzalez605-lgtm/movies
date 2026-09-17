@@ -1,37 +1,59 @@
 /**
- * Adblock interno — reglas CSS de respaldo
+ * Adblock interno — reglas CSS de respaldo (modo máximo)
  * Se cargan junto con app.css. Ocultan contenedores típicos de anuncios
  * y overlays de “espera X segundos” sin depender solo de JS.
  */
 
-/* Redes y contenedores genéricos */
+/* Redes y contenedores genéricos + LATAM */
 [id*="google_ads"],
 [id*="adsense"],
+[id*="ad-"],
+[id*="ads-"],
+[id*="banner"],
 [class*="google-ad"],
 [class*="adsbygoogle"],
+[class*="ad-overlay"],
+[class*="ad-banner"],
+[class*="ad-container"],
+[class*="ad-wrapper"],
+[class*="adsbox"],
+[class*="advertisement"],
+[class*="sponsored"],
+[class*="banner-ad"],
+[class*="video-ad"],
+[class*="player-ad"],
+[class*="popunder"],
+[class*="pop-under"],
+[class*="preroll"],
+[class*="pre-roll"],
+[class*="midroll"],
+[class*="interstitial"],
+[class*="overlay-ad"],
+[class*="popup-ad"],
+[class*="vast-ad"],
+[class*="vpaid"],
+[class*="ts_ad"],
+[id*="ts_ad"],
+[data-ad],
+[data-ads],
+[data-ad-slot],
+[data-adunit],
 iframe[src*="doubleclick"],
 iframe[src*="googlesyndication"],
 iframe[src*="adservice"],
 iframe[src*="adnxs"],
 iframe[src*="advertising"],
-iframe[id*="ad_"],
-iframe[class*="ad-"],
-.adsbox,
-.ad-banner,
-.ad-container,
-.ad-wrapper,
-.ad-overlay,
-.overlay-ad,
-.popup-ad,
-.interstitial,
-.pre-roll,
-.preroll,
-.midroll,
-[data-ad],
-[data-ads],
-[data-ad-slot],
-[id*="ts_ad"],
-[class*="ts_ad"] {
+iframe[src*="popads"],
+iframe[src*="propeller"],
+iframe[src*="clickadu"],
+iframe[src*="exoclick"],
+iframe[src*="juicyads"],
+iframe[src*="adsterra"],
+iframe[src*="hilltopads"],
+iframe[src*="mgid"],
+iframe[src*="taboola"],
+iframe[src*="outbrain"],
+iframe[src*="adskeeper"] {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -39,6 +61,8 @@ iframe[class*="ad-"],
   max-width: 0 !important;
   overflow: hidden !important;
   opacity: 0 !important;
+  position: absolute !important;
+  z-index: -1 !important;
 }
 
 /* Overlays ya neutralizados por el script */
@@ -47,14 +71,19 @@ iframe[class*="ad-"],
   visibility: hidden !important;
   pointer-events: none !important;
   opacity: 0 !important;
+  max-height: 0 !important;
+  max-width: 0 !important;
 }
 
-/* Evitar que un overlay fixed de anuncio bloquee clics en el player */
-body.cv-adblock-active .screen-frame {
+/* Aislar el marco del player para que overlays no lo bloqueen */
+body.cv-adblock-active .screen-frame,
+body.cv-adblock-active #mediaSlot {
   isolation: isolate;
+  position: relative;
+  z-index: 2;
 }
 
-/* Aviso de AdBlock cuando se usa Método 2/3 (fuente externa) */
+/* Aviso de AdBlock cuando se usa fuente externa (iframe) */
 .adblock-hint {
   display: block;
   text-align: center;

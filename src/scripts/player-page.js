@@ -34,6 +34,15 @@ const EXTERNAL_PLAYER_ORIGINS = [
 ];
 const EXTERNAL_HEARTBEAT_MS = 5000;
 
+/**
+ * Modo híbrido de fallback externo:
+ * - Siempre intenta stream limpio (resolve-stream + proxy-hls + hls.js).
+ * - Iframe (Vimeos/etc.) SOLO si el CDN bloquea el Worker (403) o no hay
+ *   m3u8 resoluble, o es el último candidato.
+ * - Así se evitan ads del embed cuando el limpio funciona.
+ */
+const PLAYBACK_FALLBACK_MODE = "hybrid"; // "hybrid" | "clean-only" | "iframe-always"
+
 const dom = {
   status: document.getElementById("playerStatus"),
   video: document.getElementById("player"),
@@ -2584,10 +2593,22 @@ async function resolveEmbedStream(embedUrl) {
         if (data?.proxied) return viaHlsProxy(data.proxied, embedUrl);
         return null;
       }
-      // Lista de mirrors → el caller prueba en orden
-      const mirrors = expandStreamMirrors(rawStream).map((u) => viaHlsProxy(u, embedUrl));
-      playerConsole("info", "[resolve-stream] candidatos:", mirrors.length, mirrors[0]);
-      return mirrors;
+      // Mirrors: primero URL directa (IP del usuario + CORS *),
+      // después la misma vía proxy-hls (por si el directo falla).
+      const mirrors = expandStreamMirrors(rawStream);
+      const candidates = [];
+      for (const u of mirrors) {
+        candidates.push(u);
+        const proxied = viaHlsProxy(u, embedUrl);
+        if (proxied && proxied !== u) candidates.push(proxied);
+      }
+      playerConsole(
+        "info",
+        "[resolve-stream] candidatos (directo→proxy):",
+        candidates.length,
+        candidates[0],
+      );
+      return candidates;
     } finally {
       window.clearTimeout(timer);
     }
@@ -2842,22 +2863,40 @@ async function tryHlsWishFallback(showMessage = true) {
         dom.status.textContent = "Cargando reproductor...";
         dom.status.style.color = "";
       }
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const ok = await mountDirectStream(container, viaHlsProxy(streamUrl));
-        if (ok) {
-          removeExternalRetryLink();
-          return true;
+      const directCandidates = [streamUrl];
+      const proxiedDirect = viaHlsProxy(streamUrl);
+      if (proxiedDirect && proxiedDirect !== streamUrl) directCandidates.push(proxiedDirect);
+
+      let cdnBlocked = false;
+      for (const candidateUrl of directCandidates) {
+        playerConsole("info", "[player] probando stream directo:", candidateUrl.slice(0, 120));
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const ok = await mountDirectStream(container, candidateUrl);
+          if (ok) {
+            removeExternalRetryLink();
+            hideAdblockHint();
+            return true;
+          }
+        } catch (e) {
+          playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
+          if (e?.message === "hls_forbidden_by_cdn") {
+            cdnBlocked = true;
+            // El proxy falló por IP datacenter; no tiene sentido seguir con más proxies del mismo CDN
+            break;
+          }
         }
-      } catch (e) {
-        playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
-        // CDN anti-datacenter: más mirrors del mismo proveedor también fallarán
-        if (e?.message === "hls_forbidden_by_cdn") break;
       }
+      if (cdnBlocked) break;
     }
 
     if (embedIndex >= embedCandidates.length) {
-      if (showMessage) dom.status.textContent = "No se pudo cargar ninguna fuente.";
+      if (showMessage) {
+        dom.status.textContent = PLAYBACK_FALLBACK_MODE === "clean-only"
+          ? "No hay stream limpio disponible. Probá otra fuente o más tarde."
+          : "No se pudo cargar ninguna fuente.";
+        dom.status.style.color = "#e8c468";
+      }
       showExternalRetryLink("Reintentar búsqueda de fuentes", async () => {
         dom.status.textContent = "Buscando fuentes de nuevo...";
         showExternalLoadingOverlay("Buscando fuentes de nuevo…");
@@ -2884,28 +2923,83 @@ async function tryHlsWishFallback(showMessage = true) {
     // eslint-disable-next-line no-await-in-loop
     const resolved = await resolveEmbedStream(candidate.url);
     const cleanList = Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
+    let cleanCdnBlocked = false;
+    let cleanAttempted = false;
+
     for (const cleanStream of cleanList) {
-      playerConsole("info", "[player] stream resuelto:", cleanStream);
+      cleanAttempted = true;
+      const viaProxy = /\/proxy-hls\?/i.test(cleanStream);
+      playerConsole(
+        "info",
+        "[player] stream resuelto:",
+        viaProxy ? "proxy" : "directo",
+        cleanStream.slice(0, 140),
+      );
       try {
         // eslint-disable-next-line no-await-in-loop
         const okDirect = await mountDirectStream(container, cleanStream);
         if (okDirect) {
           removeExternalRetryLink();
+          hideAdblockHint();
           return true;
         }
       } catch (e) {
         playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
         // Primer 403 de vimeos/goodstream/hlswish vía Worker → no probar más mirrors
         if (e?.message === "hls_forbidden_by_cdn") {
-          playerConsole("info", "[player] CDN bloquea Worker; saltando mirrors → iframe");
+          playerConsole("info", "[player] CDN bloquea Worker; mirrors inútiles");
+          cleanCdnBlocked = true;
           break;
         }
       }
     }
 
-    // Iframe solo para este candidato si su limpio falló
+    // --- Política de iframe según modo ---
+    // hybrid: iframe solo si CDN 403, no hubo m3u8, o es el último candidato
+    // clean-only: nunca iframe
+    // iframe-always: como el comportamiento viejo (iframe si limpio falló)
+    const remainingAfterThis = embedCandidates.length - embedIndex;
+    const isLastCandidate = remainingAfterThis <= 0;
+    const noCleanUrl = !cleanList.length;
+    let useIframe = false;
+
+    if (PLAYBACK_FALLBACK_MODE === "iframe-always") {
+      useIframe = true;
+    } else if (PLAYBACK_FALLBACK_MODE === "clean-only") {
+      useIframe = false;
+    } else {
+      // hybrid (default)
+      useIframe = cleanCdnBlocked || noCleanUrl || isLastCandidate;
+    }
+
+    if (!useIframe) {
+      playerConsole(
+        "info",
+        "[player] limpio falló sin 403; pruebo otro proveedor antes del iframe",
+        candidate.provider.name,
+      );
+      if (showMessage) {
+        dom.status.textContent = "Buscando otro stream limpio…";
+        dom.status.style.color = "";
+      }
+      return tryNextCandidate();
+    }
+
+    if (PLAYBACK_FALLBACK_MODE === "clean-only") {
+      return tryNextCandidate();
+    }
+
+    // Iframe: último recurso (ads posibles del embed)
+    playerConsole(
+      "info",
+      "[player] montando iframe (hybrid)",
+      candidate.provider.name,
+      { cleanCdnBlocked, noCleanUrl, isLastCandidate },
+    );
     if (showMessage) {
-      dom.status.textContent = "Cargando fuente alternativa...";
+      dom.status.textContent = cleanCdnBlocked
+        ? "CDN bloqueó el proxy; usando reproductor alternativo…"
+        : "Cargando fuente alternativa...";
       dom.status.style.color = "#e8c468";
     }
     // eslint-disable-next-line no-await-in-loop
