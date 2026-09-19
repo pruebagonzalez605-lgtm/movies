@@ -972,6 +972,7 @@ export const SERIES = [
   },
   {
     title: "Game of Thrones",
+    addedAt: "2026-09-19",
     genre: "Aventura",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Game of Thrones",
