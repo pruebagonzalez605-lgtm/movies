@@ -1174,6 +1174,7 @@ export const MOVIES = [
   {
     code: "125",
     title: "Blade Runner 2049",
+    addedAt: "2026-09-19",
     genre: "Drama",
     tmdbTitle: "Blade Runner 2049",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -1183,6 +1184,7 @@ export const MOVIES = [
   {
     code: "126",
     title: "Inactividad Paranormal",
+    addedAt: "2026-09-19",
     saga: "Inactividad Paranormal",
     genre: "Comedia",
     tmdbTitle: "A Haunted House",
