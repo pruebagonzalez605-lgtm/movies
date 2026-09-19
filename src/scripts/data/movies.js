@@ -1161,7 +1161,7 @@ export const MOVIES = [
     tmdbYear: 2018,
     src: "",
   },
-    {
+  {
     code: "124",
     title: "Memorias de un caracol",
     addedAt: "2026-09-13",
@@ -1170,5 +1170,24 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2024,
     src: "",
-  }
+  },
+  {
+    code: "125",
+    title: "Blade Runner 2049",
+    genre: "Drama",
+    tmdbTitle: "Blade Runner 2049",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2017,
+    src: "",
+  },
+  {
+    code: "126",
+    title: "Inactividad Paranormal",
+    saga: "Inactividad Paranormal",
+    genre: "Comedia",
+    tmdbTitle: "A Haunted House",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2014,
+    src: "",
+  },
 ];
