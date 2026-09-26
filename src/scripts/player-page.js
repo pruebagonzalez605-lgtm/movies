@@ -2796,9 +2796,80 @@ function showExternalRetryLink(label, onRetry) {
   dom.status.insertAdjacentElement("afterend", link);
 }
 
+// ==================== MOVIEDAYS FALLBACK ====================
+// Plan B cuando vimeus.com no responde nada util (caido, sin fuentes para
+// ese titulo, listing vacio). MovieDays devuelve el mismo tipo de embeds
+// (Vimeus/GoodStream/etc.) detras de una API key privada que vive solo en
+// el Worker (env.MOVIEDAYS_API_KEY) — el cliente nunca la ve, solo pide
+// por tmdb/type/se/ep. Se usa unicamente cuando vimeus.com falla o no
+// devuelve nada, para no gastar cuota de MovieDays de mas.
+
+// Los embeds que devuelve MovieDays son, en la practica, los mismos
+// dominios que ya reconoce EXTERNAL_PROVIDERS (Vimeos, HLSWish,
+// GoodStream). Este proveedor generico es solo una red de seguridad por si
+// devuelven un host nuevo que aun no esta en esa lista: mejor intentar
+// montarlo igual que descartarlo en silencio.
+const MOVIEDAYS_GENERIC_PROVIDER = {
+  name: "MovieDays",
+  label: "Reproduciendo (fuente alternativa)",
+  match: () => true,
+};
+
+function mapMovieDaysEmbedToCandidate(embedUrl) {
+  const known = EXTERNAL_PROVIDERS.find((p) => p.match(embedUrl));
+  return { provider: known || MOVIEDAYS_GENERIC_PROVIDER, url: embedUrl };
+}
+
+function buildMovieDaysFallbackUrl(embedInfo) {
+  const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
+  if (!proxyBase) return null;
+  const params = new URLSearchParams();
+  params.set("tmdb", embedInfo.tmdbId);
+  if (embedInfo.kind === "episode") {
+    params.set("type", "serie");
+    params.set("se", embedInfo.season);
+    params.set("ep", embedInfo.episode);
+  } else {
+    params.set("type", "movie");
+  }
+  return `${proxyBase}/moviedays-fallback?${params.toString()}`;
+}
+
+async function fetchMovieDaysCandidates(embedInfo) {
+  const url = buildMovieDaysFallbackUrl(embedInfo);
+  if (!url) return [];
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      playerConsole("warn", "[moviedays-fallback] respuesta no ok:", response.status);
+      return [];
+    }
+    const data = await response.json();
+    if (!data?.success || !Array.isArray(data.embeds) || !data.embeds.length) return [];
+    const candidates = data.embeds
+      .filter((item) => typeof item?.embed_url === "string")
+      .map((item) => mapMovieDaysEmbedToCandidate(item.embed_url));
+    playerConsole(
+      "info",
+      "[moviedays-fallback] candidatos:",
+      candidates.map((c) => ({ provider: c.provider.name, url: c.url })),
+    );
+    return candidates;
+  } catch (e) {
+    playerConsole("warn", "[moviedays-fallback] fallo:", e);
+    return [];
+  }
+}
+
 async function fetchExternalCandidates(embedInfo) {
   try {
-    const url = buildExternalListingUrl(embedInfo);
+    const targetUrl = buildExternalListingUrl(embedInfo);
+    // fetch directo a vimeus.com es bloqueado por CORS (el proveedor no
+    // manda Access-Control-Allow-Origin para colevana.com). Se pasa por el
+    // Worker (/listing), que hace el fetch server-to-server sin CORS y
+    // reenvia el HTML con los headers correctos.
+    const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
+    const url = proxyBase ? `${proxyBase}/listing?url=${encodeURIComponent(targetUrl)}` : targetUrl;
     const response = await fetch(url);
     const html = await response.text();
 
@@ -2810,10 +2881,21 @@ async function fetchExternalCandidates(embedInfo) {
     const directStreams = collectDirectStreams(data);
     const embedCandidates = collectExternalCandidates(data);
     playerConsole("info", "[external-player] streams directos:", directStreams);
+
+    if (!directStreams.length && !embedCandidates.length) {
+      playerConsole("info", "[external-player] vimeus.com sin fuentes, probando MovieDays...");
+      const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
+      if (moviedaysCandidates.length) {
+        return { directStreams: [], embedCandidates: moviedaysCandidates };
+      }
+    }
+
     return { directStreams, embedCandidates };
   } catch (e) {
-    playerConsole("error", "Error obteniendo candidatos externos:", e);
-    return { directStreams: [], embedCandidates: [] };
+    playerConsole("error", "Error obteniendo candidatos externos (vimeus.com):", e);
+    playerConsole("info", "[external-player] vimeus.com fallo, probando MovieDays...");
+    const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
+    return { directStreams: [], embedCandidates: moviedaysCandidates };
   }
 }
 

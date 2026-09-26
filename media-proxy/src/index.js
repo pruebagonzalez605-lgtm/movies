@@ -494,6 +494,229 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
 }
 
 /**
+ * Proxea la pagina de listado de un proveedor externo (ej. vimeus.com
+ * /e/movie?tmdb=...) para que el navegador del usuario pueda leerla.
+ *
+ * El fetch original se hacia desde player-page.js directo al dominio del
+ * proveedor (fetch(url) contra https://vimeus.com/...) y era bloqueado por
+ * CORS: esos proveedores no envian "Access-Control-Allow-Origin" para
+ * https://colevana.com, asi que el navegador descarta la respuesta antes de
+ * que el JS pueda leerla (esto no falla en Cloudflare Workers porque un
+ * fetch server-to-server no aplica CORS). Esta ruta hace ese fetch del lado
+ * del Worker y devuelve el HTML tal cual, con los headers CORS del sitio.
+ */
+async function handleListing(request, env, requestUrl, ctx) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse(request, env, 405, "method_not_allowed");
+  }
+
+  let listingUrl;
+  try {
+    listingUrl = validateEmbedUrl(requestUrl.searchParams.get("url"));
+  } catch (error) {
+    return jsonResponse(request, env, 400, error.message);
+  }
+
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const cacheKey = cache ? new Request(requestUrl.toString(), { method: "GET" }) : null;
+  if (cache && cacheKey) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  }
+
+  let html;
+  try {
+    // Un solo intento de 7s se pierde ante blips cortos (conexion caida,
+    // 522 puntual) que se recuperan solos un instante despues. Se hacen 2
+    // intentos mas cortos: si el primero falla (timeout o error de red),
+    // se reintenta una vez antes de darse por vencido. Si el proveedor esta
+    // realmente caido (outage largo), el segundo intento tambien falla y
+    // el costo extra es minimo (unos pocos segundos), pero recupera los
+    // casos de caida momentanea sin que el usuario tenga que tocar
+    // "Reintentar busqueda de fuentes" a mano.
+    const attemptHeaders = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+      Referer: `https://${listingUrl.hostname}/`,
+    };
+
+    let upstream;
+    let lastError;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        upstream = await fetchWithTimeout(listingUrl.href, {
+          method: "GET",
+          redirect: "follow",
+          headers: attemptHeaders,
+        }, 4500);
+        // Los 520-529 son errores de borde de Cloudflare (origen caido,
+        // timeout de conexion, etc.), muchas veces transitorios: vale la
+        // pena un segundo intento antes de resignarse. Cualquier otro
+        // status (200, 404, 403 real del proveedor) no se reintenta.
+        if (upstream.ok || upstream.status < 520 || upstream.status > 529) {
+          lastError = null;
+          break;
+        }
+        lastError = new Error(`upstream_${upstream.status}`);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError) {
+      if (upstream && !upstream.ok) {
+        return jsonResponse(request, env, 502, `listing_fetch_failed_${upstream.status}`);
+      }
+      throw lastError;
+    }
+
+    if (!upstream.ok) {
+      return jsonResponse(request, env, 502, `listing_fetch_failed_${upstream.status}`);
+    }
+    html = await upstream.text();
+  } catch (error) {
+    const reason = error?.name === "AbortError" ? "listing_fetch_timeout" : "listing_fetch_unavailable";
+    return jsonResponse(request, env, 502, reason);
+  }
+
+  const response = new Response(html, {
+    status: 200,
+    headers: {
+      ...corsHeaders(request, env),
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+
+  if (cache && cacheKey) {
+    const toCache = response.clone();
+    toCache.headers.set("Cache-Control", "public, max-age=120");
+    const putPromise = cache.put(cacheKey, toCache);
+    if (ctx?.waitUntil) ctx.waitUntil(putPromise);
+    else await putPromise.catch(() => {});
+  }
+
+  return response;
+}
+
+const MOVIEDAYS_BASE = "https://moviedays.lat";
+const MOVIEDAYS_ALLOWED_TYPES = new Set(["movie", "serie", "anime"]);
+
+/**
+ * Plan B cuando vimeus.com no responde o no trae fuentes: MovieDays expone
+ * el mismo tipo de embeds (Vimeus/GoodStream/etc.) detras de una API key
+ * privada. La key vive solo como secret del Worker (env.MOVIEDAYS_API_KEY)
+ * y nunca se expone al cliente: el sitio le pide a este endpoint por
+ * tmdb/type/se/ep, el Worker arma la llamada a
+ * moviedays.lat/api/share.php con la key y devuelve unicamente la lista de
+ * embeds ya lista para que player-page.js la use como candidatos.
+ *
+ * MovieDays ya cachea 48h la misma respuesta para todos los usuarios de un
+ * mismo contenido, asi que el Worker tambien cachea agresivamente (ver
+ * cache.put abajo) para no gastar cuota de la API en pedidos repetidos.
+ */
+async function handleMovieDaysFallback(request, env, requestUrl, ctx) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse(request, env, 405, "method_not_allowed");
+  }
+
+  const apiKey = env.MOVIEDAYS_API_KEY;
+  if (!apiKey) {
+    return jsonResponse(request, env, 500, "moviedays_not_configured");
+  }
+
+  const tmdb = requestUrl.searchParams.get("tmdb");
+  const type = requestUrl.searchParams.get("type");
+  const se = requestUrl.searchParams.get("se");
+  const ep = requestUrl.searchParams.get("ep");
+
+  if (!tmdb || !/^\d+$/.test(tmdb)) {
+    return jsonResponse(request, env, 400, "missing_or_invalid_tmdb");
+  }
+  if (!MOVIEDAYS_ALLOWED_TYPES.has(type)) {
+    return jsonResponse(request, env, 400, "missing_or_invalid_type");
+  }
+  if (type !== "movie" && (!se || !ep || !/^\d+$/.test(se) || !/^\d+$/.test(ep))) {
+    return jsonResponse(request, env, 400, "missing_se_or_ep");
+  }
+
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const cacheKey = cache ? new Request(requestUrl.toString(), { method: "GET" }) : null;
+  if (cache && cacheKey) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  }
+
+  const upstreamUrl = new URL(`${MOVIEDAYS_BASE}/api/share.php`);
+  upstreamUrl.searchParams.set("key", apiKey);
+  upstreamUrl.searchParams.set("tmdb", tmdb);
+  upstreamUrl.searchParams.set("type", type);
+  if (type !== "movie") {
+    upstreamUrl.searchParams.set("se", se);
+    upstreamUrl.searchParams.set("ep", ep);
+  }
+
+  let data;
+  try {
+    // MovieDays puede tardar bastante en la primera consulta de un titulo
+    // (vimos hasta ~12.5s sin cache en su propia documentacion); las
+    // siguientes, ya cacheadas de su lado, son casi instantaneas. Por eso
+    // se usa un solo intento con margen generoso en vez del patron de 2
+    // intentos cortos de /listing: reintentar duplicaria la espera sin
+    // ganar nada ante una consulta que simplemente es lenta, no caida.
+    const upstream = await fetchWithTimeout(upstreamUrl.href, { method: "GET" }, 15000);
+    if (!upstream.ok) {
+      return jsonResponse(request, env, 502, `moviedays_fetch_failed_${upstream.status}`);
+    }
+    data = await upstream.json();
+  } catch (error) {
+    const reason = error?.name === "AbortError" ? "moviedays_fetch_timeout" : "moviedays_fetch_unavailable";
+    return jsonResponse(request, env, 502, reason);
+  }
+
+  if (!data || data.success !== true) {
+    return jsonResponse(request, env, 502, "moviedays_no_result");
+  }
+
+  const embeds = Array.isArray(data.embeds)
+    ? data.embeds
+        .filter((item) => item && typeof item.embed_url === "string" && /^https:\/\//i.test(item.embed_url))
+        .map((item) => ({
+          name: typeof item.name === "string" ? item.name : null,
+          lang: typeof item.lang === "string" ? item.lang : null,
+          quality: typeof item.quality === "string" ? item.quality : null,
+          embed_url: item.embed_url,
+        }))
+    : [];
+
+  const response = jsonResponse(request, env, 200, {
+    success: true,
+    tmdb_id: data.tmdb_id ?? Number(tmdb),
+    type,
+    title: typeof data.title === "string" ? data.title : null,
+    embeds,
+  });
+
+  if (cache && cacheKey && embeds.length) {
+    const toCache = response.clone();
+    toCache.headers.set("Cache-Control", "public, max-age=3600");
+    const putPromise = cache.put(cacheKey, toCache);
+    if (ctx?.waitUntil) ctx.waitUntil(putPromise);
+    else await putPromise.catch(() => {});
+  }
+
+  return response;
+}
+
+/**
  * Variantes de una misma URL de m3u8 que suelen resolver al mismo contenido
  * (mismo host con "srv=" distinto, o las variantes de calidad "_h"/"_n" del
  * patron ".../CODE_,n,h,.urlset/master.m3u8"). Se prueban todas antes de
@@ -915,6 +1138,14 @@ export async function handleRequest(request, env = {}, ctx) {
 
   if (requestUrl.pathname === "/resolve-stream") {
     return handleResolveStream(request, env, requestUrl, ctx);
+  }
+
+  if (requestUrl.pathname === "/listing") {
+    return handleListing(request, env, requestUrl, ctx);
+  }
+
+  if (requestUrl.pathname === "/moviedays-fallback") {
+    return handleMovieDaysFallback(request, env, requestUrl, ctx);
   }
 
   if (requestUrl.pathname === "/proxy-hls") {
