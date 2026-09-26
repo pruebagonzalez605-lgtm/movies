@@ -16,6 +16,18 @@ const EMBED_HOSTS = new Set([
   "www.hlswish.com",
   "vimeus.com",
   "www.vimeus.com",
+  // Agregado: MovieDays a veces devuelve embeds servidos directo en su
+  // propio dominio (moviedays.top/<codigo>) en vez de un mirror conocido
+  // (vimeus/goodstream/hlswish). Sin esto, resolve-stream los rechazaba
+  // con 400 "forbidden_embed_host" y el reproductor terminaba mostrando
+  // el iframe crudo del proveedor (con su propio muro anti-adblock).
+  // extractCleanStreamFromHtml es generico (busca m3u8 vía jwplayer /
+  // Dean Edwards packer), asi que si la pagina de moviedays.top expone el
+  // mismo patron, esto alcanza para extraer el stream limpio. Si no,
+  // resolve-stream simplemente devuelve 404 y cae al iframe igual que
+  // antes (no rompe nada, solo agrega una oportunidad de exito).
+  "moviedays.top",
+  "www.moviedays.top",
 ]);
 
 /**
@@ -35,6 +47,15 @@ function isAllowedHlsHost(hostname) {
     "vimeus.com",
     "lamovie.link",
     "ggpick.com",
+    // Agregado junto con moviedays.top en EMBED_HOSTS: si el HTML de
+    // moviedays.top expone un m3u8 servido desde su propio dominio (no un
+    // mirror vimeos/goodstream/hlswish), el CDN tambien tiene que estar
+    // permitido aca o /proxy-hls lo va a rechazar con forbidden_hls_host
+    // aunque resolve-stream si haya logrado extraer la URL.
+    // IMPORTANTE: verificar en las DevTools (pestaña Network, filtrando
+    // .m3u8) cual es el hostname real del CDN que usa moviedays.top y
+    // reemplazar/ajustar esta entrada si no coincide.
+    "moviedays.top",
   ];
   for (const d of baseDomains) {
     if (h === d || h.endsWith("." + d)) return true;
@@ -43,7 +64,7 @@ function isAllowedHlsHost(hostname) {
   // Patrones frecuentes de CDN de estos hosts
   if (/^s\d+\./.test(h) && h.includes("vimeos")) return true;
   if (/^p\d+\./.test(h) && h.includes("vimeos")) return true;
-  if (h.includes("vimeos") || h.includes("goodstream") || h.includes("hlswish")) return true;
+  if (h.includes("vimeos") || h.includes("goodstream") || h.includes("hlswish") || h.includes("moviedays")) return true;
 
   return false;
 }
@@ -65,6 +86,28 @@ function isCdnIpBlockedHost(hostname) {
 
 const STREAM_AD_HINT =
   /preroll|midroll|postroll|aviator|\bad\b|ads?[._/-]|advert|publicidad|promo|vast|ima|betwinner|anuncio/i;
+
+/**
+ * Streams "señuelo" (honeypot) que algunos proveedores gratuitos dejan
+ * embebidos a proposito en el HTML para que scrapers/extractores agarren
+ * ese m3u8 en vez del stream real. "test-streams.mux.dev/x36xhzz" es el
+ * caso mas comun: es el video de demo publico "Big Buck Bunny" que traen
+ * de fabrica casi todos los ejemplos de hls.js/video.js, asi que si
+ * aparece en la pagina de un embed NO es el contenido real. Se descarta
+ * por hostname (no por keyword) porque no contiene ninguna palabra
+ * relacionada a publicidad que matchee STREAM_AD_HINT.
+ */
+const DECOY_STREAM_HOSTS = new Set([
+  "test-streams.mux.dev",
+]);
+
+function isDecoyStreamUrl(url) {
+  try {
+    return DECOY_STREAM_HOSTS.has(new URL(url).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
 
 /**
  * fetch() con limite de tiempo para la fase de conexion/cabeceras.
@@ -231,6 +274,7 @@ function collectM3u8Candidates(text) {
       .replace(/&amp;/g, "&")
       .replace(/[,;]+$/, "");
     if (STREAM_AD_HINT.test(url)) continue;
+    if (isDecoyStreamUrl(url)) continue;
     candidates.push(url);
   }
   return candidates;
