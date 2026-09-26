@@ -2063,16 +2063,16 @@ function isExternalEmbedUrl(url, domains, pathPattern) {
 
 const EXTERNAL_PROVIDERS = [
   {
-    name: "HLSWish",
-    label: "Reproduciendo (fuente alternativa)",
-    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
-    assumeMountedAfterMs: 3000,
-  },
-  {
     name: "Vimeos",
     label: "Reproduciendo (fuente alternativa)",
     match: (url) => isExternalEmbedUrl(url, VIMEOS_MIRROR_DOMAINS, /^\/embed-/),
     sandbox: false,
+  },
+  {
+    name: "HLSWish",
+    label: "Reproduciendo (fuente alternativa)",
+    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
+    assumeMountedAfterMs: 3000,
   },
   {
     name: "GoodStream",

@@ -133,7 +133,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
 
 function corsHeaders(request, env) {
   const requestOrigin = request.headers.get("Origin");
-  const configuredOrigins = env.ALLOWED_SITE_ORIGIN || "https://colevana.com";
+  const configuredOrigins = env.ALLOWED_SITE_ORIGIN || "https://colevana.com,http://127.0.0.1:5501,http://localhost:5501,http://127.0.0.1:5500,http://localhost:5500";
   const allowedOrigins = configuredOrigins.split(",").map((value) => value.trim()).filter(Boolean);
   const origin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
   return {
