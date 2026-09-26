@@ -549,6 +549,29 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
  * fetch server-to-server no aplica CORS). Esta ruta hace ese fetch del lado
  * del Worker y devuelve el HTML tal cual, con los headers CORS del sitio.
  */
+// Cuanto tiempo se recuerda un fallo de listing (timeout/522/etc.) para no
+// volver a intentar el fetch real contra vimeus.com en ese lapso. Corto a
+// proposito: si el proveedor se recupera, no queremos seguir sirviendo el
+// fallback mas tiempo del necesario.
+const DOWN_CACHE_TTL_SECONDS = 90;
+
+/**
+ * Guarda la respuesta 502 en el cache negativo (por DOWN_CACHE_TTL_SECONDS)
+ * y la devuelve. Si el cache no esta disponible en este entorno, simplemente
+ * devuelve la respuesta sin cachear.
+ */
+async function cacheDownAndReturn(cache, downCacheKey, ctx, request, env, status, reason) {
+  const response = jsonResponse(request, env, status, reason);
+  if (cache && downCacheKey) {
+    const toCache = response.clone();
+    toCache.headers.set("Cache-Control", `public, max-age=${DOWN_CACHE_TTL_SECONDS}`);
+    const putPromise = cache.put(downCacheKey, toCache);
+    if (ctx?.waitUntil) ctx.waitUntil(putPromise);
+    else await putPromise.catch(() => {});
+  }
+  return response;
+}
+
 async function handleListing(request, env, requestUrl, ctx) {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -571,16 +594,35 @@ async function handleListing(request, env, requestUrl, ctx) {
     if (cached) return cached;
   }
 
+  // Cache negativo: cuando confirmamos (con logging real, ver wrangler tail)
+  // que un 522 de Cloudflare para este listingUrl puntual tarda ~20s en
+  // manifestarse del lado de vimeus.com, no tiene sentido que cada usuario
+  // que pida el mismo contenido en los minutos siguientes vuelva a pagar
+  // ese timeout completo. Se guarda un 502 "cacheado" por poco tiempo
+  // (DOWN_CACHE_TTL_SECONDS) para que, mientras el origen siga caido, el
+  // fallback a MovieDays se dispare casi al instante para todos.
+  const downCacheKey = cache
+    ? new Request(`${requestUrl.origin}${requestUrl.pathname}?down-marker=${encodeURIComponent(listingUrl.href)}`, { method: "GET" })
+    : null;
+  if (cache && downCacheKey) {
+    const cachedDown = await cache.match(downCacheKey);
+    if (cachedDown) {
+      console.log(`[listing] short-circuit: recent known failure for ${listingUrl.href}, skipping fetch`);
+      return cachedDown;
+    }
+  }
+
   let html;
   try {
-    // Un solo intento de 7s se pierde ante blips cortos (conexion caida,
-    // 522 puntual) que se recuperan solos un instante despues. Se hacen 2
-    // intentos mas cortos: si el primero falla (timeout o error de red),
-    // se reintenta una vez antes de darse por vencido. Si el proveedor esta
-    // realmente caido (outage largo), el segundo intento tambien falla y
-    // el costo extra es minimo (unos pocos segundos), pero recupera los
-    // casos de caida momentanea sin que el usuario tenga que tocar
-    // "Reintentar busqueda de fuentes" a mano.
+    // Antes se hacian 2 intentos de 4.5s asumiendo que un 522 podia ser un
+    // blip corto que se recupera solo. Confirmado con logging real (ver
+    // conversacion / wrangler tail) que un 522 real de vimeus.com tarda
+    // ~20s en manifestarse incluso desde curl limpio fuera del Worker: un
+    // segundo intento de 4.5s nunca alcanza a ver la recuperacion y solo
+    // duplica la espera del usuario para el mismo resultado. Se deja un
+    // solo intento con un timeout algo mas corto; el cache negativo de
+    // arriba es lo que realmente evita repetir la espera en pedidos
+    // posteriores mientras el origen siga caido.
     const attemptHeaders = {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -591,41 +633,73 @@ async function handleListing(request, env, requestUrl, ctx) {
 
     let upstream;
     let lastError;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let attempt = 0; attempt < 1; attempt += 1) {
+      const startedAt = Date.now();
       try {
         // eslint-disable-next-line no-await-in-loop
         upstream = await fetchWithTimeout(listingUrl.href, {
           method: "GET",
           redirect: "follow",
           headers: attemptHeaders,
-        }, 4500);
+        }, 3500);
+        console.log(
+          `[listing] attempt=${attempt} url=${listingUrl.href} status=${upstream.status} ` +
+          `statusText=${upstream.statusText} tookMs=${Date.now() - startedAt} ` +
+          `cf-ray=${upstream.headers.get("cf-ray") || "n/a"} ` +
+          `server=${upstream.headers.get("server") || "n/a"}`
+        );
         // Los 520-529 son errores de borde de Cloudflare (origen caido,
-        // timeout de conexion, etc.), muchas veces transitorios: vale la
-        // pena un segundo intento antes de resignarse. Cualquier otro
-        // status (200, 404, 403 real del proveedor) no se reintenta.
+        // timeout de conexion, etc.). Ya no se reintenta en el momento
+        // (ver comentario arriba: no ayuda contra un 522 real de ~20s),
+        // pero se marcan igual como fallo para activar el cache negativo.
         if (upstream.ok || upstream.status < 520 || upstream.status > 529) {
           lastError = null;
           break;
         }
+        // Antes de reintentar / dar por vencido, logueamos los primeros
+        // bytes del body: en 520-529 casi siempre es la pagina de error de
+        // Cloudflare, pero un 403/404 disfrazado de "not ok" en el rango
+        // (no deberia pasar) o un body con texto util (ban, captcha, etc.)
+        // conviene verlo antes de descartarlo.
+        try {
+          const bodyPreview = await upstream.clone().text();
+          console.log(`[listing] attempt=${attempt} body_preview=${bodyPreview.slice(0, 300).replace(/\s+/g, " ")}`);
+        } catch (previewError) {
+          console.log(`[listing] attempt=${attempt} body_preview_failed=${previewError?.message || previewError}`);
+        }
         lastError = new Error(`upstream_${upstream.status}`);
       } catch (error) {
+        console.log(
+          `[listing] attempt=${attempt} url=${listingUrl.href} threw ` +
+          `name=${error?.name || "unknown"} message=${error?.message || error} tookMs=${Date.now() - startedAt}`
+        );
         lastError = error;
       }
     }
     if (lastError) {
       if (upstream && !upstream.ok) {
-        return jsonResponse(request, env, 502, `listing_fetch_failed_${upstream.status}`);
+        console.log(`[listing] giving up: final_status=${upstream.status} reason=listing_fetch_failed_${upstream.status}`);
+        return await cacheDownAndReturn(cache, downCacheKey, ctx, request, env, 502, `listing_fetch_failed_${upstream.status}`);
       }
+      console.log(`[listing] giving up: no_response reason=${lastError?.name || "unknown"}:${lastError?.message || lastError}`);
       throw lastError;
     }
 
     if (!upstream.ok) {
-      return jsonResponse(request, env, 502, `listing_fetch_failed_${upstream.status}`);
+      try {
+        const bodyPreview = await upstream.clone().text();
+        console.log(`[listing] non-retry non-ok status=${upstream.status} body_preview=${bodyPreview.slice(0, 300).replace(/\s+/g, " ")}`);
+      } catch (previewError) {
+        console.log(`[listing] non-retry non-ok status=${upstream.status} body_preview_failed=${previewError?.message || previewError}`);
+      }
+      return await cacheDownAndReturn(cache, downCacheKey, ctx, request, env, 502, `listing_fetch_failed_${upstream.status}`);
     }
     html = await upstream.text();
+    console.log(`[listing] success status=${upstream.status} htmlLength=${html.length}`);
   } catch (error) {
     const reason = error?.name === "AbortError" ? "listing_fetch_timeout" : "listing_fetch_unavailable";
-    return jsonResponse(request, env, 502, reason);
+    console.log(`[listing] outer catch name=${error?.name || "unknown"} message=${error?.message || error} reason=${reason}`);
+    return await cacheDownAndReturn(cache, downCacheKey, ctx, request, env, 502, reason);
   }
 
   const response = new Response(html, {
