@@ -1093,4 +1093,26 @@ export const SERIES = [
       },
     ]
   },
+    {
+    title: "Monstruo: La historia de Lizzie Borden",
+    genre: "Drama",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Monster",
+    tmdbYear: 2026,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/MM1x1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/MM1x2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/MM1x3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/MM1x4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/MM1x5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/MM1x6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/MM1x7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/MM1x8.mp4",
+        ]
+      },
+    ]
+  },
 ];
