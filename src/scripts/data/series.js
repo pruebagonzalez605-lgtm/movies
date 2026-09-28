@@ -1095,6 +1095,7 @@ export const SERIES = [
   },
     {
     title: "Monstruo: La historia de Lizzie Borden",
+    addedAt: "2026-09-28",
     genre: "Drama",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Monster",
