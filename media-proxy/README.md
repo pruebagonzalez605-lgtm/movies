@@ -75,6 +75,12 @@ Debe responder `ok`. Para probar un MP4:
 https://TU-WORKER.workers.dev/video?url=URL_DE_GITHUB_CODIFICADA
 ```
 
+Para los shortlinks de CineLink/MovieDays, `/resolve-stream?url=URL_DEL_EMBED`
+lee la configuración pública del reproductor y devuelve su MP4 directo cuando
+existe. El sitio lo reproduce con el `<video>` propio. Este cambio requiere
+desplegar nuevamente `colevana-media`; actualizar solo `player-page.js` deja
+activo el Worker anterior y la resolución seguirá devolviendo `stream_not_found`.
+
 ## Limites reales
 
 Cloudflare Workers puede transmitir respuestas sin limite impuesto al tamano del cuerpo mientras el cliente siga conectado. El plan gratuito permite actualmente 100.000 solicitudes al dia. Los MP4 grandes superan el limite de cache por objeto del plan gratuito, por lo que esta solucion corrige compatibilidad, cabeceras y saltos `Range`, pero no convierte 1080p en calidad adaptativa ni garantiza que GitHub nunca se ralentice.

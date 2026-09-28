@@ -71,8 +71,8 @@ function isAllowedHlsHost(hostname) {
 
 /**
  * CDNs que bloquean IPs de datacenter (Cloudflare Workers).
- * Ante el primer 403 no tiene sentido reintentar headers/mirrors ni self-heal:
- * el navegador del usuario (IP residencial) sí puede, el Worker no.
+ * Evita reintentos de mirrors y cabeceras tras un 403. La renovación de una
+ * firma caducada se intenta una sola vez más adelante.
  */
 function isCdnIpBlockedHost(hostname) {
   const h = String(hostname || "").toLowerCase();
@@ -321,6 +321,38 @@ export function extractCleanStreamFromHtml(html) {
   return unique[0];
 }
 
+/** CineLink publica la configuración MP4 en una petición JSON separada. */
+async function resolveMovieDaysMp4(embedUrl, html) {
+  if (!["moviedays.top", "www.moviedays.top"].includes(embedUrl.hostname)) return null;
+  const configId = /\b(?:const|let|var)\s+configId\s*=\s*["']([a-f0-9]{16,64})["']/i.exec(html)?.[1];
+  if (!configId) return null;
+
+  const configUrl = new URL("/get_video_config.php", embedUrl.origin);
+  configUrl.searchParams.set("id", configId);
+  try {
+    const response = await fetchWithTimeout(configUrl.href, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Referer: embedUrl.href,
+      },
+    }, 6000);
+    if (!response.ok) return null;
+    const config = await response.json();
+    for (const source of Array.isArray(config?.sources) ? config.sources : []) {
+      if (typeof source?.file !== "string") continue;
+      let url;
+      try { url = new URL(source.file); } catch { continue; }
+      if (url.protocol !== "https:" || url.username || url.password) continue;
+      if (!/\.mp4$/i.test(url.pathname)) continue;
+      return url.href;
+    }
+  } catch {
+    // El proveedor cambió su configuración o no está disponible.
+  }
+  return null;
+}
+
 function sanitizeFilename(value) {
   if (!value) return "";
   return String(value)
@@ -511,14 +543,17 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
     return jsonResponse(request, env, 502, reason);
   }
 
-  const stream = extractCleanStreamFromHtml(html);
+  const stream = extractCleanStreamFromHtml(html)
+    || await resolveMovieDaysMp4(embedUrl, html);
   if (!stream) {
     return jsonResponse(request, env, 404, "stream_not_found");
   }
 
-  // Devolvemos también la URL ya proxificada para que el cliente no pegue al CDN directo.
+  // HLS usa el proxy de manifiestos; el MP4 público se sirve desde su CDN.
   const proxyBase = new URL(request.url).origin;
-  const proxied = `${proxyBase}/proxy-hls?url=${encodeURIComponent(stream)}&embed=${encodeURIComponent(embedUrl.href)}`;
+  const proxied = /\.m3u8(?:\?|$)/i.test(stream)
+    ? `${proxyBase}/proxy-hls?url=${encodeURIComponent(stream)}&embed=${encodeURIComponent(embedUrl.href)}`
+    : null;
 
   const response = jsonResponse(request, env, 200, {
     stream,
@@ -1067,18 +1102,9 @@ async function handleProxyHls(request, env, requestUrl) {
   // mismo request saliente) para conseguir una firma nueva atada a este
   // mismo contexto, y probarla antes de rendirse.
   //
-  // EXCEPCION: si el 403 viene de un CDN que bloquea IPs de datacenter
-  // (vimeos / goodstream / hlswish), el self-heal no puede ayudar: la
-  // firma nueva también saldrá del mismo Worker y el CDN la rechazará
-  // igual. En ese caso devolvemos 403 de inmediato para que el player
-  // caiga al iframe sin más demora.
-  const isIpBlocked403 =
-    upstreamResponse?.status === 403 &&
-    isCdnIpBlockedHost(upstreamUrl.hostname);
-
-  const needsSelfHeal =
-    !isIpBlocked403 &&
-    (!upstreamResponse || !upstreamResponse.ok);
+  // Un 403 también puede significar firma caducada, incluso en los CDNs
+  // conocidos. Se hace una sola renovación antes de darlo por bloqueado.
+  const needsSelfHeal = !upstreamResponse || !upstreamResponse.ok;
 
   if (needsSelfHeal && embedParam && isM3u8) {
     try {
@@ -1124,7 +1150,7 @@ async function handleProxyHls(request, env, requestUrl) {
 
   upstreamUrl = new URL(usedUrl);
 
-  // Si sigue en 403, devolver error claro (el player caerá al iframe)
+  // Si sigue en 403, devolver error claro para ofrecer otra fuente.
   if (upstreamResponse.status === 403) {
     const reason = isCdnIpBlockedHost(upstreamUrl.hostname)
       ? "cdn blocks datacenter IP"

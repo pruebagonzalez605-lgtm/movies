@@ -171,6 +171,42 @@ test("/resolve-stream caches successful lookups", async (context) => {
   assert.equal(fetchCalls, 1, "la segunda consulta debe salir de la cache, sin pegarle de nuevo al embed");
 });
 
+test("/resolve-stream uses MovieDays' public MP4 configuration instead of its demo HLS", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    const target = String(url);
+    calls.push(target);
+    if (target === "https://moviedays.top/abc123") {
+      return new Response(
+        '<script>const configId = "45a966cc92dcf92cb69de1e5fdf25ae0"; ' +
+        'sources: [{ file: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }]</script>',
+      );
+    }
+    if (target.startsWith("https://moviedays.top/get_video_config.php?id=")) {
+      return Response.json({ sources: [
+        { file: "http://unsafe.example/video.mp4", type: "mp4" },
+        { file: "https://hugh.cdn.rumble.cloud/video.mp4", type: "mp4" },
+      ] });
+    }
+    throw new Error("unexpected upstream URL");
+  };
+
+  const embed = "https://moviedays.top/abc123";
+  const response = await handleRequest(new Request(
+    `https://proxy.example/resolve-stream?url=${encodeURIComponent(embed)}`,
+    { headers: { Origin: "https://colevana.com" } },
+  ), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.stream, "https://hugh.cdn.rumble.cloud/video.mp4");
+  assert.equal(body.proxied, null);
+  assert.equal(calls.length, 2);
+});
+
 test("/video responds with a clear reason when the upstream never answers", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => { globalThis.fetch = originalFetch; });

@@ -692,6 +692,22 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
   text-underline-offset: 3px;
 }
 
+#playerExternalRetryLink {
+  border: 1px solid rgba(232, 196, 104, 0.6);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #19191f;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+#playerExternalRetryLink:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .player-quick-settings {
   display: flex;
   align-items: center;
@@ -2007,6 +2023,22 @@ body.modal-open {
   position: relative;
 }
 
+.player-source-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--text);
+  font-weight: 700;
+  text-align: center;
+  background: #09090d;
+}
+
+html.tv-locked-fullscreen .player-source-message {
+  font-size: clamp(1.1rem, 2vw, 1.8rem);
+}
+
 /* Capa transparente que intercepta el primer toque del usuario para poder
    pedir fullscreen (ver installAutoFullscreenGate en player-page.js). Debe
    cubrir exactamente el video/iframe, por eso vive dentro de #mediaSlot. */
@@ -3063,9 +3095,19 @@ html.tv-locked-fullscreen .player-audio-tracks {
   backdrop-filter: blur(8px);
 }
 
-html.tv-locked-fullscreen .player-native-link,
-html.tv-locked-fullscreen #playerExternalRetryLink {
+html.tv-locked-fullscreen .player-native-link:not(#playerExternalRetryLink) {
   display: none !important;
+}
+
+html.tv-locked-fullscreen #playerExternalRetryLink {
+  position: fixed;
+  left: 50%;
+  bottom: 8vh;
+  transform: translateX(-50%);
+  z-index: 10010;
+  max-width: min(90vw, 640px);
+  padding: 18px 24px;
+  font-size: 1.1rem;
 }
 
 /* === Web: reproductor siempre interactivo === */
