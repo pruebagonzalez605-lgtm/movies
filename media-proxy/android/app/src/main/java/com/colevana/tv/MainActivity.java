@@ -156,16 +156,18 @@ public class MainActivity extends BridgeActivity {
     if (hasFocus && isTvDevice()) hideSystemUi();
   }
 
-  /**
-   * Puente minimo hacia el JS: solo informa si el aparato es un televisor.
-   * Lo consume shared/device.js (isTvDevice) y, a partir de ahi, el
-   * reproductor decide el modo teatro / pantalla completa y el CSS agranda
-   * los controles pensados para control remoto.
-   */
+  /** Puente hacia el JS para detectar el dispositivo y la version del APK. */
   public class NativeDeviceBridge {
     @JavascriptInterface
     public boolean isTv() {
       return isTvDevice();
+    }
+
+    @JavascriptInterface
+    public String getAppVersion() {
+      // Este valor queda compilado dentro del APK, aunque el WebView cargue
+      // una version mas reciente del sitio desde colevana.com.
+      return BuildConfig.VERSION_NAME;
     }
   }
 

@@ -11,60 +11,75 @@ const { githubOwner, githubRepo } = APP_DISTRIBUTION_CONFIG;
 // si no se encuentra ningun release con un asset .apk adjunto.
 export const RELEASES_PAGE_URL = `https://github.com/${githubOwner}/${githubRepo}/releases`;
 
-// Cuantos releases recientes revisamos como maximo buscando uno que
-// tenga un .apk adjunto. GitHub pagina de a 30 por defecto, con esto
-// alcanza de sobra salvo que se publiquen muchisimos releases sin apk.
-const MAX_RELEASES_TO_SCAN = 30;
+// Peliculas y APK comparten repositorio. Solo los tags 1.0.x, desde
+// 1.0.30, representan versiones instalables de la app.
+const APK_TAG_PATTERN = /^v?1\.0\.(\d+)$/i;
+const FIRST_APK_PATCH = 30;
+const RELEASES_PER_PAGE = 100;
+const MAX_RELEASE_PAGES = 5;
+
+export function parseApkReleaseTag(tag) {
+  const match = typeof tag === "string" ? APK_TAG_PATTERN.exec(tag.trim()) : null;
+  if (!match) return null;
+  const patch = Number(match[1]);
+  return Number.isSafeInteger(patch) && patch >= FIRST_APK_PATCH ? patch : null;
+}
 
 /**
  * Consulta la API publica de GitHub y devuelve la URL directa de descarga
- * del primer archivo .apk encontrado, revisando los releases del repo
- * del mas reciente al mas viejo.
+ * del APK con la mayor version 1.0.x publicada.
  *
  * A proposito NO usamos el endpoint /releases/latest: ese endpoint de
- * GitHub devuelve el release marcado como "Latest" (el mas reciente que
- * no sea draft ni prerelease), pero no garantiza que ese release tenga
- * un .apk adjunto. Si publicas un release sin apk (por ejemplo solo con
- * notas de la version, o todavia armando el build), "latest" apuntaria
- * ahi y el checker no encontraria ningun apk para descargar. En cambio,
- * recorremos la lista de releases y nos quedamos con el primero (osea
- * el mas nuevo) que SI tenga un asset .apk adjunto, ignorando los que
- * no lo tengan.
+ * GitHub devuelve el release marcado como "Latest", que puede ser una
+ * pelicula (por ejemplo 1.37). Tampoco confiamos en el orden por fecha:
+ * un release antiguo republicado no debe superar a una version mayor.
  */
 export async function fetchLatestApkDownloadUrl() {
-  const apiUrl = `https://api.github.com/repos/${githubOwner}/${githubRepo}/releases?per_page=${MAX_RELEASES_TO_SCAN}`;
+  let latest = null;
 
-  const response = await fetch(apiUrl, {
-    headers: { Accept: "application/vnd.github+json" },
-  });
-  if (!response.ok) {
-    throw new Error(`GitHub releases API respondio ${response.status}`);
-  }
-
-  const releases = await response.json();
-  if (!Array.isArray(releases)) return { downloadUrl: null, version: null };
-
-  // La API ya devuelve los releases ordenados del mas nuevo al mas
-  // viejo (por fecha de creacion), asi que basta con tomar el primero
-  // que cumpla los requisitos.
-  for (const release of releases) {
-    // Ignoramos drafts (todavia no publicados) para no ofrecer una
-    // version que ni siquiera esta disponible publicamente.
-    if (release.draft) continue;
-
-    const assets = Array.isArray(release.assets) ? release.assets : [];
-    const apkAsset = assets.find(
-      (asset) => asset.name && asset.name.toLowerCase().endsWith(".apk")
-    );
-
-    if (apkAsset) {
-      return {
-        downloadUrl: apkAsset.browser_download_url,
-        version: release.tag_name || null,
-      };
+  for (let page = 1; page <= MAX_RELEASE_PAGES; page++) {
+    const apiUrl = `https://api.github.com/repos/${githubOwner}/${githubRepo}/releases?per_page=${RELEASES_PER_PAGE}&page=${page}`;
+    let response;
+    try {
+      response = await fetch(apiUrl, {
+        headers: { Accept: "application/vnd.github+json" },
+      });
+    } catch (error) {
+      if (latest) break;
+      throw error;
     }
+    if (!response.ok && latest) break;
+    if (!response.ok) {
+      throw new Error(`GitHub releases API respondio ${response.status}`);
+    }
+
+    const releases = await response.json();
+    if (!Array.isArray(releases)) break;
+
+    for (const release of releases) {
+      if (release.draft || release.prerelease) continue;
+      const patch = parseApkReleaseTag(release.tag_name);
+      if (patch === null || (latest && patch <= latest.patch)) continue;
+
+      const assets = Array.isArray(release.assets) ? release.assets : [];
+      const apkAsset = assets.find((asset) =>
+        typeof asset.name === "string"
+        && asset.name.toLowerCase().endsWith(".apk")
+        && typeof asset.browser_download_url === "string"
+      );
+      if (apkAsset) {
+        latest = {
+          patch,
+          downloadUrl: apkAsset.browser_download_url,
+          version: release.tag_name,
+        };
+      }
+    }
+
+    if (releases.length < RELEASES_PER_PAGE) break;
   }
 
-  // Ningun release reciente tiene un .apk adjunto.
-  return { downloadUrl: null, version: null };
+  return latest
+    ? { downloadUrl: latest.downloadUrl, version: latest.version }
+    : { downloadUrl: null, version: null };
 }

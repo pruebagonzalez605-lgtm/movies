@@ -1,7 +1,7 @@
 import {
   fetchLatestApkDownloadUrl,
   RELEASES_PAGE_URL,
-} from "../config/app-distribution.js";
+} from "../config/app-distribution.js?apk-updates=1";
 import { isLikelyTvBrowser } from "../shared/device.js";
 
 const DISMISS_STORAGE_KEY = "colevana:tv-app-prompt-dismissed-at";
