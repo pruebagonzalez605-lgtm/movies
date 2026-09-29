@@ -3825,12 +3825,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .site-header {
   width: 100%;
   margin: 0;
-  padding: 14px var(--content-gutter);
-  min-height: 74px;
-  position: relative;
+  padding: 13px var(--content-gutter);
+  min-height: 80px;
+  position: sticky;
+  top: 0;
   z-index: 50;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  background: rgba(8,10,14,.96);
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  background: linear-gradient(90deg, rgba(9,11,15,.98), rgba(15,17,22,.96));
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -3842,26 +3843,46 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   color: #f0c67c;
 }
 .brand-mark { width: 40px; height: 40px; }
-.site-nav { flex-wrap: nowrap; gap: clamp(4px, .65vw, 12px); }
+.site-nav { flex-wrap: nowrap; gap: clamp(4px, .7vw, 13px); }
 .nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
   border: 0;
-  border-radius: 4px;
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .015em;
+  border-radius: 0;
+  padding: 0 7px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.01em;
   text-transform: none;
-  color: #c3c7ce;
+  white-space: nowrap;
+  color: #b8bec7;
+  background: transparent;
+  transition: color .18s ease;
 }
-.nav-link:hover { border-color: transparent; background: rgba(255,255,255,.07); color: #fff; }
-body[data-page="movies"] .nav-link[data-nav-page="movies"],
-body[data-page="series"] .nav-link[data-nav-page="series"],
-body[data-page="sagas"] .nav-link[data-nav-page="sagas"],
-body[data-page="sugerencias"] .nav-link[data-nav-page="sugerencias"] {
-  background: rgba(232,188,114,.13);
-  color: #f4cd8e;
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: -15px;
+  height: 2px;
+  border-radius: 2px;
+  background: #e8bc72;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform .2s ease;
+}
+.nav-link:hover { border-color: transparent; background: transparent; color: #fff; }
+.nav-link:hover::after { transform: scaleX(.55); }
+body[data-page] .site-nav .nav-link[aria-current="page"] {
+  background: transparent;
+  color: #fff;
   border: 0;
 }
+body[data-page] .site-nav .nav-link[aria-current="page"]::after { transform: scaleX(1); }
 .site-search {
   min-width: clamp(190px, 18vw, 310px);
   padding: 3px 4px 3px 8px;
@@ -4055,7 +4076,9 @@ a.catalog-spotlight-card:hover { transform: translateY(-4px); border-color: #e8b
   .nav-toggle { display: inline-flex; margin-left: auto; border-radius: 6px; background: #1b2027; border-color: #39414b; }
   .site-nav { position: absolute; top: calc(100% + 8px); right: var(--content-gutter); display: none; width: min(360px, calc(100vw - 40px)); padding: 14px; flex-direction: column; flex-wrap: nowrap; gap: 5px; border: 1px solid #343b46; border-radius: 8px; background: #171c23; box-shadow: 0 28px 65px rgba(0,0,0,.65); }
   .site-nav.is-open { display: flex; }
-  .nav-link { width: 100%; text-align: left; padding: 13px; }
+  .nav-link { width: 100%; min-height: 48px; justify-content: flex-start; text-align: left; padding: 12px 14px; border-radius: 5px; }
+  .nav-link::after { display: none; }
+  body[data-page] .site-nav .nav-link[aria-current="page"] { background: rgba(232,188,114,.12); color: #f5d29c; box-shadow: inset 3px 0 #e8bc72; }
   .site-search { width: 100%; min-width: 0; }
   .site-search-dropdown { position: static; margin-top: 6px; }
   .kick-corner, .kick-login-btn, .kick-user-badge { width: 100%; margin-left: 0; justify-content: center; }
@@ -4123,6 +4146,8 @@ html.tv-device .site-nav {
 }
 html.tv-device .site-nav.is-open { display: flex; }
 html.tv-device .nav-link { width: 100%; min-height: 56px; padding: 16px; text-align: left; font-size: 17px; }
+html.tv-device .nav-link::after { display: none; }
+html.tv-device body[data-page] .site-nav .nav-link[aria-current="page"] { background: rgba(232,188,114,.12); color: #f5d29c; box-shadow: inset 4px 0 #e8bc72; }
 html.tv-device .site-search { width: 100%; min-width: 0; }
 html.tv-device .site-search-input, html.tv-device .site-search-btn { font-size: 16px; }
 html.tv-device .site-search-dropdown { position: static; }
