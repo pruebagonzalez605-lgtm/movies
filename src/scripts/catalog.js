@@ -13,6 +13,7 @@ import {
   collectAvailableGenres,
   filterItemsByGenre,
   getItemGenreSync,
+  slugify,
 } from "./shared/catalog-data.js";
 import { GENRE_BY_ID } from "./config/genres.js";
 import { initKickAuthUI } from "./shared/kick-auth-ui.js";
@@ -102,11 +103,11 @@ function ensureCatalogModal() {
   const overlay = document.createElement("div");
   overlay.className = "catalog-modal";
   overlay.innerHTML = `
-    <div class="catalog-modal-dialog">
+    <div class="catalog-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="catalogModalTitle">
       <button class="catalog-modal-close" type="button" aria-label="Cerrar modal">Cerrar</button>
       <div class="catalog-modal-head">
         <span class="catalog-kicker" data-modal-kicker>Seleccion</span>
-        <h2 data-modal-title>Explorar</h2>
+        <h2 id="catalogModalTitle" data-modal-title>Explorar</h2>
         <p data-modal-intro>Selecciona el contenido que quieres abrir.</p>
       </div>
       <div class="catalog-modal-content" data-modal-content></div>
@@ -122,9 +123,12 @@ function ensureCatalogModal() {
     title: overlay.querySelector("[data-modal-title]"),
     intro: overlay.querySelector("[data-modal-intro]"),
     content: overlay.querySelector("[data-modal-content]"),
+    returnFocus: null,
     close() {
+      if (!overlay.classList.contains("is-open")) return;
       overlay.classList.remove("is-open");
       document.body.classList.remove("modal-open");
+      this.returnFocus?.focus?.();
     },
   };
 
@@ -142,6 +146,7 @@ function ensureCatalogModal() {
 
 function openCatalogModal({ kicker, title, intro, buildContent }) {
   const modal = ensureCatalogModal();
+  modal.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   modal.kicker.textContent = kicker;
   modal.title.textContent = title;
   modal.intro.textContent = intro;
@@ -149,6 +154,7 @@ function openCatalogModal({ kicker, title, intro, buildContent }) {
   buildContent(modal.content);
   modal.overlay.classList.add("is-open");
   document.body.classList.add("modal-open");
+  modal.closeBtn.focus();
 }
 
 function buildGenrePillsHtml(item) {
@@ -432,10 +438,10 @@ function createSagaCard(saga, posterUrl) {
 async function renderMoviesPage() {
   const movies = getMoviesSorted();
   setHeroContent({
-    kicker: "Movies",
-    title: "Explora la cartelera antes de entrar a reproducir.",
-    intro: "Ahora las peliculas viven en un catalogo visual. Primero navegas, eliges el titulo y luego entras a una pagina de reproduccion separada. Filtra por categoría para encontrar más rápido.",
-    spotlight: ["Catalogo visual", "Filtro por género", "Player dedicado"],
+    kicker: "PELÍCULAS · COLEVANA",
+    title: "Tu próxima película empieza aquí.",
+    intro: "Explora el catálogo, descubre algo nuevo y empieza a verlo cuando quieras.",
+    spotlight: ["Destacados", "Géneros", "Ver ahora"],
     spotlightStyle: "default",
   });
 
@@ -471,12 +477,13 @@ async function renderSeriesPage() {
   genreState.kind = "series";
 
   setHeroContent({
-    kicker: "Series",
-    title: "Navega temporadas y episodios sin entrar de una vez al player.",
-    intro: "La seccion de series queda como un catalogo navegable. Puedes revisar cada temporada y saltar solo al episodio que quieres ver. Usa las categorías para filtrar.",
+    kicker: "SERIES · COLEVANA",
+    title: "Una historia más. Un episodio más.",
+    intro: "Encuentra tu serie y elige exactamente la temporada y el episodio que quieres ver.",
     spotlight: series.slice(0, 3).map((serie, index) => ({
       label: `${serie.seasons.length} temporadas`,
       title: serie.title,
+      href: `./series.html?item=${encodeURIComponent(slugify(serie.title))}`,
       poster: posters[index],
       gradient: serie.gradient,
     })),
@@ -484,6 +491,11 @@ async function renderSeriesPage() {
   });
 
   renderItems(series);
+  const requestedSeries = new URLSearchParams(location.search).get("item");
+  if (requestedSeries) {
+    const match = series.find((serie) => slugify(serie.title) === requestedSeries);
+    if (match) openSeriesModal(match);
+  }
 
   if (secondarySection) secondarySection.style.display = "none";
 
@@ -497,13 +509,14 @@ async function renderSagasPage() {
   const sagaSpotlight = sagas.slice(0, 3).map((saga, index) => ({
     label: `${saga.movies.length} peliculas`,
     title: saga.name,
+    href: `./sagas.html?item=${encodeURIComponent(saga.slug)}`,
     poster: sagaPosters[index],
     gradient: saga.gradient,
   }));
   setHeroContent({
-    kicker: "Sagas",
-    title: "Agrupa franquicias y entra a cada pelicula desde su propio espacio.",
-    intro: "Las sagas ahora funcionan como colecciones. Primero ves la franquicia, despues eliges la pelicula concreta para abrir su reproduccion. Filtra por género para ir directo a lo que buscas.",
+    kicker: "SAGAS · COLEVANA",
+    title: "Cada gran historia tiene más de un capítulo.",
+    intro: "Recorre franquicias completas y elige la película con la que quieres empezar.",
     spotlight: sagaSpotlight,
     spotlightStyle: "compact",
   });
@@ -519,6 +532,11 @@ async function renderSagasPage() {
   genreState.allItems = sagas;
   genreState.kind = "saga";
   renderItems(sagas);
+  const requestedSaga = new URLSearchParams(location.search).get("item");
+  if (requestedSaga) {
+    const match = sagas.find((saga) => saga.slug === requestedSaga);
+    if (match) openSagaModal(match, sagaMoviePosterMap);
+  }
 
   if (secondarySection) secondarySection.style.display = "none";
 

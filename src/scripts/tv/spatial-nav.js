@@ -34,8 +34,6 @@ const ARROW_TO_DIRECTION = {
 
 const TEXT_ENTRY_TAGS = new Set(["INPUT", "TEXTAREA"]);
 
-let lastFocusedBeforeModal = null;
-
 function isVisible(el) {
   if (!el || el.hidden) return false;
   const style = window.getComputedStyle(el);
@@ -60,8 +58,13 @@ function getOpenSiteNav() {
   return document.querySelector(".site-nav.is-open");
 }
 
+function getOpenPlayerPanel() {
+  return document.querySelector(".season-dropdown-panel.open")
+    || document.querySelector(".episode-grid-container.open");
+}
+
 function getOpenOverlay() {
-  return getOpenModalDialog() || getOpenSiteNav();
+  return getOpenModalDialog() || getOpenSiteNav() || getOpenPlayerPanel();
 }
 
 function getScopeRoot() {
@@ -150,9 +153,20 @@ function handleBack(event) {
   const openModal = document.querySelector(".catalog-modal.is-open");
   const openSearchDropdown = document.querySelector(".site-search-dropdown.is-open");
   const openSiteNav = getOpenSiteNav();
-  if (!openModal && !openSearchDropdown && !openSiteNav) return;
+  const openSeasonDropdown = document.querySelector(".season-dropdown-panel.open");
+  const openEpisodeGrid = document.querySelector(".episode-grid-container.open");
+  if (!openModal && !openSearchDropdown && !openSiteNav && !openSeasonDropdown && !openEpisodeGrid) return;
 
   event.preventDefault();
+  if (openSeasonDropdown) {
+    document.getElementById("seasonSelectTrigger")?.click();
+    document.getElementById("seasonSelectTrigger")?.focus();
+    return;
+  }
+  if (openEpisodeGrid) {
+    document.getElementById("closeGridBtn")?.click();
+    return;
+  }
   // Reutiliza el cierre ya implementado en cada pagina, que escucha "Escape".
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 }
@@ -182,20 +196,22 @@ function handleDirectional(event) {
 }
 
 function observeOverlay(overlayEl, dialogSelector) {
+  let returnFocus = null;
   const observer = new MutationObserver(() => {
     if (overlayEl.classList.contains("is-open")) {
-      lastFocusedBeforeModal = document.activeElement;
+      if (!overlayEl.contains(document.activeElement)) returnFocus = document.activeElement;
       const dialog = (dialogSelector && overlayEl.querySelector(dialogSelector)) || overlayEl;
       const [firstFocusable] = getFocusables(dialog);
       if (firstFocusable) {
         firstFocusable.focus();
         scrollIntoViewIfNeeded(firstFocusable);
       }
-    } else if (lastFocusedBeforeModal) {
-      if (document.contains(lastFocusedBeforeModal)) {
-        lastFocusedBeforeModal.focus();
+    } else if (returnFocus) {
+      if (document.contains(returnFocus)
+        && (overlayEl.contains(document.activeElement) || document.activeElement === document.body)) {
+        returnFocus.focus();
       }
-      lastFocusedBeforeModal = null;
+      returnFocus = null;
     }
   });
   observer.observe(overlayEl, { attributes: true, attributeFilter: ["class"] });

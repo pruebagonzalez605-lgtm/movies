@@ -49,23 +49,43 @@
   </header>
   <div class="kick-gate-error" id="kickGateError">No se pudo iniciar sesion con Kick. Proba de nuevo.</div>
 
-  <main class="catalog-main">
-    <section class="catalog-section">
-      <div class="carousel-label">Peliculas</div>
+  <main class="catalog-main home-catalog-main">
+    <section class="home-feature" aria-labelledby="homeFeatureTitle">
+      <div class="home-feature-art" id="homeFeatureArt" aria-hidden="true"></div>
+      <div class="home-feature-content">
+        <span class="home-feature-kicker">DESTACADO EN COLEVANA</span>
+        <h1 id="homeFeatureTitle">Historias que merecen una gran pantalla.</h1>
+        <p class="home-feature-description" id="homeFeatureDescription">Películas, series y sagas para disfrutar a tu ritmo.</p>
+        <div class="home-feature-actions">
+          <a class="home-feature-play" id="homeFeaturePlay" href="./movies.html"><span aria-hidden="true">▶</span> Reproducir</a>
+          <a class="home-feature-more" href="./movies.html">Explorar catálogo <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="home-feature-index" aria-hidden="true"><span>01</span> / COLEVANA</div>
+    </section>
+
+    <section class="catalog-section home-rail" aria-labelledby="homeMoviesHeading">
+      <div class="home-rail-heading">
+        <div><span class="home-rail-eyebrow">PARA EMPEZAR</span><h2 id="homeMoviesHeading">Películas para esta noche</h2></div>
+        <a class="catalog-link home-rail-more" id="homeMoviesMore" href="./movies.html">Ver todas <span aria-hidden="true">→</span></a>
+      </div>
       <div class="catalog-grid" id="homeMoviesGrid"></div>
-      <a class="catalog-link" id="homeMoviesMore" href="./movies.html">Ver todas las peliculas</a>
     </section>
 
-    <section class="catalog-section">
-      <div class="carousel-label">Series</div>
+    <section class="catalog-section home-rail" aria-labelledby="homeSeriesHeading">
+      <div class="home-rail-heading">
+        <div><span class="home-rail-eyebrow">EPISODIO TRAS EPISODIO</span><h2 id="homeSeriesHeading">Series que atrapan</h2></div>
+        <a class="catalog-link home-rail-more" id="homeSeriesMore" href="./series.html">Ver todas <span aria-hidden="true">→</span></a>
+      </div>
       <div class="catalog-grid" id="homeSeriesGrid"></div>
-      <a class="catalog-link" id="homeSeriesMore" href="./series.html">Ver todas las series</a>
     </section>
 
-    <section class="catalog-section">
-      <div class="carousel-label">Sagas</div>
+    <section class="catalog-section home-rail" aria-labelledby="homeSagasHeading">
+      <div class="home-rail-heading">
+        <div><span class="home-rail-eyebrow">UN UNIVERSO COMPLETO</span><h2 id="homeSagasHeading">Maratones de sagas</h2></div>
+        <a class="catalog-link home-rail-more" id="homeSagasMore" href="./sagas.html">Ver todas <span aria-hidden="true">→</span></a>
+      </div>
       <div class="catalog-grid" id="homeSagasGrid"></div>
-      <a class="catalog-link" id="homeSagasMore" href="./sagas.html">Ver todas las sagas</a>
     </section>
   </main>
 

@@ -7,6 +7,7 @@ import {
   resolveSagaCardPoster,
   resolveSeriesCardPoster,
   isNewItem,
+  slugify,
   resolveItemGenre,
   getItemGenreSync,
 } from "./shared/catalog-data.js";
@@ -15,6 +16,29 @@ import { genrePillHtml, applyGenrePillToCard } from "./ui/genre-filter.js";
 const moviesGrid = document.getElementById("homeMoviesGrid");
 const seriesGrid = document.getElementById("homeSeriesGrid");
 const sagasGrid = document.getElementById("homeSagasGrid");
+const featureArt = document.getElementById("homeFeatureArt");
+const featureTitle = document.getElementById("homeFeatureTitle");
+const featureDescription = document.getElementById("homeFeatureDescription");
+const featurePlay = document.getElementById("homeFeaturePlay");
+
+async function renderFeature(movie) {
+  if (!movie || !featureArt || !featureTitle || !featurePlay) return;
+  featureTitle.textContent = movie.title;
+  featureDescription.textContent = movie.saga
+    ? `Una historia de ${movie.saga}. Disponible para reproducir ahora.`
+    : "Una historia para ver hoy. Disponible para reproducir ahora.";
+  featurePlay.href = buildMoviePlayerUrl(movie);
+  const poster = movie.poster && movie.poster !== "..."
+    ? movie.poster
+    : await resolveMovieCardPoster(movie);
+  if (poster) {
+    const image = document.createElement("img");
+    image.alt = "";
+    image.decoding = "async";
+    image.onload = () => featureArt.replaceChildren(image);
+    image.src = poster;
+  }
+}
 
 function applyPosterImage(node, posterUrl, gradient) {
   node.style.background = `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`;
@@ -57,6 +81,7 @@ function createPosterCard({ href, title, poster, gradient, isNew, item, kind }) 
 async function renderMovies() {
   if (!moviesGrid) return;
   const movies = getMoviesSorted().slice(0, 12);
+  renderFeature(movies.find((movie) => movie.poster && movie.poster !== "...") || movies[0]);
   const cards = await Promise.all(
     movies.map(async (movie) => {
       const poster = await resolveMovieCardPoster(movie);
@@ -82,7 +107,7 @@ async function renderSeries() {
     series.map(async (serie) => {
       const poster = await resolveSeriesCardPoster(serie);
       return createPosterCard({
-        href: "./series.html",
+        href: `./series.html?item=${encodeURIComponent(slugify(serie.title))}`,
         title: serie.title,
         poster,
         gradient: serie.gradient,
@@ -103,7 +128,7 @@ async function renderSagas() {
     sagas.map(async (saga) => {
       const poster = await resolveSagaCardPoster(saga);
       return createPosterCard({
-        href: "./sagas.html",
+        href: `./sagas.html?item=${encodeURIComponent(saga.slug)}`,
         title: saga.name,
         poster,
         gradient: saga.gradient,

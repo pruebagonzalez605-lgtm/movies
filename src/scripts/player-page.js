@@ -73,6 +73,9 @@ const dom = {
   mqForwardBtn: document.getElementById("mqForwardBtn"),
   externalLoadingOverlay: document.getElementById("externalLoadingOverlay"),
   externalLoadingText: document.getElementById("externalLoadingText"),
+  tvBackBtn: document.getElementById("tvPlayerBackBtn"),
+  episodeToggleBtn: document.getElementById("toggleEpisodeBtn"),
+  episodeGridContainer: document.getElementById("episodeGridContainer"),
 };
 
 function restoreMediaSlotOverlays(container) {
@@ -80,8 +83,14 @@ function restoreMediaSlotOverlays(container) {
     dom.mobileQuickControls,
     dom.nextEpisodeOverlay,
     dom.externalLoadingOverlay,
+    dom.tvBackBtn,
   ]) {
     if (overlay) container.appendChild(overlay);
+  }
+  if (isTvDevice()) {
+    for (const control of [dom.episodeToggleBtn, dom.episodeGridContainer]) {
+      if (control) container.appendChild(control);
+    }
   }
 }
 
@@ -457,6 +466,7 @@ const TV_THEATER_CLASS = "tv-locked-fullscreen";
 function enterTvLockedTheaterMode() {
   if (!isTvScreen()) return;
   document.documentElement.classList.add(TV_THEATER_CLASS);
+  restoreMediaSlotOverlays(dom.mediaSlot);
   lockLandscapeOrientation();
   // El play automatico funciona sin gesto porque MainActivity ya desactiva
   // setMediaPlaybackRequiresUserGesture. Si la fuente activa es un iframe
@@ -1829,6 +1839,10 @@ function bindEvents() {
   globalEventsBound = true;
 
   dom.nextEpisodeBtn?.addEventListener("click", playNextEpisode);
+  dom.tvBackBtn?.addEventListener("click", () => {
+    persistCurrentProgress();
+    window.location.assign(dom.backLink.href);
+  });
 
   const onFsChange = () => {
     if (!isPlayerFullscreen() && state.nextEpisodeVisible) {
@@ -3195,7 +3209,8 @@ function renderSeasonDropdown(selectedSeasonNum) {
   panel.innerHTML = "";
 
   currentSeries.seasons.forEach((season) => {
-    const item = document.createElement("div");
+    const item = document.createElement("button");
+    item.type = "button";
     const isSelected = season.season === selectedSeasonNum;
     item.className = `season-dropdown-option${isSelected ? " selected" : ""}`;
     item.textContent = `Temporada ${season.season}`;
@@ -3205,6 +3220,7 @@ function renderSeasonDropdown(selectedSeasonNum) {
       closeSeasonDropdown();
       renderSeasonDropdown(season.season);
       loadSeasonEpisodesGrid(season.season);
+      document.getElementById("seasonSelectTrigger")?.focus();
     };
     panel.appendChild(item);
   });
@@ -3246,7 +3262,8 @@ async function loadSeasonEpisodesGrid(seasonNum) {
     const dateText = formatEpisodeDate(episode.airDate);
     const metaText = [durationText, dateText].filter(Boolean).join(" • ");
 
-    const row = document.createElement("div");
+    const row = document.createElement("button");
+    row.type = "button";
     row.className = `ep-row${isCurrent ? " current" : ""}`;
     row.innerHTML = `
       <div class="ep-row-left">
@@ -3268,10 +3285,14 @@ async function loadSeasonEpisodesGrid(seasonNum) {
       const toggleBtn = document.getElementById("toggleEpisodeBtn");
       container?.classList.remove("open");
       toggleBtn?.classList.remove("is-hidden");
+      toggleBtn?.focus();
     };
 
     grid.appendChild(row);
   });
+  if (document.getElementById("episodeGridContainer")?.classList.contains("open")) {
+    grid.querySelector(".ep-row")?.focus();
+  }
 }
 
 // Inicializar eventos del grid
@@ -3283,12 +3304,14 @@ function initEpisodeGrid() {
   const openPanel = () => {
     container.classList.add("open");
     toggleBtn.classList.add("is-hidden");
+    (container.querySelector(".ep-row") || closeBtn).focus();
   };
 
   const closePanel = () => {
     container.classList.remove("open");
     toggleBtn.classList.remove("is-hidden");
     closeSeasonDropdown();
+    toggleBtn.focus();
   };
 
   toggleBtn.addEventListener("click", openPanel);
