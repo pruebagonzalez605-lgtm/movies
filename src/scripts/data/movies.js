@@ -1393,6 +1393,7 @@ export const MOVIES = [
   {
     code: "145",
     title: "Una vida a lo grande",
+    addedAt: "2026-09-30",
     genre: "Drama",
     tmdbTitle: "Downsizing",
     gradient: ["#3d0d0d", "#8a6a1e"],
