@@ -1093,7 +1093,7 @@ export const SERIES = [
       },
     ]
   },
-    {
+  {
     title: "Monstruo: La historia de Lizzie Borden",
     addedAt: "2026-09-28",
     genre: "Drama",
@@ -1116,7 +1116,7 @@ export const SERIES = [
       },
     ]
   },
-      {
+  {
     title: "Mr robot",
     genre: "Drama",
     gradient: ["#1a3a1a", "#0f2a0f"],
@@ -1187,6 +1187,32 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.37/x.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download"
+        ]
+      },
+    ]
+  },
+    {
+    title: "Medusa",
+    genre: "Drama",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "Medusa",
+    tmdbYear: 2025,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X1",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X2",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X3",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X5",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X6",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X7",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X8",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X9",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X10",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X11",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.38/M1X12",
         ]
       },
     ]
