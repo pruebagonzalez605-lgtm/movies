@@ -1193,6 +1193,7 @@ export const SERIES = [
   },
     {
     title: "Medusa",
+    addedAt: "2026-10-01",
     genre: "Drama",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "Medusa",
