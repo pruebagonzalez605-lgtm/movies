@@ -1220,6 +1220,7 @@ export const SERIES = [
   },
       {
     title: "Eventos Desafortunados",
+    addedAt: "2026-10-05",
     genre: "Drama",
     gradient: ["#1a3a1a", "#0f2a0f"],
     tmdbShow: "A Series of Unfortunate Events",

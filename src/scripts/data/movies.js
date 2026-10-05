@@ -1403,6 +1403,7 @@ export const MOVIES = [
  {
     code: "146",
     title: "Mickey Mouse: El club de los villanos",
+    addedAt: "2026-10-05",
     genre: "Animacion",
     tmdbTitle: "El club de los villanos",
     gradient: ["#3d0d0d", "#8a6a1e"],
@@ -1412,6 +1413,7 @@ export const MOVIES = [
  {
     code: "146",
     title: "La Familia Addams",
+    addedAt: "2026-10-05",
     genre: "Drama",
     tmdbTitle: "The Addams Family",
     gradient: ["#3d0d0d", "#8a6a1e"],
