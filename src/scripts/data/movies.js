@@ -1400,16 +1400,25 @@ export const MOVIES = [
     tmdbYear: 2017,
     src: "",
   },
-
-
-  
-
-
-
-
-
-
-
+ {
+    code: "146",
+    title: "Mickey Mouse: El club de los villanos",
+    genre: "Animacion",
+    tmdbTitle: "El club de los villanos",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 2002,
+    src: "",
+  },
+ {
+    code: "146",
+    title: "La Familia Addams",
+    genre: "Drama",
+    tmdbTitle: "The Addams Family",
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    tmdbYear: 1991,
+    src: "",
+    tmdbId: 2907,
+  }
 
 
 

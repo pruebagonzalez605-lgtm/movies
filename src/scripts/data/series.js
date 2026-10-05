@@ -1218,4 +1218,53 @@ export const SERIES = [
       },
     ]
   },
+      {
+    title: "Eventos Desafortunados",
+    genre: "Drama",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "A Series of Unfortunate Events",
+    tmdbYear: 2017,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X8.mp4",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X7.mp4",
+        ]
+      }, 
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M1X7.mp4",
+        ]
+      },     
+    ]
+  },
 ];
