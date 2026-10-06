@@ -13,7 +13,7 @@ modulos y recursos que usan esas paginas.
 
 ## Comprobar cambios
 
-Desde `media-proxy/`, ejecuta `node --test test/apk-updates.test.mjs test/index.test.js test/stream-discovery.test.mjs test/tv-controls.test.mjs` para las
+Desde `media-proxy/`, ejecuta `node --test test/apk-updates.test.mjs test/index.test.js test/stream-discovery.test.mjs test/tv-controls.test.mjs test/external-playback.test.mjs` para las
 pruebas del Worker, descubrimiento de fuentes, controles de TV y actualizaciones. Para sincronizar la
 web incluida en el proyecto Android, ejecuta `npm run cap:sync`.
 

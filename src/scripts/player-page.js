@@ -15,6 +15,7 @@ import {
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
+import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from "./services/external-playback.js";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -76,6 +77,7 @@ const dom = {
   externalLoadingText: document.getElementById("externalLoadingText"),
   tvBackBtn: document.getElementById("tvPlayerBackBtn"),
   tvControls: document.getElementById("tvPlaybackControls"),
+  externalNotice: document.getElementById("externalProviderNotice"),
   episodeToggleBtn: document.getElementById("toggleEpisodeBtn"),
   episodeGridContainer: document.getElementById("episodeGridContainer"),
 };
@@ -87,6 +89,7 @@ function restoreMediaSlotOverlays(container) {
     dom.externalLoadingOverlay,
     dom.tvBackBtn,
     dom.tvControls,
+    dom.externalNotice,
   ]) {
     if (overlay) container.appendChild(overlay);
   }
@@ -1843,6 +1846,10 @@ function bindEvents() {
 
   dom.nextEpisodeBtn?.addEventListener("click", playNextEpisode);
   dom.resumeClose?.addEventListener("click", closeResumeModal);
+  document.getElementById("dismissExternalNotice")?.addEventListener("click", () => {
+    if (dom.externalNotice) dom.externalNotice.hidden = true;
+    document.getElementById(RETRY_LINK_ID)?.focus();
+  });
   dom.tvBackBtn?.addEventListener("click", () => {
     persistCurrentProgress();
     window.location.assign(dom.backLink.href);
@@ -2117,18 +2124,28 @@ const EXTERNAL_PROVIDERS = [
   {
     name: "Vimeos",
     label: "Reproduciendo (fuente alternativa)",
-    match: (url) => isExternalEmbedUrl(url, VIMEOS_MIRROR_DOMAINS, /^\/embed-/),
+    match: (url) => isExternalEmbedUrl(url, VIMEOS_MIRROR_DOMAINS, /^\/(?:embed-|e\/)/),
   },
   {
     name: "HLSWish",
     label: "Reproduciendo (fuente alternativa)",
-    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/e\//),
+    match: (url) => isExternalEmbedUrl(url, HLSWISH_MIRROR_DOMAINS, /^\/(?:embed-|e\/)/),
     assumeMountedAfterMs: 3000,
   },
   {
     name: "GoodStream",
     label: "Reproduciendo (fuente alternativa)",
-    match: (url) => isExternalEmbedUrl(url, GOODSTREAM_MIRROR_DOMAINS, /^\/embed-/),
+    match: (url) => isExternalEmbedUrl(url, GOODSTREAM_MIRROR_DOMAINS, /^\/(?:embed-|e\/)/),
+  },
+  {
+    name: "Vimeus",
+    label: "Reproduciendo (fuente alternativa)",
+    match: (url) => isExternalEmbedUrl(url, ["vimeus.com", "www.vimeus.com"], /^\/(?:embed-|e\/)/),
+  },
+  {
+    name: "MovieDays",
+    label: "Reproduciendo (fuente alternativa)",
+    match: (url) => isExternalEmbedUrl(url, ["moviedays.top", "www.moviedays.top"], /^\/.+/),
   },
 ];
 
@@ -2693,8 +2710,9 @@ function collectExternalCandidates(data) {
       return;
     }
     if (obj && typeof obj === "object") {
-      if (typeof obj.url === "string" && !EXTERNAL_PROVIDERS.some((p) => p.match(obj.url))) {
-        unmatchedEmbeds.push(obj.url);
+      for (const key of ["url", "embed_url", "embed", "iframe"]) {
+        const url = typeof obj[key] === "string" ? externalEmbedUrl(obj[key]) : null;
+        if (url && !EXTERNAL_PROVIDERS.some((p) => p.match(url))) unmatchedEmbeds.push(url);
       }
       Object.values(obj).forEach(walk);
     }
@@ -2717,7 +2735,12 @@ function collectExternalCandidates(data) {
     url: item.url,
   })));
   if (unmatchedEmbeds.length) {
-    playerConsole("info", "[external-player] embeds ignorados:", unmatchedEmbeds);
+    for (const url of unmatchedEmbeds) {
+      if (seen.has(url)) continue;
+      const candidate = mapMovieDaysEmbedToCandidate(url);
+      if (candidate) { seen.add(url); candidates.push(candidate); }
+      if (candidates.length >= 36) break;
+    }
   }
   return candidates;
 }
@@ -2773,12 +2796,14 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
     iframe.src = candidate.url;
     iframe.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border:none;";
     iframe.setAttribute("frameborder", "0");
+    iframe.title = `Reproductor externo de ${candidate.provider.name}`;
+    iframe.tabIndex = 0;
     iframe.setAttribute("allowfullscreen", "");
     iframe.setAttribute(
       "sandbox",
       "allow-scripts allow-same-origin allow-presentation allow-forms",
     );
-    iframe.setAttribute("referrerpolicy", "no-referrer");
+    iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
     iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
     iframe.addEventListener("load", onLoad);
     iframe.addEventListener("error", onError);
@@ -2795,14 +2820,17 @@ const ADBLOCK_HINT_ID = "adblockHint";
 
 function showAdblockHint() {
   const el = document.getElementById(ADBLOCK_HINT_ID);
-  if (!el) return;
-  el.hidden = false;
-  el.textContent = "Este reproductor pertenece a un proveedor externo y puede mostrar anuncios o pedir desactivar tu bloqueador. Si no funciona, prueba otra fuente.";
+  if (el) { el.hidden = false; el.textContent = EXTERNAL_AD_NOTICE; }
+  if (dom.externalNotice) {
+    dom.externalNotice.querySelector("p").textContent = EXTERNAL_AD_NOTICE;
+    dom.externalNotice.hidden = false;
+  }
 }
 
 function hideAdblockHint() {
   const el = document.getElementById(ADBLOCK_HINT_ID);
   if (el) el.hidden = true;
+  if (dom.externalNotice) dom.externalNotice.hidden = true;
 }
 
 /**
@@ -2903,14 +2931,10 @@ function mapMovieDaysEmbedToCandidate(embedUrl) {
     return null;
   }
   const known = EXTERNAL_PROVIDERS.find((p) => p.match(embedUrl));
-  // Los shortlinks de CineLink/MovieDays muestran un muro antiadblock dentro
-  // de su iframe. Aún se intenta resolver un stream directo, pero un 404 no
-  // debe convertir ese muro en un supuesto reproductor disponible.
-  const isMovieDaysShortlink = ["moviedays.top", "www.moviedays.top"].includes(url.hostname);
   return {
-    provider: known || MOVIEDAYS_GENERIC_PROVIDER,
+    provider: known || { ...MOVIEDAYS_GENERIC_PROVIDER, name: url.hostname.replace(/^www\./, "") },
     url: embedUrl,
-    iframeEligible: !isMovieDaysShortlink,
+    iframeEligible: true,
   };
 }
 
@@ -3087,7 +3111,7 @@ async function tryHlsWishFallback(showMessage = true) {
     return false;
   };
 
-  // Agotar todas las fuentes limpias antes de ofrecer un iframe externo.
+  // Priorizar videos directos; si fallan, abrir automáticamente el proveedor.
   const tryNextCandidate = async () => {
     while (streamIndex < directStreams.length) {
       const streamUrl = directStreams[streamIndex];
@@ -3133,29 +3157,18 @@ async function tryHlsWishFallback(showMessage = true) {
         externalCandidates.push(...fresh.filter((item) => item.iframeEligible !== false));
         if (fresh.length) return tryNextCandidate();
       }
-      const unavailableMessage = externalCandidates.length
-        ? "No hay una fuente limpia disponible para este título."
-        : embedCandidates.length
-          ? "El proveedor disponible exige anuncios y no ofrece un video directo."
-          : "No hay una fuente disponible para este título.";
+      if (externalCandidates.length) {
+        showExternalLoadingOverlay("Cargando reproductor externo…");
+        return await tryNextExternal();
+      }
+      const unavailableMessage = "No hay una fuente disponible para este título.";
       showUnavailablePlayerMessage(unavailableMessage);
       if (showMessage) {
         dom.status.textContent = unavailableMessage;
         dom.status.style.color = "#e8c468";
       }
       hideAdblockHint();
-      showExternalRetryLink(externalCandidates.length
-        ? "Usar reproductor externo (puede mostrar anuncios)"
-        : "Reintentar búsqueda de fuentes", async () => {
-        if (externalCandidates.length) {
-          showExternalLoadingOverlay("Cargando reproductor externo…");
-          try {
-            await tryNextExternal();
-          } finally {
-            hideExternalLoadingOverlay();
-          }
-          return;
-        }
+      showExternalRetryLink("Reintentar búsqueda de fuentes", async () => {
         await tryHlsWishFallback(true);
       });
       return false;
