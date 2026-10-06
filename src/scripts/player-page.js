@@ -14,6 +14,7 @@ import {
 } from "./shared/catalog-data.js";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
+import { remoteKey, seekVideo } from "./tv/media-controls.js";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -74,6 +75,7 @@ const dom = {
   externalLoadingOverlay: document.getElementById("externalLoadingOverlay"),
   externalLoadingText: document.getElementById("externalLoadingText"),
   tvBackBtn: document.getElementById("tvPlayerBackBtn"),
+  tvControls: document.getElementById("tvPlaybackControls"),
   episodeToggleBtn: document.getElementById("toggleEpisodeBtn"),
   episodeGridContainer: document.getElementById("episodeGridContainer"),
 };
@@ -84,11 +86,12 @@ function restoreMediaSlotOverlays(container) {
     dom.nextEpisodeOverlay,
     dom.externalLoadingOverlay,
     dom.tvBackBtn,
+    dom.tvControls,
   ]) {
     if (overlay) container.appendChild(overlay);
   }
   if (isTvDevice()) {
-    for (const control of [dom.episodeToggleBtn, dom.episodeGridContainer]) {
+    for (const control of [dom.episodeToggleBtn, dom.episodeGridContainer, dom.resumeOverlay]) {
       if (control) container.appendChild(control);
     }
   }
@@ -561,7 +564,7 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
     return;
   }
   const previewSrc = media.previewThumbnails || media.previewVtt;
-  const compactControls = isCoarsePointerViewport();
+  const compactControls = !isTvDevice() && isCoarsePointerViewport();
   const controls = compactControls
     ? ["play", "progress", "current-time", "mute", "volume", "settings", "airplay", "fullscreen"]
     : [
@@ -584,6 +587,7 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
     // sigue funcionando igual cuando la barra de progreso (input range)
     // tiene el foco.
     keyboard: { focused: false, global: false },
+    hideControls: !isTvDevice(),
     speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
     captions: { active: false, language: "auto", update: true },
     previewThumbnails: {
@@ -983,7 +987,6 @@ function showResumeModal(progress) {
     } catch (_) { /* duration still unknown */ }
     video.play().catch(() => { });
   };
-  dom.resumeClose.onclick = closeResumeModal;
 }
 
 function offerSavedProgress() {
@@ -1839,6 +1842,7 @@ function bindEvents() {
   globalEventsBound = true;
 
   dom.nextEpisodeBtn?.addEventListener("click", playNextEpisode);
+  dom.resumeClose?.addEventListener("click", closeResumeModal);
   dom.tvBackBtn?.addEventListener("click", () => {
     persistCurrentProgress();
     window.location.assign(dom.backLink.href);
@@ -1908,40 +1912,68 @@ function bindEvents() {
   });
 }
 
-// Estilo Netflix: izquierda/derecha del control remoto adelantan/retroceden
-// SIEMPRE, sin necesidad de mover el foco hasta la barra de progreso (que
-// ademas ya no es alcanzable con el D-pad, ver spatial-nav.js). Se registra
-// en fase de "captura" para que se ejecute ANTES que el manejador de
-// izquierda/derecha de spatial-nav.js (que solo mueve el foco entre
-// botones) y le corta el paso con stopPropagation.
+// Flechas sobre el video desplazan; sobre botones navegan. Las teclas
+// multimedia funcionan desde cualquier botón, salvo con un panel abierto.
 function initRemoteSeekControls() {
+  const reveal = () => {
+    state.playerUi?.toggleControls?.(true);
+  };
+  const play = (video) => { video.play().catch(() => {}); };
+  const handleKey = (event) => {
+    const key = remoteKey(event);
+    const active = document.activeElement;
+    const overlayOpen = document.querySelector(
+      ".catalog-modal.is-open, .site-nav.is-open, .episode-grid-container.open, .season-dropdown-panel.open, .site-search-dropdown.is-open, .plyr__menu__container:not([hidden])",
+    );
+    if (overlayOpen || active?.matches("textarea, select, input:not([type='range']), [contenteditable='true']")) return false;
+    const video = syncActiveVideo();
+    if (state.playbackMode !== "video" || !video?.isConnected) return false;
+    const inPlayer = active === document.body || dom.mediaSlot?.contains(active);
+    const onButton = active?.closest("button, a, [role='menuitem'], [role='menuitemradio']");
+    let handled = false;
+    if (key === "MediaRewind" || key === "MediaFastForward"
+      || ((key === "ArrowLeft" || key === "ArrowRight") && inPlayer && !onButton)) {
+      handled = seekVideo(video, (key === "ArrowRight" || key === "MediaFastForward" ? 1 : -1) * REMOTE_SEEK_STEP_SECONDS);
+      const feedback = document.getElementById("tvSeekFeedback");
+      if (feedback) feedback.textContent = handled
+        ? `${Math.floor(video.currentTime / 60)}:${String(Math.floor(video.currentTime % 60)).padStart(2, "0")}`
+        : "Espera a que el video esté listo para moverlo";
+    } else if (["MediaPlayPause", "MediaPlay", "MediaPause", "MediaStop"].includes(key)
+      || (inPlayer && !onButton && ["Enter", " ", "Spacebar"].includes(key))) {
+      if (event.repeat) return true;
+      if (key === "MediaPause" || key === "MediaStop" || (key !== "MediaPlay" && !video.paused)) video.pause();
+      else play(video);
+      handled = true;
+    } else if (isTvDevice() && inPlayer && ["ArrowUp", "ArrowDown"].includes(key) && !onButton) {
+      document.getElementById("tvPlayPauseBtn")?.focus();
+      handled = true;
+    }
+    if (handled) reveal();
+    return handled;
+  };
+  // Android entrega teclas multimedia que algunos WebView no convierten a DOM.
+  window.ColevanaRemote = { handleKey: (key, repeat = false) => handleKey({ key, repeat }) };
+  dom.tvControls?.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-tv-action]")?.dataset.tvAction;
+    if (!action) return;
+    event.stopPropagation();
+    handleKey({ key: { rewind: "MediaRewind", forward: "MediaFastForward", play: "MediaPlayPause" }[action] });
+  });
+  // El elemento de video cambia al probar otra fuente: escuchar por delegación.
+  for (const type of ["play", "pause", "loadedmetadata", "emptied"]) {
+    document.addEventListener(type, () => {
+      const video = getActiveVideo();
+      const button = document.getElementById("tvPlayPauseBtn");
+      if (button) button.textContent = video?.paused ? "▶ Reproducir" : "❚❚ Pausar";
+      if (dom.tvControls) dom.tvControls.hidden = !isTvDevice() || state.playbackMode !== "video";
+    }, true);
+  }
   document.addEventListener(
     "keydown",
     (event) => {
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-
-      const video = dom.video;
-      if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-
-      // Si hay un modal/menu/panel abierto (episodios, calidad, menu
-      // hamburguesa, etc.), dejamos que las flechas se usen para navegar
-      // ese overlay normalmente en vez de adelantar el video de fondo.
-      const overlayOpen = document.querySelector(
-        ".catalog-modal.is-open, .site-nav.is-open, .episode-grid-container.open, .site-search-dropdown.is-open",
-      );
-      if (overlayOpen) return;
-
-      // Los campos de texto/listas siguen manejando sus propias flechas.
-      const active = document.activeElement;
-      const tag = active?.tagName;
-      if (tag === "TEXTAREA" || tag === "SELECT") return;
-      if (tag === "INPUT" && active.type !== "range") return;
-
+      if (!handleKey(event)) return;
       event.preventDefault();
-      event.stopPropagation();
-
-      const delta = event.key === "ArrowRight" ? REMOTE_SEEK_STEP_SECONDS : -REMOTE_SEEK_STEP_SECONDS;
-      video.currentTime = Math.min(Math.max(video.currentTime + delta, 0), video.duration);
+      event.stopImmediatePropagation();
     },
     true,
   );
@@ -1949,6 +1981,7 @@ function initRemoteSeekControls() {
 
 async function init() {
   ensureWebPlayerInteractable();
+  if (isTvDevice() && dom.resumeOverlay) dom.mediaSlot.appendChild(dom.resumeOverlay);
   initRemoteSeekControls();
   initKickAuthUI({
     onChange: () => {
@@ -2599,7 +2632,7 @@ async function resolveEmbedStream(embedUrl) {
     const endpoint = `${proxyBase}/resolve-stream?url=${encodeURIComponent(embedUrl)}`;
     const controller = new AbortController();
     const isMovieDaysLink = /^https:\/\/(?:www\.)?moviedays\.top\//i.test(embedUrl);
-    const timer = window.setTimeout(() => controller.abort(), isMovieDaysLink ? 16000 : 8000);
+    const timer = window.setTimeout(() => controller.abort(), isMovieDaysLink ? 18000 : 15000);
     try {
       const res = await fetch(endpoint, { signal: controller.signal });
       if (!res.ok) {
@@ -2607,24 +2640,27 @@ async function resolveEmbedStream(embedUrl) {
         return null;
       }
       const data = await res.json();
-      const rawStream = data?.stream || null;
+      const rawStreams = [...new Set([...(Array.isArray(data?.streams) ? data.streams : []), data?.stream].filter((url) => typeof url === "string" && /^https:\/\//i.test(url)))];
+      const rawStream = rawStreams[0] || null;
       if (!rawStream || !/^https:\/\//i.test(rawStream)) {
         if (data?.proxied) return viaHlsProxy(data.proxied, embedUrl);
         return null;
       }
       // El MP4 de MovieDays se sirve directamente desde su CDN. /proxy-hls
       // está diseñado para manifiestos HLS y no debe envolver archivos MP4.
-      if (/\.mp4$/i.test(new URL(rawStream).pathname)) {
-        return [rawStream];
-      }
       // Mirrors: primero URL directa (IP del usuario + CORS *),
       // después la misma vía proxy-hls (por si el directo falla).
-      const mirrors = expandStreamMirrors(rawStream);
       const candidates = [];
-      for (const u of mirrors) {
+      for (const stream of rawStreams) {
+        if (/\.(mp4|webm)$/i.test(new URL(stream).pathname)) {
+          candidates.push(stream);
+          continue;
+        }
+        for (const u of expandStreamMirrors(stream)) {
         candidates.push(u);
         const proxied = viaHlsProxy(u, embedUrl);
         if (proxied && proxied !== u) candidates.push(proxied);
+        }
       }
       playerConsole(
         "info",
@@ -2632,7 +2668,7 @@ async function resolveEmbedStream(embedUrl) {
         candidates.length,
         candidates[0],
       );
-      return candidates;
+      return [...new Set(candidates)];
     } finally {
       window.clearTimeout(timer);
     }
@@ -2673,7 +2709,7 @@ function collectExternalCandidates(data) {
       if (item.provider !== provider || seen.has(item.url)) continue;
       seen.add(item.url);
       candidates.push(item);
-      if (++count === 2) break;
+      if (++count === 6) break;
     }
   }
   playerConsole("info", "[external-player] candidatos reconocidos:", candidates.map((item) => ({
@@ -2697,6 +2733,7 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
     stopExternalTracking();
     destroyPlayerUi();
     if (dom.mobileQuickControls) dom.mobileQuickControls.hidden = true;
+    if (dom.tvControls) dom.tvControls.hidden = true;
     if (state._hls) {
       try { state._hls.destroy(); } catch (_) {}
       state._hls = null;
@@ -2829,6 +2866,7 @@ function showExternalRetryLink(label, onRetry) {
 function showUnavailablePlayerMessage(message) {
   stopExternalTracking();
   if (dom.mobileQuickControls) dom.mobileQuickControls.hidden = true;
+  if (dom.tvControls) dom.tvControls.hidden = true;
   const panel = document.createElement("div");
   panel.className = "player-source-message";
   panel.textContent = message;
@@ -2891,11 +2929,25 @@ function buildMovieDaysFallbackUrl(embedInfo) {
   return `${proxyBase}/moviedays-fallback?${params.toString()}`;
 }
 
+async function fetchSourceListing(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    // Consumir el cuerpo dentro del plazo: algunos proveedores envían cabeceras
+    // y luego dejan la descarga pendiente indefinidamente.
+    const body = await response.text();
+    return { ok: response.ok, status: response.status, text: async () => body, json: async () => JSON.parse(body) };
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 async function fetchMovieDaysCandidates(embedInfo) {
   const url = buildMovieDaysFallbackUrl(embedInfo);
   if (!url) return [];
   try {
-    const response = await fetch(url);
+    const response = await fetchSourceListing(url, 15000);
     if (!response.ok) {
       playerConsole("warn", "[moviedays-fallback] respuesta no ok:", response.status);
       return [];
@@ -2906,7 +2958,7 @@ async function fetchMovieDaysCandidates(embedInfo) {
       .filter((item) => typeof item?.embed_url === "string")
       .map((item) => mapMovieDaysEmbedToCandidate(item.embed_url))
       .filter(Boolean)
-      .slice(0, 6);
+      .slice(0, 18);
     playerConsole(
       "info",
       "[moviedays-fallback] candidatos:",
@@ -2928,7 +2980,8 @@ async function fetchExternalCandidates(embedInfo) {
     // reenvia el HTML con los headers correctos.
     const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
     const url = proxyBase ? `${proxyBase}/listing?url=${encodeURIComponent(targetUrl)}` : targetUrl;
-    const response = await fetch(url);
+    const response = await fetchSourceListing(url, 18000);
+    if (!response.ok) throw new Error(`listing_${response.status}`);
     const html = await response.text();
 
     const doc = new DOMParser().parseFromString(html, "text/html");
@@ -2998,6 +3051,7 @@ async function tryHlsWishFallback(showMessage = true) {
   let streamIndex = 0;
   let cleanIndex = 0;
   let embedIndex = 0;
+  let secondarySearchDone = false;
 
   const tryNextExternal = async () => {
     while (embedIndex < externalCandidates.length) {
@@ -3068,6 +3122,17 @@ async function tryHlsWishFallback(showMessage = true) {
     }
 
     if (cleanIndex >= embedCandidates.length) {
+      // Buscar también en MovieDays cuando el listado existe pero sus videos fallan.
+      if (!secondarySearchDone) {
+        secondarySearchDone = true;
+        showExternalLoadingOverlay("Buscando más fuentes sin anuncios…");
+        const extra = await fetchMovieDaysCandidates(embedInfo);
+        const seen = new Set(embedCandidates.map((item) => item.url));
+        const fresh = extra.filter((item) => !seen.has(item.url) && seen.add(item.url));
+        embedCandidates.push(...fresh);
+        externalCandidates.push(...fresh.filter((item) => item.iframeEligible !== false));
+        if (fresh.length) return tryNextCandidate();
+      }
       const unavailableMessage = externalCandidates.length
         ? "No hay una fuente limpia disponible para este título."
         : embedCandidates.length

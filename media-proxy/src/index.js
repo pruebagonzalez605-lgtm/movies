@@ -261,64 +261,50 @@ function unpackDeanEdwards(html) {
   return p;
 }
 
-function collectM3u8Candidates(text) {
-  if (!text) return [];
-  const candidates = [];
-  const re = /https:\/\/[a-z0-9.-]+\/[^\s"'<>\\]+?\.m3u8[^\s"'<>\\]*/gi;
-  let match;
-  while ((match = re.exec(text)) !== null) {
-    let url = match[0]
-      .replace(/\\u0026/g, "&")
-      .replace(/\\u002f/gi, "/")
-      .replace(/\\\//g, "/")
-      .replace(/&amp;/g, "&")
-      .replace(/[,;]+$/, "");
-    if (STREAM_AD_HINT.test(url)) continue;
-    if (isDecoyStreamUrl(url)) continue;
-    candidates.push(url);
+export function extractCleanStreamsFromHtml(html, baseUrl) {
+  if (!html || typeof html !== "string") return [];
+  const decode = (text) => text
+    .replace(/\\u([a-f0-9]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/\\x([a-f0-9]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/\\\//g, "/").replace(/&amp;|&#38;|&#x26;/gi, "&");
+  const bags = [decode(html)];
+  const unpacked = unpackDeanEdwards(html);
+  if (unpacked) bags.push(decode(unpacked));
+  // Codificación de URLs y atob literal, sin evaluar JavaScript del proveedor.
+  for (const bag of [...bags]) {
+    for (const match of bag.matchAll(/https?%3a%2f%2f[^\s"'<>]+/gi)) {
+      try { bags.push(decode(decodeURIComponent(match[0]))); } catch { /* URL incompleta */ }
+    }
+    for (const match of bag.matchAll(/\batob\(\s*["']([A-Za-z0-9+/=]{8,20000})["']\s*\)/g)) {
+      try { bags.push(decode(atob(match[1]))); } catch { /* Base64 inválido */ }
+    }
   }
-  return candidates;
+  const unique = new Set();
+  const add = (value) => {
+    try {
+      if (/^https?%3a/i.test(value)) value = decodeURIComponent(value);
+      value = decode(value);
+      if (value.includes("\\")) return;
+      const url = new URL(value.replace(/[,;]+$/, ""), baseUrl);
+      if (url.protocol !== "https:" || url.username || url.password) return;
+      if (!/\.(?:m3u8|mp4|webm)$/i.test(url.pathname)) return;
+      if (STREAM_AD_HINT.test(url.href) || isDecoyStreamUrl(url.href)) return;
+      unique.add(url.href);
+    } catch { /* Recurso no válido */ }
+  };
+  for (const bag of bags) {
+    for (const match of bag.matchAll(/https:\/\/[^\s"'<>\\]+?\.(?:m3u8|mp4|webm)(?:\?[^\s"'<>\\]*)?/gi)) add(match[0]);
+    // HTML5 video/source, JSON de fuentes y configuración JWPlayer/Video.js.
+    for (const match of bag.matchAll(/(?:["']?(?:file|src|url|hls|playlist)["']?\s*[:=]\s*)["']([^"']+)["']/gi)) add(match[1]);
+  }
+  return [...unique].sort((a, b) => {
+    const score = (url) => (/master\.m3u8/i.test(url) ? 4 : 0) + (/urlset/i.test(url) ? 2 : 0) + (/\.m3u8/i.test(url) ? 1 : 0);
+    return score(b) - score(a);
+  }).slice(0, 24);
 }
 
 export function extractCleanStreamFromHtml(html) {
-  if (!html || typeof html !== "string") return null;
-
-  const bags = [html];
-  const unpacked = unpackDeanEdwards(html);
-  if (unpacked) bags.push(unpacked);
-
-  for (const bag of bags) {
-    const fileRe = /file\s*:\s*"([^"]+\.m3u8[^"]*)"/gi;
-    let fm;
-    while ((fm = fileRe.exec(bag)) !== null) {
-      bags.push(fm[1]);
-    }
-  }
-
-  const candidates = [];
-  for (const bag of bags) {
-    candidates.push(...collectM3u8Candidates(bag));
-  }
-
-  const seen = new Set();
-  const unique = [];
-  for (const u of candidates) {
-    if (seen.has(u)) continue;
-    seen.add(u);
-    unique.push(u);
-  }
-
-  if (!unique.length) return null;
-
-  unique.sort((a, b) => {
-    const score = (u) =>
-      (/master\.m3u8/i.test(u) ? 4 : 0)
-      + (/urlset/i.test(u) ? 2 : 0)
-      + (/\.m3u8/i.test(u) ? 1 : 0);
-    return score(b) - score(a);
-  });
-
-  return unique[0];
+  return extractCleanStreamsFromHtml(html)[0] || null;
 }
 
 /** CineLink publica la configuración MP4 en una petición JSON separada. */
@@ -543,8 +529,35 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
     return jsonResponse(request, env, 502, reason);
   }
 
-  const stream = extractCleanStreamFromHtml(html)
-    || await resolveMovieDaysMp4(embedUrl, html);
+  const streams = extractCleanStreamsFromHtml(html, embedUrl.href);
+  if (!streams.length) {
+    const mp4 = await resolveMovieDaysMp4(embedUrl, html);
+    if (mp4) streams.push(mp4);
+  }
+  // Algunos proveedores alojan el reproductor en un iframe interno.
+  // Una sola capa, hasta tres URLs y siempre la lista de dominios permitidos.
+  if (!streams.length) {
+    const nested = new Set();
+    for (const match of html.matchAll(/<iframe\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)) {
+      try {
+        const child = validateEmbedUrl(new URL(match[1].replace(/&amp;/g, "&"), embedUrl).href);
+        if (child.href !== embedUrl.href) nested.add(child.href);
+      } catch { /* Ignorar iframes publicitarios o hosts no autorizados */ }
+    }
+    const results = await Promise.allSettled([...nested].slice(0, 3).map(async (url) => {
+      const response = await fetchWithTimeout(url, { redirect: "error", headers: { Referer: embedUrl.href } }, 5000);
+      if (!response.ok) return [];
+      const childHtml = await response.text();
+      const found = extractCleanStreamsFromHtml(childHtml, url);
+      if (!found.length) {
+        const mp4 = await resolveMovieDaysMp4(new URL(url), childHtml);
+        if (mp4) found.push(mp4);
+      }
+      return found;
+    }));
+    for (const result of results) if (result.status === "fulfilled") streams.push(...result.value);
+  }
+  const stream = streams[0];
   if (!stream) {
     return jsonResponse(request, env, 404, "stream_not_found");
   }
@@ -557,6 +570,7 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
 
   const response = jsonResponse(request, env, 200, {
     stream,
+    streams: [...new Set(streams)],
     proxied,
     embed: embedUrl.href,
   });

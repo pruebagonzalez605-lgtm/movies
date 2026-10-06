@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
+import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -203,11 +204,38 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onBackPressed() {
     WebView webView = getBridge().getWebView();
-    if (webView != null && webView.canGoBack()) {
-      webView.goBack();
+    if (webView != null) {
+      // Primero cerrar el panel activo; después volver al catálogo.
+      webView.evaluateJavascript("Boolean(window.ColevanaHandleBack && window.ColevanaHandleBack())", result -> {
+        if ("true".equals(result)) return;
+        if (webView.canGoBack()) webView.goBack();
+        else MainActivity.super.onBackPressed();
+      });
       return;
     }
     super.onBackPressed();
+  }
+
+  @Override
+  public boolean dispatchKeyEvent(KeyEvent event) {
+    if (!isTvDevice()) return super.dispatchKeyEvent(event);
+    String key;
+    switch (event.getKeyCode()) {
+      case KeyEvent.KEYCODE_MEDIA_REWIND: key = "MediaRewind"; break;
+      case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD: key = "MediaFastForward"; break;
+      case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE: key = "MediaPlayPause"; break;
+      case KeyEvent.KEYCODE_MEDIA_PLAY: key = "MediaPlay"; break;
+      case KeyEvent.KEYCODE_MEDIA_PAUSE: key = "MediaPause"; break;
+      case KeyEvent.KEYCODE_MEDIA_STOP: key = "MediaStop"; break;
+      default: return super.dispatchKeyEvent(event);
+    }
+    WebView webView = getBridge().getWebView();
+    if (webView == null) return super.dispatchKeyEvent(event);
+    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+      webView.evaluateJavascript("window.ColevanaRemote && window.ColevanaRemote.handleKey('"
+          + key + "', " + (event.getRepeatCount() > 0) + ")", null);
+    }
+    return true;
   }
 
   private void hideSystemUi() {

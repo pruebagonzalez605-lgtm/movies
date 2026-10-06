@@ -3748,6 +3748,25 @@ html.tv-device .card-genre-pill {
 
 /* TV: la salida debe permanecer dentro de #mediaSlot, incluso en fullscreen
    real y después de sustituir <video> por un iframe externo. */
+.tv-playback-controls { display: none; }
+html.tv-locked-fullscreen .catalog-modal.is-open { z-index: 10000; }
+html.tv-device .tv-playback-controls:not([hidden]) {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 14px; position: absolute; bottom: 100px; left: 12%; right: 12%;
+  z-index: 35; padding: 14px; border-radius: 12px; background: rgba(0,0,0,.82);
+}
+.tv-playback-controls button {
+  min-width: 120px; min-height: 60px; padding: 12px 22px;
+  border: 2px solid #c2a574; border-radius: 10px; background: #20252d;
+  color: #fff; font: inherit; font-size: 20px; cursor: pointer;
+}
+.tv-playback-controls button:focus-visible, .tv-playback-controls button.tv-focus {
+  outline: 4px solid #f6ce86; outline-offset: 4px; background: #5d482a;
+}
+.tv-playback-controls small { width: 100%; text-align: center; color: #ddd; font-size: 14px; }
+html.tv-device .plyr__control { min-width: 50px; min-height: 50px; }
+html.tv-device .plyr__controls { gap: 8px; padding-bottom: 20px; }
+
 .tv-player-back {
   display: none;
 }

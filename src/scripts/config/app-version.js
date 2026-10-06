@@ -4,4 +4,4 @@
 // que coincida con el tag del release APK (ej: "1.0.35"). La web en vivo
 // no puede usar esta constante para saber que version esta instalada en un
 // dispositivo: consulta ColevanaNative.getAppVersion() cuando exista.
-export const APP_VERSION = "1.0.34";
+export const APP_VERSION = "1.0.35";

@@ -11,6 +11,8 @@
  * script (type="module") en cada pagina, despues de nav.js.
  */
 
+import { remoteKey } from "./media-controls.js";
+
 const FOCUSABLE_SELECTOR = [
   "a[href]",
   "button:not([disabled])",
@@ -35,7 +37,8 @@ const ARROW_TO_DIRECTION = {
 const TEXT_ENTRY_TAGS = new Set(["INPUT", "TEXTAREA"]);
 
 function isVisible(el) {
-  if (!el || el.hidden) return false;
+  if (!el || el.closest("[hidden], [inert], [aria-hidden='true']") || el.disabled) return false;
+  if (el.closest(".plyr--hide-controls") && el.closest(".plyr__controls")) return false;
   const style = window.getComputedStyle(el);
   if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") {
     return false;
@@ -59,7 +62,8 @@ function getOpenSiteNav() {
 }
 
 function getOpenPlayerPanel() {
-  return document.querySelector(".season-dropdown-panel.open")
+  return document.querySelector(".plyr__menu__container:not([hidden])")
+    || document.querySelector(".season-dropdown-panel.open")
     || document.querySelector(".episode-grid-container.open");
 }
 
@@ -68,11 +72,13 @@ function getOpenOverlay() {
 }
 
 function getScopeRoot() {
-  return getOpenOverlay() || document;
+  return getOpenOverlay() || (document.documentElement.classList.contains("tv-locked-fullscreen")
+    ? document.getElementById("mediaSlot") : null) || document;
 }
 
 function getFocusables(root = getScopeRoot()) {
-  return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter(isVisible);
+  return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) =>
+    isVisible(el) && !el.matches("input[type='range']"));
 }
 
 function rectCenter(rect) {
@@ -155,24 +161,34 @@ function handleBack(event) {
   const openSiteNav = getOpenSiteNav();
   const openSeasonDropdown = document.querySelector(".season-dropdown-panel.open");
   const openEpisodeGrid = document.querySelector(".episode-grid-container.open");
-  if (!openModal && !openSearchDropdown && !openSiteNav && !openSeasonDropdown && !openEpisodeGrid) return;
+  const playerMenu = document.querySelector(".plyr__menu__container:not([hidden])");
+  if (!openModal && !openSearchDropdown && !openSiteNav && !openSeasonDropdown && !openEpisodeGrid && !playerMenu) return false;
 
   event.preventDefault();
+  if (playerMenu) {
+    document.querySelector(".plyr [data-plyr='settings']")?.click();
+    document.querySelector(".plyr [data-plyr='settings']")?.focus();
+    return true;
+  }
   if (openSeasonDropdown) {
     document.getElementById("seasonSelectTrigger")?.click();
     document.getElementById("seasonSelectTrigger")?.focus();
-    return;
+    return true;
   }
   if (openEpisodeGrid) {
     document.getElementById("closeGridBtn")?.click();
-    return;
+    document.getElementById("toggleEpisodeBtn")?.focus();
+    return true;
   }
-  // Reutiliza el cierre ya implementado en cada pagina, que escucha "Escape".
-  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  // Reutiliza los botones de cierre y sus manejadores de cada página.
+  if (openModal) openModal.querySelector(".catalog-modal-close, .resume-dismiss, [data-modal-close]")?.click();
+  else if (openSiteNav) document.querySelector("[data-nav-toggle]")?.click();
+  else if (openSearchDropdown) openSearchDropdown.classList.remove("is-open");
+  return true;
 }
 
 function handleDirectional(event) {
-  const direction = ARROW_TO_DIRECTION[event.key];
+  const direction = ARROW_TO_DIRECTION[remoteKey(event)];
   if (!direction) return;
 
   const active = document.activeElement;
@@ -181,7 +197,7 @@ function handleDirectional(event) {
   if (active && TEXT_ENTRY_TAGS.has(active.tagName)) return;
   if (active && active.tagName === "SELECT") return;
 
-  if (!active || active === document.body) {
+  if (!active || active === document.body || !isVisible(active) || !getScopeRoot().contains(active)) {
     event.preventDefault();
     focusFirstAvailable();
     return;
@@ -281,9 +297,23 @@ function markFocusForFallback() {
 }
 
 function init() {
+  window.ColevanaHandleBack = () => handleBack({ preventDefault() {} }) === true;
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Backspace") {
+    if (event.defaultPrevented) return;
+    const key = remoteKey(event);
+    if (key === "Backspace" || key === "Escape" || key === "BrowserBack" || key === "GoBack") {
       handleBack(event);
+      return;
+    }
+    if (["Enter", "Select", "Accept"].includes(key)) {
+      const active = document.activeElement;
+      if (active?.matches("button, a, [role='button'], [role='menuitemradio']") && isVisible(active)) {
+        event.preventDefault();
+        if (!event.repeat) active.click();
+      } else if (active === document.body) {
+        event.preventDefault();
+        focusFirstAvailable();
+      }
       return;
     }
     handleDirectional(event);

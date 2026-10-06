@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="./site.webmanifest">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.css">
-  <link rel="stylesheet" href="./src/styles/app.css?v=20260929-nav">
+  <link rel="stylesheet" href="./src/styles/app.css?v=20261006-tv-controls">
   <link rel="stylesheet" href="./src/styles/adblock.css">
 </head>
 
@@ -83,6 +83,13 @@
         <div class="media-slot" id="mediaSlot">
           <video id="player" controls preload="metadata" playsinline webkit-playsinline></video>
           <button id="tvPlayerBackBtn" class="tv-player-back" type="button" aria-label="Volver al catálogo">← Volver</button>
+          <div id="tvPlaybackControls" class="tv-playback-controls" role="group" aria-label="Controles de televisión" hidden>
+            <button type="button" data-tv-action="rewind" aria-label="Retroceder 10 segundos">↶ 10 s</button>
+            <button type="button" data-tv-action="play" id="tvPlayPauseBtn">▶ Reproducir</button>
+            <button type="button" data-tv-action="forward" aria-label="Adelantar 10 segundos">10 s ↷</button>
+            <span id="tvSeekFeedback" aria-live="polite"></span>
+            <small>Flechas: navegar · OK: seleccionar · ◀◀ / ▶▶: mover 10 s</small>
+          </div>
 
           <!-- ==================== CARGANDO FUENTE ALTERNATIVA ====================
      Solo aparece cuando el reproductor propio NO pudo servir el archivo y
@@ -272,12 +279,12 @@
     </div>
   </div>
   <script type="module" src="./src/scripts/nav.js"></script>
-  <script type="module" src="./src/scripts/tv/spatial-nav.js"></script>
+  <script type="module" src="./src/scripts/tv/spatial-nav.js?v=20261006-tv-controls"></script>
   <script type="module" src="./src/scripts/services/tv-app-prompt.js?apk-updates=1"></script>
   <script type="module" src="./src/scripts/services/update-checker.js?apk-updates=1"></script>
   <script type="module" src="./src/scripts/search-ui.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.polyfilled.min.js"></script>
-  <script type="module" src="./src/scripts/player-page.js"></script>
+  <script type="module" src="./src/scripts/player-page.js?v=20261006-tv-controls"></script>
   <script type="module" src="./src/scripts/adblock-boot.js"></script>
 </body>
 
