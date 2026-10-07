@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import { buildProviderCandidates, mergeProviderCandidates, TMDB_EMBED_PROVIDERS, getProviderSandbox } from '../../src/scripts/services/external-providers.js';
+import { buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, TMDB_EMBED_PROVIDERS, getProviderSandbox } from '../../src/scripts/services/external-providers.js';
 
 test('each provider has separate movie and episode routes with the exact requested episode', () => {
   const movies = buildProviderCandidates({ kind: 'movie', tmdbId: 57214 });
@@ -80,12 +80,49 @@ test('verified Spanish source applies only to Mr Robot S1E1 and avoids failed li
     { ...episode, tmdbId: 1405 }, { kind: 'movie', tmdbId: 62560 }]) {
     assert.ok(buildProviderCandidates(info).every(candidate => !candidate.verifiedSpanish));
   }
-  const context = vm.createContext({ buildProviderCandidates,
+  const context = vm.createContext({ buildProviderCandidates, buildVerifiedDirectStreams,
     buildExternalListingUrl() { throw Error('Must not wait for listings'); },
     fetchMovieDaysCandidates() { throw Error('Must not wait for secondary listings'); },
   });
   vm.runInContext(readFunction('fetchExternalCandidates', 'async function tryHlsWishFallback'), context);
   assert.equal((await context.fetchExternalCandidates(episode)).embedCandidates[0].url, candidates[0].url);
+});
+
+test('shared HLS applies only to the confirmed episode and expires before using the embed backup', () => {
+  const info = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
+  const expiry = 1791430901000;
+  const [url] = buildVerifiedDirectStreams(info, expiry - 1);
+  assert.match(url, /\/master\.m3u8\?/);
+  const params = new URL(url).searchParams;
+  assert.equal((Number(params.get('s')) + Number(params.get('e'))) * 1000, expiry);
+  assert.deepEqual(buildVerifiedDirectStreams(info, expiry), []);
+  assert.deepEqual(buildVerifiedDirectStreams(info, expiry + 1), []);
+  assert.deepEqual(buildVerifiedDirectStreams({ ...info, episode: 2 }, expiry - 1), []);
+  assert.deepEqual(buildVerifiedDirectStreams(info, NaN), []);
+});
+
+test('shared HLS plays in the native player first and falls back to Voe if playback fails', async () => {
+  for (const works of [true, false]) {
+    const calls = [];
+    const episode = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
+    const context = vm.createContext({
+      state: {}, dom: { status: { style: {} } }, document: { getElementById: () => ({ style: {} }) },
+      window: { setTimeout() {}, clearTimeout() {} }, setTimeout() {}, playerConsole() {},
+      showExternalLoadingOverlay() {}, hideExternalLoadingOverlay() {},
+      getExternalEmbedInfo: async () => episode, removeExternalRetryLink() {}, removeAudioTrackSelector() {},
+      fetchExternalCandidates: async () => ({ directStreams: ['https://cdn.example/master.m3u8'],
+        movieDaysSearched: false, embedCandidates: buildProviderCandidates(episode) }),
+      viaHlsProxy: url => url,
+      mountDirectStream: async () => { calls.push('native'); return works; },
+      mountExternalCandidate: async (_, candidate) => { calls.push(candidate.url); return true; },
+      fetchMovieDaysCandidates: async () => { throw Error('Must not delay backup'); },
+      bindExternalPlaybackTracking() {}, offerSavedProgress() {}, showAdblockHint() {}, hideAdblockHint() {},
+      showExternalRetryLink() {},
+    });
+    vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
+    assert.equal(await context.tryHlsWishFallback(), true);
+    assert.deepEqual(calls, works ? ['native'] : ['native', 'https://voe.sx/e/7b9skbphpmon']);
+  }
 });
 
 test('verified Spanish iframe mounts first without extraction or automatic timed switching', async () => {

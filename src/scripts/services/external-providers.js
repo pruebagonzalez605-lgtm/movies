@@ -7,6 +7,20 @@ export const TMDB_EMBED_PROVIDERS = [
   { name: "VidSrc Link", origin: "https://www.vidsrc.link", movie: "/embed/movie", tv: "/embed/tv" },
 ];
 
+// Enlace HLS compartido por el usuario después de verificar Voe. Es temporal:
+// s + e indica la vigencia de la firma; después se usa el embed de respaldo.
+const MR_ROBOT_S1E1_STREAM = {
+  url: "https://ugc-cdn-caching-n34e0iwmh45hhkfwkr.cloudwindow-route.com/engine/hls2-c/01/18309/7b9skbphpmon_,n,.urlset/master.m3u8?t=RNyEYlAIvuC9mYBA7POPIt6AZgPJjst5iXPwmLqvx4c&s=1791416501&e=14400&f=91546341&node=PvA+PsfoyCg4sSANgS9mEA+1TCLcoSqtt2o71fD2bow=&i=191.107&sp=2500&asn=3816&q=n&rq=7f24S8wT6IEFXtE7vGeQkYpH4IsygB1S0TYNmfar",
+  expiresAt: 1791430901000,
+};
+
+export function buildVerifiedDirectStreams(info, now = Date.now()) {
+  if (info?.kind !== "episode" || Number(info.tmdbId) !== 62560
+    || Number(info.season) !== 1 || Number(info.episode) !== 1
+    || !Number.isFinite(now) || now >= MR_ROBOT_S1E1_STREAM.expiresAt) return [];
+  return [MR_ROBOT_S1E1_STREAM.url];
+}
+
 export function getProviderSandbox(value) {
   // Videasy y los reproductores internos de VidSrc rechazan sandbox incluso
   // con scripts y formularios permitidos. Validar origen y ruta, nunca el nombre.
