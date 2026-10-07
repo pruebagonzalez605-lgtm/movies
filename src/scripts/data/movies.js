@@ -1432,6 +1432,16 @@ export const MOVIES = [
     tmdbId: 1291595,
     gradient: ["#3d0d0d", "#8a6a1e"],
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/INS.mp4",
+  },
+  {
+    code: "148",
+    title: "Proyecto X",
+    addedAt: "2026-10-06",
+    genre: "comedia",
+    tmdbTitle: "Project X",
+    tmdbYear: 2012,
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    src: "",
   }
 
 
