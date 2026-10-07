@@ -30,13 +30,14 @@ test('iframe mounting omits sandbox only for supported provider origins and play
   const trusted = [
     ...buildProviderCandidates({ kind: 'movie', tmdbId: 57214 }),
     ...buildProviderCandidates({ kind: 'episode', tmdbId: 62560, season: 1, episode: 1 }),
-  ].map(candidate => candidate.url);
+  ].filter(candidate => !candidate.verifiedSpanish).map(candidate => candidate.url);
   const restricted = [
     'https://player.videasy.to.evil.example/movie/57214',
     'http://player.videasy.to/movie/57214', 'https://user:pass@player.videasy.to/movie/57214',
     'https://player.videasy.to/unrelated', 'https://vidsrc.sh/sandbox.php',
     'https://vidsrc.to.evil.example/embed/movie/57214', 'https://vidsrc.to/embed/tv/62560/1',
     'https://vidsrc.to/embed/movie/57214/extra',
+    'https://voe.sx/e/7b9skbphpmon',
   ];
   for (const url of [...trusted, ...restricted]) {
     const attributes = new Map();
@@ -68,6 +69,46 @@ function readFunction(name, nextMarker) {
   const start = source.indexOf(`async function ${name}(`);
   return source.slice(start, source.indexOf(nextMarker, start));
 }
+
+test('verified Spanish source applies only to Mr Robot S1E1 and avoids failed listing requests', async () => {
+  const episode = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
+  const candidates = buildProviderCandidates(episode);
+  assert.equal(candidates[0].url, 'https://voe.sx/e/7b9skbphpmon');
+  assert.equal(candidates[0].verifiedSpanish, true);
+  assert.equal(candidates.length, 5);
+  for (const info of [{ ...episode, episode: 2 }, { ...episode, season: 2 },
+    { ...episode, tmdbId: 1405 }, { kind: 'movie', tmdbId: 62560 }]) {
+    assert.ok(buildProviderCandidates(info).every(candidate => !candidate.verifiedSpanish));
+  }
+  const context = vm.createContext({ buildProviderCandidates,
+    buildExternalListingUrl() { throw Error('Must not wait for listings'); },
+    fetchMovieDaysCandidates() { throw Error('Must not wait for secondary listings'); },
+  });
+  vm.runInContext(readFunction('fetchExternalCandidates', 'async function tryHlsWishFallback'), context);
+  assert.equal((await context.fetchExternalCandidates(episode)).embedCandidates[0].url, candidates[0].url);
+});
+
+test('verified Spanish iframe mounts first without extraction or automatic timed switching', async () => {
+  const calls = [];
+  const episode = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
+  const context = vm.createContext({
+    state: {}, dom: { status: { style: {} } }, document: { getElementById: () => ({ style: {} }) },
+    window: { setTimeout() {}, clearTimeout() {} }, setTimeout() {}, playerConsole() {},
+    showExternalLoadingOverlay() {}, hideExternalLoadingOverlay() {},
+    getExternalEmbedInfo: async () => episode, removeExternalRetryLink() {}, removeAudioTrackSelector() {},
+    fetchExternalCandidates: async () => ({ directStreams: [], movieDaysSearched: false,
+      embedCandidates: buildProviderCandidates(episode) }),
+    fetchMovieDaysCandidates: async () => { throw Error('Must not delay verified source'); },
+    resolveEmbedStream: async () => { throw Error('Must not extract verified iframe'); },
+    mountExternalCandidate: async (_, candidate) => { calls.push(candidate.url); return true; },
+    bindExternalPlaybackTracking() {}, offerSavedProgress() {}, showAdblockHint() {},
+    showExternalRetryLink() {},
+  });
+  vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
+  assert.equal(await context.tryHlsWishFallback(), true);
+  assert.deepEqual(calls, ['https://voe.sx/e/7b9skbphpmon']);
+  assert.match(context.dom.status.textContent, /Español Latino/);
+});
 
 test('independent providers remain available when both listing services are down', async () => {
   let requests = 0;

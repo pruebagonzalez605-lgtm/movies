@@ -17,7 +17,7 @@ import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261007-provider-sandbox";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261007-mrrobot-latino";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -3033,6 +3033,10 @@ async function fetchMovieDaysCandidates(embedInfo) {
 
 async function fetchExternalCandidates(embedInfo) {
   const independentCandidates = buildProviderCandidates(embedInfo);
+  // Un embed comprobado no necesita esperar búsquedas que pueden estar caídas.
+  if (independentCandidates[0]?.verifiedSpanish) {
+    return { directStreams: [], embedCandidates: independentCandidates, movieDaysSearched: false };
+  }
   let movieDaysSearched = false;
   try {
     const targetUrl = buildExternalListingUrl(embedInfo);
@@ -3253,6 +3257,7 @@ async function tryHlsWishFallback(showMessage = true) {
     return tryNextCandidate();
   };
 
+  if (embedCandidates[0]?.verifiedSpanish) return await tryNextExternal();
   return await tryNextCandidate();
   } finally {
     hideExternalLoadingOverlay();
