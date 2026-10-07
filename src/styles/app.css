@@ -3749,7 +3749,17 @@ html.tv-device .card-genre-pill {
 /* TV: la salida debe permanecer dentro de #mediaSlot, incluso en fullscreen
    real y después de sustituir <video> por un iframe externo. */
 .tv-playback-controls { display: none; }
-html.tv-device #mediaSlot.tv-controls-hidden video { outline: none !important; box-shadow: none !important; }
+/* El foco del mando puede quedar en la superficie al ocultar los botones.
+   Solo los controles deben dibujar un contorno, nunca la imagen completa. */
+html.tv-device #mediaSlot,
+html.tv-device #mediaSlot video,
+html.tv-device #mediaSlot iframe,
+html.tv-device #mediaSlot .plyr,
+html.tv-device #mediaSlot .plyr__video-wrapper {
+  outline: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
 html.tv-device #mediaSlot.tv-controls-hidden .tv-playback-controls,
 html.tv-device #mediaSlot.tv-controls-hidden .plyr__controls,
 html.tv-device #mediaSlot.tv-controls-hidden .plyr__control--overlaid,

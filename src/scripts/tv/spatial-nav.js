@@ -280,7 +280,9 @@ function markFocusForFallback() {
     "focusin",
     (event) => {
       document.querySelectorAll(".tv-focus").forEach((el) => el.classList.remove("tv-focus"));
-      if (event.target instanceof Element && event.target !== document.body && !lastInputWasPointer) {
+      const isPlaybackSurface = event.target instanceof Element
+        && event.target.matches("#mediaSlot, #mediaSlot video, #mediaSlot iframe, #mediaSlot .plyr, #mediaSlot .plyr__video-wrapper");
+      if (event.target instanceof Element && event.target !== document.body && !isPlaybackSurface && !lastInputWasPointer) {
         event.target.classList.add("tv-focus");
       }
     },
