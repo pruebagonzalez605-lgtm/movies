@@ -15,6 +15,7 @@ import {
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
+import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from "./services/external-playback.js";
 
 const supabase = createSupabaseService({
@@ -113,6 +114,7 @@ const state = {
   watchdogStallCount: 0,
   waitingTimer: null,
   playerUi: null,
+  tvVisibility: null,
   resumePrompted: false,
   availableSources: [],
   currentQuality: 1080,
@@ -590,7 +592,7 @@ function mountPlayerUi(media, defaultQuality, qualityOptions) {
     // sigue funcionando igual cuando la barra de progreso (input range)
     // tiene el foco.
     keyboard: { focused: false, global: false },
-    hideControls: !isTvDevice(),
+    hideControls: true,
     speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
     captions: { active: false, language: "auto", update: true },
     previewThumbnails: {
@@ -1922,8 +1924,26 @@ function bindEvents() {
 // Flechas sobre el video desplazan; sobre botones navegan. Las teclas
 // multimedia funcionan desde cualquier botón, salvo con un panel abierto.
 function initRemoteSeekControls() {
+  const hasOpenPanel = () => Boolean(document.querySelector(
+    ".catalog-modal.is-open, .site-nav.is-open, .episode-grid-container.open, .season-dropdown-panel.open, .site-search-dropdown.is-open, .plyr__menu__container:not([hidden])",
+  ));
+  if (isTvDevice() && dom.mediaSlot) {
+    state.tvVisibility = createControlsVisibility({
+      slot: dom.mediaSlot, getVideo: getActiveVideo, getPlayer: () => state.playerUi,
+      isBlocked: () => state.playbackMode !== "video" || hasOpenPanel(),
+    });
+    for (const type of ["pointermove", "pointerdown", "click"]) {
+      dom.mediaSlot.addEventListener(type, () => {
+        if (state.playbackMode === "video") state.tvVisibility.show();
+      });
+    }
+    dom.mediaSlot.addEventListener("focusin", (event) => {
+      if (event.target !== getActiveVideo() && state.playbackMode === "video") state.tvVisibility.show();
+    });
+  }
   const reveal = () => {
-    state.playerUi?.toggleControls?.(true);
+    if (state.tvVisibility) state.tvVisibility.show();
+    else state.playerUi?.toggleControls?.(true);
   };
   const play = (video) => { video.play().catch(() => {}); };
   const handleKey = (event) => {
@@ -1936,6 +1956,17 @@ function initRemoteSeekControls() {
     const video = syncActiveVideo();
     if (state.playbackMode !== "video" || !video?.isConnected) return false;
     const inPlayer = active === document.body || dom.mediaSlot?.contains(active);
+    if (inPlayer && isTvDevice()) {
+      if (["Escape", "Backspace", "BrowserBack", "GoBack"].includes(key)) return state.tvVisibility?.hide() || false;
+      const wasHidden = state.tvVisibility?.isHidden();
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "Spacebar"].includes(key)) {
+        reveal();
+        if (wasHidden && ["ArrowUp", "ArrowDown", "Enter"].includes(key)) {
+          document.getElementById("tvPlayPauseBtn")?.focus();
+          return true;
+        }
+      }
+    }
     const onButton = active?.closest("button, a, [role='menuitem'], [role='menuitemradio']");
     let handled = false;
     if (key === "MediaRewind" || key === "MediaFastForward"
@@ -1959,7 +1990,10 @@ function initRemoteSeekControls() {
     return handled;
   };
   // Android entrega teclas multimedia que algunos WebView no convierten a DOM.
-  window.ColevanaRemote = { handleKey: (key, repeat = false) => handleKey({ key, repeat }) };
+  window.ColevanaRemote = {
+    handleKey: (key, repeat = false) => handleKey({ key, repeat }),
+    hideControls: () => state.tvVisibility?.hide() || false,
+  };
   dom.tvControls?.addEventListener("click", (event) => {
     const action = event.target.closest("[data-tv-action]")?.dataset.tvAction;
     if (!action) return;
@@ -1973,6 +2007,7 @@ function initRemoteSeekControls() {
       const button = document.getElementById("tvPlayPauseBtn");
       if (button) button.textContent = video?.paused ? "▶ Reproducir" : "❚❚ Pausar";
       if (dom.tvControls) dom.tvControls.hidden = !isTvDevice() || state.playbackMode !== "video";
+      if (state.tvVisibility && state.playbackMode === "video") reveal();
     }, true);
   }
   document.addEventListener(
@@ -2753,6 +2788,8 @@ function collectExternalCandidates(data) {
 // alternativa externa." aunque el video sí funcionara.
 function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
   return new Promise((resolve) => {
+    state.tvVisibility?.destroy();
+    container.classList.remove("tv-controls-hidden");
     stopExternalTracking();
     destroyPlayerUi();
     if (dom.mobileQuickControls) dom.mobileQuickControls.hidden = true;
@@ -2892,6 +2929,8 @@ function showExternalRetryLink(label, onRetry) {
 }
 
 function showUnavailablePlayerMessage(message) {
+  state.tvVisibility?.destroy();
+  dom.mediaSlot.classList.remove("tv-controls-hidden");
   stopExternalTracking();
   if (dom.mobileQuickControls) dom.mobileQuickControls.hidden = true;
   if (dom.tvControls) dom.tvControls.hidden = true;

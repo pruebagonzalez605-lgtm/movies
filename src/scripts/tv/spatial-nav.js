@@ -298,7 +298,8 @@ function markFocusForFallback() {
 }
 
 function init() {
-  window.ColevanaHandleBack = () => handleBack({ preventDefault() {} }) === true;
+  window.ColevanaHandleBack = () => handleBack({ preventDefault() {} }) === true
+    || window.ColevanaRemote?.hideControls?.() === true;
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented) return;
     const key = remoteKey(event);

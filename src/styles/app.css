@@ -3749,6 +3749,14 @@ html.tv-device .card-genre-pill {
 /* TV: la salida debe permanecer dentro de #mediaSlot, incluso en fullscreen
    real y después de sustituir <video> por un iframe externo. */
 .tv-playback-controls { display: none; }
+html.tv-device #mediaSlot.tv-controls-hidden video { outline: none !important; box-shadow: none !important; }
+html.tv-device #mediaSlot.tv-controls-hidden .tv-playback-controls,
+html.tv-device #mediaSlot.tv-controls-hidden .plyr__controls,
+html.tv-device #mediaSlot.tv-controls-hidden .plyr__control--overlaid,
+html.tv-device #mediaSlot.tv-controls-hidden .tv-player-back,
+html.tv-device #mediaSlot.tv-controls-hidden .episode-toggle-btn {
+  opacity: 0 !important; visibility: hidden !important; pointer-events: none !important;
+}
 .external-provider-notice { display: none; }
 html.tv-device .external-provider-notice:not([hidden]),
 #mediaSlot:fullscreen .external-provider-notice:not([hidden]),
