@@ -1,3 +1,4 @@
+import { cinehaxPath, discoverCinehax } from "./cinehax.js";
 const RELEASE_PATH_MARKER = "/releases/download/";
 const FORWARDED_REQUEST_HEADERS = [
   "range",
@@ -1296,6 +1297,16 @@ export async function handleRequest(request, env = {}, ctx) {
 
   if (requestUrl.pathname === "/resolve-stream") {
     return handleResolveStream(request, env, requestUrl, ctx);
+  }
+
+  if (requestUrl.pathname === "/cinehax-fallback") {
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+    if (request.method !== "GET") return jsonResponse(request, env, 405, "method_not_allowed");
+    let path;
+    try { path = cinehaxPath(requestUrl.searchParams); }
+    catch (error) { return jsonResponse(request, env, 400, error.message); }
+    try { return jsonResponse(request, env, 200, await discoverCinehax(path)); }
+    catch { return jsonResponse(request, env, 502, "cinehax_unavailable"); }
   }
 
   if (requestUrl.pathname === "/listing") {

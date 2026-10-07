@@ -150,7 +150,7 @@ test('verified Spanish iframe mounts first without extraction or automatic timed
 test('independent providers remain available when both listing services are down', async () => {
   let requests = 0;
   const context = vm.createContext({
-    buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: { proxyBaseUrl: 'https://proxy.example' },
+    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: { proxyBaseUrl: 'https://proxy.example' },
     buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
     fetchSourceListing: async () => { throw Error('offline'); },
     fetchMovieDaysCandidates: async () => { requests++; return []; }, playerConsole() {},
@@ -165,7 +165,7 @@ test('independent providers remain available when both listing services are down
 test('a successful primary listing still offers independent sources', async () => {
   const primary = { provider: { name: 'Vimeos' }, url: 'https://vimeos.net/embed-film' };
   const context = vm.createContext({
-    buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: {},
+    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: {},
     buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
     fetchSourceListing: async () => ({ ok: true, text: async () => '<script id="data">{}</script>' }),
     DOMParser: class { parseFromString() { return { querySelector: () => ({ textContent: '{}' }) }; } },
@@ -177,6 +177,24 @@ test('a successful primary listing still offers independent sources', async () =
   assert.equal(result.embedCandidates[0], primary);
   assert.equal(result.embedCandidates.length, 5);
   assert.equal(result.movieDaysSearched, false);
+});
+
+test('automatic discovery keeps title-specific streams when older listings fail', async () => {
+  for (const info of [{ kind: 'movie', tmdbId: 550 }, { kind: 'episode', tmdbId: 1405, season: 8, episode: 12 }]) {
+    const stream = `https://cdn.example/${info.tmdbId}/${info.season || 0}/${info.episode || 0}.m3u8`;
+    const context = vm.createContext({ buildProviderCandidates, mergeProviderCandidates,
+      fetchCinehaxCandidates: async requested => {
+        assert.equal(requested, info);
+        return { directStreams: [stream], embedCandidates: [{ url: 'https://voe.sx/e/source', provider: { name: 'Cinehax' } }] };
+      }, MEDIA_CONFIG: {}, buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
+      fetchSourceListing: async () => { throw Error('offline'); },
+      fetchMovieDaysCandidates: async () => [], playerConsole() {},
+    });
+    vm.runInContext(readFunction('fetchExternalCandidates', 'async function tryHlsWishFallback'), context);
+    const result = await context.fetchExternalCandidates(info);
+    assert.equal(result.directStreams[0], stream);
+    assert.equal(result.embedCandidates.length, 5);
+  }
 });
 
 test('playback tries the next provider on load failure without unsupported extraction or repeated listings', async () => {

@@ -17,7 +17,7 @@ import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261007-mrrobot-hls";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261007-cinehax-auto";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -3031,12 +3031,38 @@ async function fetchMovieDaysCandidates(embedInfo) {
   }
 }
 
+async function fetchCinehaxCandidates(embedInfo) {
+  const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
+  if (!proxyBase) return { directStreams: [], embedCandidates: [] };
+  const params = new URLSearchParams({ tmdb: embedInfo.tmdbId,
+    type: embedInfo.kind === "episode" ? "tv" : "movie" });
+  if (embedInfo.kind === "episode") {
+    params.set("season", embedInfo.season);
+    params.set("episode", embedInfo.episode);
+  }
+  try {
+    const response = await fetchSourceListing(`${proxyBase}/cinehax-fallback?${params}`, 14000);
+    if (!response.ok) return { directStreams: [], embedCandidates: [] };
+    const data = await response.json();
+    return {
+      directStreams: Array.isArray(data.directStreams) ? data.directStreams.filter(url => typeof url === "string" && /^https:\/\//.test(url)) : [],
+      embedCandidates: (Array.isArray(data.embeds) ? data.embeds : []).filter(item => /^https:\/\//.test(item?.url || ""))
+        .map(item => ({ url: item.url, provider: { name: `Cinehax · ${item.name}`, label: "Reproductor externo" }, iframeEligible: true, resolveClean: false })),
+    };
+  } catch (error) {
+    playerConsole("warn", "[cinehax-fallback] proveedor no disponible", error);
+    return { directStreams: [], embedCandidates: [] };
+  }
+}
+
 async function fetchExternalCandidates(embedInfo) {
   const independentCandidates = buildProviderCandidates(embedInfo);
   // Un embed comprobado no necesita esperar búsquedas que pueden estar caídas.
   if (independentCandidates[0]?.verifiedSpanish) {
     return { directStreams: buildVerifiedDirectStreams(embedInfo), embedCandidates: independentCandidates, movieDaysSearched: false };
   }
+  const cinehax = await fetchCinehaxCandidates(embedInfo);
+  independentCandidates.unshift(...cinehax.embedCandidates);
   let movieDaysSearched = false;
   try {
     const targetUrl = buildExternalListingUrl(embedInfo);
@@ -3055,7 +3081,7 @@ async function fetchExternalCandidates(embedInfo) {
     if (!script) throw new Error("No data");
 
     const data = JSON.parse(script.textContent);
-    const directStreams = collectDirectStreams(data);
+    const directStreams = [...new Set([...collectDirectStreams(data), ...cinehax.directStreams])];
     const embedCandidates = collectExternalCandidates(data);
     playerConsole("info", "[external-player] streams directos:", directStreams);
 
@@ -3073,7 +3099,7 @@ async function fetchExternalCandidates(embedInfo) {
     playerConsole("error", "Error obteniendo candidatos externos (vimeus.com):", e);
     playerConsole("info", "[external-player] vimeus.com fallo, probando MovieDays...");
     const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
-    return { directStreams: [], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched: true };
+    return { directStreams: cinehax.directStreams, embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched: true };
   }
 }
 
