@@ -24,15 +24,21 @@ test('merge retains alternate providers and episodes while removing duplicate UR
 });
 
 const source = readFileSync(new URL('../../src/scripts/player-page.js', import.meta.url), 'utf8');
-test('iframe mounting omits sandbox only for the supported Videasy player', async () => {
+test('iframe mounting omits sandbox only for supported provider origins and player routes', async () => {
   const start = source.indexOf('function mountExternalCandidate(');
   const mountSource = source.slice(start, source.indexOf('const RETRY_LINK_ID', start));
-  for (const url of [
-    'https://player.videasy.to/movie/57214', 'https://player.videasy.to/tv/1405/8/12',
-    'https://vidsrc.to/embed/movie/57214', 'https://player.videasy.to.evil.example/movie/57214',
+  const trusted = [
+    ...buildProviderCandidates({ kind: 'movie', tmdbId: 57214 }),
+    ...buildProviderCandidates({ kind: 'episode', tmdbId: 62560, season: 1, episode: 1 }),
+  ].map(candidate => candidate.url);
+  const restricted = [
+    'https://player.videasy.to.evil.example/movie/57214',
     'http://player.videasy.to/movie/57214', 'https://user:pass@player.videasy.to/movie/57214',
-    'https://player.videasy.to/unrelated',
-  ]) {
+    'https://player.videasy.to/unrelated', 'https://vidsrc.sh/sandbox.php',
+    'https://vidsrc.to.evil.example/embed/movie/57214', 'https://vidsrc.to/embed/tv/62560/1',
+    'https://vidsrc.to/embed/movie/57214/extra',
+  ];
+  for (const url of [...trusted, ...restricted]) {
     const attributes = new Map();
     const listeners = new Map();
     const iframe = { style: {}, setAttribute: (key, value) => attributes.set(key, value),
@@ -48,9 +54,9 @@ test('iframe mounting omits sandbox only for the supported Videasy player', asyn
     const loaded = context.mountExternalCandidate({ classList: { remove() {} }, style: {},
       replaceChildren() { listeners.get('load')(); } }, { url, provider: { name: 'Videasy' } });
     assert.equal(await loaded, true);
-    const expected = getProviderSandbox(url);
-    assert.equal(attributes.has('sandbox'), expected !== null, url);
-    if (expected !== null) assert.equal(attributes.get('sandbox'), expected);
+    assert.equal(attributes.has('sandbox'), restricted.includes(url), url);
+    if (restricted.includes(url)) assert.equal(attributes.get('sandbox'),
+      'allow-scripts allow-same-origin allow-presentation allow-forms');
     assert.equal(attributes.has('allowfullscreen'), true);
   }
   assert.equal(getProviderSandbox('https://player.videasy.to/movie/57214'), null);

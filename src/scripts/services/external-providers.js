@@ -8,12 +8,16 @@ export const TMDB_EMBED_PROVIDERS = [
 ];
 
 export function getProviderSandbox(value) {
-  // Videasy rechaza incluso un sandbox con scripts y formularios permitidos.
-  // La excepción corresponde al origen y las rutas del reproductor, no al nombre.
+  // Videasy y los reproductores internos de VidSrc rechazan sandbox incluso
+  // con scripts y formularios permitidos. Validar origen y ruta, nunca el nombre.
   try {
     const url = new URL(value);
-    if (url.origin === "https://player.videasy.to" && !url.username && !url.password
-      && /^\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/.test(url.pathname)) {
+    const provider = TMDB_EMBED_PROVIDERS.find(item => item.origin === url.origin);
+    const isMovie = provider && url.pathname.startsWith(`${provider.movie}/`)
+      && /^[1-9]\d*\/?$/.test(url.pathname.slice(provider.movie.length + 1));
+    const isEpisode = provider && url.pathname.startsWith(`${provider.tv}/`)
+      && /^[1-9]\d*\/\d+\/[1-9]\d*\/?$/.test(url.pathname.slice(provider.tv.length + 1));
+    if (provider && !url.username && !url.password && (isMovie || isEpisode)) {
       return null;
     }
   } catch (_) {}
