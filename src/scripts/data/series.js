@@ -252,6 +252,8 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x6.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x7.mp4",
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x8.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x9.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.28/RAM9x10.mp4",
         ]
       }
     ]
