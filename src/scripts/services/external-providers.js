@@ -7,6 +7,19 @@ export const TMDB_EMBED_PROVIDERS = [
   { name: "VidSrc Link", origin: "https://www.vidsrc.link", movie: "/embed/movie", tv: "/embed/tv" },
 ];
 
+export function getProviderSandbox(value) {
+  // Videasy rechaza incluso un sandbox con scripts y formularios permitidos.
+  // La excepción corresponde al origen y las rutas del reproductor, no al nombre.
+  try {
+    const url = new URL(value);
+    if (url.origin === "https://player.videasy.to" && !url.username && !url.password
+      && /^\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/.test(url.pathname)) {
+      return null;
+    }
+  } catch (_) {}
+  return "allow-scripts allow-same-origin allow-presentation allow-forms";
+}
+
 export function buildProviderCandidates(info) {
   if (!info || !["movie", "episode"].includes(info.kind)) return [];
   const id = Number(info.tmdbId);

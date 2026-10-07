@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import { buildProviderCandidates, mergeProviderCandidates, TMDB_EMBED_PROVIDERS } from '../../src/scripts/services/external-providers.js';
+import { buildProviderCandidates, mergeProviderCandidates, TMDB_EMBED_PROVIDERS, getProviderSandbox } from '../../src/scripts/services/external-providers.js';
 
 test('each provider has separate movie and episode routes with the exact requested episode', () => {
   const movies = buildProviderCandidates({ kind: 'movie', tmdbId: 57214 });
@@ -24,6 +24,40 @@ test('merge retains alternate providers and episodes while removing duplicate UR
 });
 
 const source = readFileSync(new URL('../../src/scripts/player-page.js', import.meta.url), 'utf8');
+test('iframe mounting omits sandbox only for the supported Videasy player', async () => {
+  const start = source.indexOf('function mountExternalCandidate(');
+  const mountSource = source.slice(start, source.indexOf('const RETRY_LINK_ID', start));
+  for (const url of [
+    'https://player.videasy.to/movie/57214', 'https://player.videasy.to/tv/1405/8/12',
+    'https://vidsrc.to/embed/movie/57214', 'https://player.videasy.to.evil.example/movie/57214',
+    'http://player.videasy.to/movie/57214', 'https://user:pass@player.videasy.to/movie/57214',
+    'https://player.videasy.to/unrelated',
+  ]) {
+    const attributes = new Map();
+    const listeners = new Map();
+    const iframe = { style: {}, setAttribute: (key, value) => attributes.set(key, value),
+      addEventListener: (event, callback) => listeners.set(event, callback),
+      removeEventListener: event => listeners.delete(event) };
+    const context = vm.createContext({
+      getProviderSandbox, state: {}, dom: {}, document: { createElement: () => iframe },
+      window: { setTimeout: () => 1, clearTimeout() {} },
+      stopExternalTracking() {}, destroyPlayerUi() {}, resetCastButton() {}, resetDownloadButton() {},
+      restoreMediaSlotOverlays() {},
+    });
+    vm.runInContext(mountSource, context);
+    const loaded = context.mountExternalCandidate({ classList: { remove() {} }, style: {},
+      replaceChildren() { listeners.get('load')(); } }, { url, provider: { name: 'Videasy' } });
+    assert.equal(await loaded, true);
+    const expected = getProviderSandbox(url);
+    assert.equal(attributes.has('sandbox'), expected !== null, url);
+    if (expected !== null) assert.equal(attributes.get('sandbox'), expected);
+    assert.equal(attributes.has('allowfullscreen'), true);
+  }
+  assert.equal(getProviderSandbox('https://player.videasy.to/movie/57214'), null);
+  assert.notEqual(getProviderSandbox('https://player.videasy.to.evil.example/movie/57214'), null);
+  assert.notEqual(getProviderSandbox('invalid URL'), null);
+});
+
 function readFunction(name, nextMarker) {
   const start = source.indexOf(`async function ${name}(`);
   return source.slice(start, source.indexOf(nextMarker, start));

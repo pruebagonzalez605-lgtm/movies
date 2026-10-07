@@ -17,7 +17,7 @@ import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates } from "./services/external-providers.js";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -2835,10 +2835,8 @@ function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
     iframe.title = `Reproductor externo de ${candidate.provider.name}`;
     iframe.tabIndex = 0;
     iframe.setAttribute("allowfullscreen", "");
-    iframe.setAttribute(
-      "sandbox",
-      "allow-scripts allow-same-origin allow-presentation allow-forms",
-    );
+    const sandbox = getProviderSandbox(candidate.url);
+    if (sandbox !== null) iframe.setAttribute("sandbox", sandbox);
     iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
     iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
     iframe.addEventListener("load", onLoad);
