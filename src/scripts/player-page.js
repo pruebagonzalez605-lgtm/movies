@@ -17,6 +17,7 @@ import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from "./services/external-playback.js";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates } from "./services/external-providers.js";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -38,6 +39,7 @@ const EXTERNAL_PLAYER_ORIGINS = [
   "https://www.goodstream.one",
   "https://vimeos.net",
   "https://www.vimeos.net",
+  ...TMDB_EMBED_PROVIDERS.map(provider => provider.origin),
 ];
 const EXTERNAL_HEARTBEAT_MS = 5000;
 
@@ -2757,12 +2759,10 @@ function collectExternalCandidates(data) {
   const seen = new Set();
   const candidates = [];
   for (const provider of EXTERNAL_PROVIDERS) {
-    let count = 0;
     for (const item of found) {
       if (item.provider !== provider || seen.has(item.url)) continue;
       seen.add(item.url);
       candidates.push(item);
-      if (++count === 6) break;
     }
   }
   playerConsole("info", "[external-player] candidatos reconocidos:", candidates.map((item) => ({
@@ -2774,7 +2774,6 @@ function collectExternalCandidates(data) {
       if (seen.has(url)) continue;
       const candidate = mapMovieDaysEmbedToCandidate(url);
       if (candidate) { seen.add(url); candidates.push(candidate); }
-      if (candidates.length >= 36) break;
     }
   }
   return candidates;
@@ -2974,6 +2973,7 @@ function mapMovieDaysEmbedToCandidate(embedUrl) {
     provider: known || { ...MOVIEDAYS_GENERIC_PROVIDER, name: url.hostname.replace(/^www\./, "") },
     url: embedUrl,
     iframeEligible: true,
+    resolveClean: Boolean(known),
   };
 }
 
@@ -3017,11 +3017,10 @@ async function fetchMovieDaysCandidates(embedInfo) {
     }
     const data = await response.json();
     if (!data?.success || !Array.isArray(data.embeds) || !data.embeds.length) return [];
-    const candidates = data.embeds
+    const candidates = mergeProviderCandidates(data.embeds
       .filter((item) => typeof item?.embed_url === "string")
       .map((item) => mapMovieDaysEmbedToCandidate(item.embed_url))
-      .filter(Boolean)
-      .slice(0, 18);
+      .filter(Boolean));
     playerConsole(
       "info",
       "[moviedays-fallback] candidatos:",
@@ -3035,6 +3034,8 @@ async function fetchMovieDaysCandidates(embedInfo) {
 }
 
 async function fetchExternalCandidates(embedInfo) {
+  const independentCandidates = buildProviderCandidates(embedInfo);
+  let movieDaysSearched = false;
   try {
     const targetUrl = buildExternalListingUrl(embedInfo);
     // fetch directo a vimeus.com es bloqueado por CORS (el proveedor no
@@ -3057,19 +3058,20 @@ async function fetchExternalCandidates(embedInfo) {
     playerConsole("info", "[external-player] streams directos:", directStreams);
 
     if (!directStreams.length && !embedCandidates.length) {
+      movieDaysSearched = true;
       playerConsole("info", "[external-player] vimeus.com sin fuentes, probando MovieDays...");
       const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
       if (moviedaysCandidates.length) {
-        return { directStreams: [], embedCandidates: moviedaysCandidates };
+        return { directStreams: [], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched };
       }
     }
 
-    return { directStreams, embedCandidates };
+    return { directStreams, embedCandidates: mergeProviderCandidates(embedCandidates, independentCandidates), movieDaysSearched };
   } catch (e) {
     playerConsole("error", "Error obteniendo candidatos externos (vimeus.com):", e);
     playerConsole("info", "[external-player] vimeus.com fallo, probando MovieDays...");
     const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
-    return { directStreams: [], embedCandidates: moviedaysCandidates };
+    return { directStreams: [], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched: true };
   }
 }
 
@@ -3109,18 +3111,18 @@ async function tryHlsWishFallback(showMessage = true) {
     state._hls = null;
   }
 
-  let { directStreams, embedCandidates } = await fetchExternalCandidates(embedInfo);
+  let { directStreams, embedCandidates, movieDaysSearched = false } = await fetchExternalCandidates(embedInfo);
   const externalCandidates = embedCandidates.filter((candidate) => candidate.iframeEligible !== false);
   let streamIndex = 0;
   let cleanIndex = 0;
   let embedIndex = 0;
-  let secondarySearchDone = false;
+  let secondarySearchDone = movieDaysSearched;
 
   const tryNextExternal = async () => {
     while (embedIndex < externalCandidates.length) {
       const candidate = externalCandidates[embedIndex++];
       if (showMessage) {
-        dom.status.textContent = `Cargando reproductor externo: ${candidate.provider.name}…`;
+        dom.status.textContent = `Probando ${embedIndex} de ${externalCandidates.length}: ${candidate.provider.name}…`;
         dom.status.style.color = "#e8c468";
       }
       // load confirma solo la carga del documento, no la reproducción.
@@ -3188,7 +3190,7 @@ async function tryHlsWishFallback(showMessage = true) {
       // Buscar también en MovieDays cuando el listado existe pero sus videos fallan.
       if (!secondarySearchDone) {
         secondarySearchDone = true;
-        showExternalLoadingOverlay("Buscando más fuentes sin anuncios…");
+        showExternalLoadingOverlay("Buscando en más proveedores…");
         const extra = await fetchMovieDaysCandidates(embedInfo);
         const seen = new Set(embedCandidates.map((item) => item.url));
         const fresh = extra.filter((item) => !seen.has(item.url) && seen.add(item.url));
@@ -3221,7 +3223,7 @@ async function tryHlsWishFallback(showMessage = true) {
     }
 
     // eslint-disable-next-line no-await-in-loop
-    const resolved = await resolveEmbedStream(candidate.url);
+    const resolved = candidate.resolveClean === false ? null : await resolveEmbedStream(candidate.url);
     const cleanList = Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
     for (const cleanStream of cleanList) {
       const viaProxy = /\/proxy-hls\?/i.test(cleanStream);
