@@ -1420,6 +1420,18 @@ export const MOVIES = [
     tmdbYear: 1991,
     src: "",
     tmdbId: 2907,
+  },
+  {
+    code: "147",
+    title: "Noche del demonio: están entre nosotros",
+    addedAt: "2026-10-06",
+    genre: "terror",
+    saga: "la Noche Del Demonio",
+    tmdbTitle: "Insidious: Out of the Further",
+    tmdbYear: 2026,
+    tmdbId: 1291595,
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/INS.mp4",
   }
 
 
