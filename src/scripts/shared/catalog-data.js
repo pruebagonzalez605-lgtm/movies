@@ -277,9 +277,14 @@ export async function ensureSeasonEpisodes(serie, season) {
       if (tvId) {
         const tmdbEpisodes = await tmdbGetSeasonEpisodes(tvId, season.season);
         season.episodes.forEach((episode, index) => {
-          if (!episode.poster && tmdbEpisodes[index]?.poster) {
-            episode.poster = tmdbEpisodes[index].poster;
+          const metadata = tmdbEpisodes.find(item => item.episodeNumber === index + 1);
+          if (!episode.poster && metadata?.poster) {
+            episode.poster = metadata.poster;
           }
+          if (!episode.title && metadata?.title) episode.title = metadata.title;
+          if (!episode.description && metadata?.description) episode.description = metadata.description;
+          episode.runtime ??= metadata?.runtime || null;
+          episode.airDate ??= metadata?.airDate || null;
         });
       }
     }
@@ -300,11 +305,13 @@ export async function ensureSeasonEpisodes(serie, season) {
   const tmdbEpisodes = tvId ? await tmdbGetSeasonEpisodes(tvId, season.season) : [];
 
   season.episodes = season.srcs.map((src, index) => {
-    const tmdbEpisode = tmdbEpisodes[index] || {};
+    const tmdbEpisode = tmdbEpisodes.find(episode => episode.episodeNumber === index + 1) || {};
     return {
       title: tmdbEpisode.title || `Episodio ${index + 1}`,
       description: tmdbEpisode.description || "",
       poster: tmdbEpisode.poster || null,
+      runtime: tmdbEpisode.runtime || null,
+      airDate: tmdbEpisode.airDate || null,
       src,
     };
   });

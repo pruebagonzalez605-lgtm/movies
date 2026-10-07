@@ -219,13 +219,15 @@ function createEpisodeLink(serie, seasonNumber, episode, index) {
   item.href = buildEpisodePlayerUrl(serie, seasonNumber, index + 1);
   item.innerHTML = `
     <div class="catalog-inline-thumb">
-      <span class="catalog-inline-index">E${index + 1}</span>
+      <span class="catalog-inline-index">T${seasonNumber} · E${index + 1}</span>
     </div>
     <div class="catalog-inline-copy">
-      <strong>${episode.title || `Episodio ${index + 1}`}</strong>
-      <span>${episode.description || `Temporada ${seasonNumber}`}</span>
+      <strong></strong>
+      <span></span>
     </div>
   `;
+  item.querySelector(".catalog-inline-copy strong").textContent = episode.title || `Episodio ${index + 1}`;
+  item.querySelector(".catalog-inline-copy span").textContent = episode.description || "Sinopsis no disponible todavía.";
   applyPosterImage(
     item.querySelector(".catalog-inline-thumb"),
     episode.poster || null,

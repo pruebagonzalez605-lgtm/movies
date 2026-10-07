@@ -3385,12 +3385,16 @@ async function loadSeasonEpisodesGrid(seasonNum) {
     row.innerHTML = `
       <div class="ep-row-left">
         <span class="ep-row-code">${seasonNum}×${epNum}</span>
-        <span class="ep-row-title">${episode.title || `Episodio ${epNum}`}</span>
+        <span class="ep-row-title"></span>
+        <span class="ep-row-description"></span>
       </div>
       <div class="ep-row-right">
         <span class="ep-row-meta">${metaText}</span>
       </div>
     `;
+
+    row.querySelector(".ep-row-title").textContent = episode.title || `Episodio ${epNum}`;
+    row.querySelector(".ep-row-description").textContent = episode.description || "Sinopsis no disponible todavía.";
 
     row.onclick = () => {
       // Antes esto hacia window.location.reload(): recargaba toda la
