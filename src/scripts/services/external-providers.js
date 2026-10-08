@@ -62,9 +62,9 @@ export function buildProviderCandidates(info) {
     url: info.kind === "movie" ? `${provider.origin}${provider.movie}/${id}`
       : `${provider.origin}${provider.tv}/${id}/${season}/${episode}`,
     iframeEligible: true,
-    // Estos reproductores resuelven sus fuentes con JavaScript; el Worker
-    // no los soporta como extractores de archivos directos.
-    resolveClean: false,
+    // Probar primero las fuentes públicas; los reproductores que necesitan
+    // JavaScript o verificación conservan el iframe como respaldo.
+    resolveClean: true,
   }))];
 }
 

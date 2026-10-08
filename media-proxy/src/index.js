@@ -9,6 +9,11 @@ const FORWARDED_REQUEST_HEADERS = [
 
 /** Dominios de embeds de los que se puede extraer un m3u8 limpio. */
 const EMBED_HOSTS = new Set([
+  "player.videasy.to",
+  "vidsrc.to",
+  "vidsrc.sh",
+  "www.vidsrc.link",
+  "play.cinehax.com",
   "vimeos.net",
   "www.vimeos.net",
   "goodstream.one",
@@ -210,6 +215,15 @@ export function validateEmbedUrl(rawUrl) {
   if (!EMBED_HOSTS.has(url.hostname.toLowerCase())) {
     throw new Error("forbidden_embed_host");
   }
+  const publicRoutes = {
+    "player.videasy.to": /^\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
+    "vidsrc.to": /^\/embed\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
+    "vidsrc.sh": /^\/embed\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
+    "www.vidsrc.link": /^\/embed\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
+    "play.cinehax.com": /^\/clean-player\/embed\/[a-zA-Z0-9_-]+\/?$/,
+  };
+  const route = publicRoutes[url.hostname.toLowerCase()];
+  if (route && !route.test(url.pathname)) throw new Error("forbidden_embed_path");
   return url;
 }
 
@@ -267,7 +281,8 @@ export function extractCleanStreamsFromHtml(html, baseUrl) {
   const decode = (text) => text
     .replace(/\\u([a-f0-9]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/\\x([a-f0-9]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/\\\//g, "/").replace(/&amp;|&#38;|&#x26;/gi, "&");
+    .replace(/\\\//g, "/").replace(/&quot;|&#34;|&#x22;/gi, '"')
+    .replace(/&#39;|&#x27;|&apos;/gi, "'").replace(/&amp;|&#38;|&#x26;/gi, "&");
   const bags = [decode(html)];
   const unpacked = unpackDeanEdwards(html);
   if (unpacked) bags.push(decode(unpacked));
@@ -481,6 +496,19 @@ function rewriteM3u8(manifestText, manifestUrl, proxyBase) {
   }).join("\n");
 }
 
+async function fetchAllowedEmbed(embedUrl, headers, timeoutMs) {
+  let target = embedUrl;
+  for (let hop = 0; hop < 3; hop++) {
+    const response = await fetchWithTimeout(target.href, { redirect: "manual", headers }, timeoutMs);
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+    const location = response.headers.get("Location");
+    if (!location) throw Error("missing_embed_redirect");
+    // Follow only another public player route, never an ad or arbitrary URL.
+    target = validateEmbedUrl(new URL(location, target).href);
+  }
+  throw Error("too_many_embed_redirects");
+}
+
 async function handleResolveStream(request, env, requestUrl, ctx) {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -510,16 +538,12 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
 
   let html;
   try {
-    const upstream = await fetchWithTimeout(embedUrl.href, {
-      method: "GET",
-      redirect: "follow",
-      headers: {
+    const upstream = await fetchAllowedEmbed(embedUrl, {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
         Referer: `https://${embedUrl.hostname}/`,
-      },
     }, 7000);
     if (!upstream.ok) {
       return jsonResponse(request, env, 502, `embed_fetch_failed_${upstream.status}`);
@@ -546,7 +570,7 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
       } catch { /* Ignorar iframes publicitarios o hosts no autorizados */ }
     }
     const results = await Promise.allSettled([...nested].slice(0, 3).map(async (url) => {
-      const response = await fetchWithTimeout(url, { redirect: "error", headers: { Referer: embedUrl.href } }, 5000);
+      const response = await fetchAllowedEmbed(new URL(url), { Referer: embedUrl.href }, 5000);
       if (!response.ok) return [];
       const childHtml = await response.text();
       const found = extractCleanStreamsFromHtml(childHtml, url);

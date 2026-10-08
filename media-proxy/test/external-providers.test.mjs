@@ -9,7 +9,7 @@ test('each provider has separate movie and episode routes with the exact request
   const episodes = buildProviderCandidates({ kind: 'episode', tmdbId: 1405, season: 8, episode: 12 });
   assert.equal(movies.length, 4);
   assert.equal(episodes.length, TMDB_EMBED_PROVIDERS.length);
-  assert.ok(movies.every(c => c.url.endsWith('/movie/57214') && c.resolveClean === false));
+  assert.ok(movies.every(c => c.url.endsWith('/movie/57214') && c.resolveClean === true));
   assert.ok(episodes.every(c => c.url.endsWith('/tv/1405/8/12') && c.iframeEligible));
   for (const info of [{ kind: 'movie', tmdbId: '../movie' }, { kind: 'movie', tmdbId: -1 },
     { kind: 'episode', tmdbId: 1405, season: 1, episode: 0 },
@@ -197,7 +197,7 @@ test('automatic discovery keeps title-specific streams when older listings fail'
   }
 });
 
-test('playback tries the next provider on load failure without unsupported extraction or repeated listings', async () => {
+test('playback tries public extraction before iframe fallback without repeated listings', async () => {
   const calls = [];
   const context = vm.createContext({
     state: {}, dom: { status: { style: {} } }, document: { getElementById: () => ({ style: {} }) },
@@ -207,7 +207,7 @@ test('playback tries the next provider on load failure without unsupported extra
     fetchExternalCandidates: async () => ({ directStreams: [], movieDaysSearched: true,
       embedCandidates: buildProviderCandidates({ kind: 'movie', tmdbId: 57214 }) }),
     fetchMovieDaysCandidates: async () => { throw Error('Must not repeat failed listing'); },
-    resolveEmbedStream: async () => { throw Error('Iframe-only provider must not use extractor'); },
+    resolveEmbedStream: async () => null,
     mountExternalCandidate: async (_, candidate) => { calls.push(candidate.provider.name); return calls.length === 3; },
     bindExternalPlaybackTracking() {}, offerSavedProgress() {}, showAdblockHint() {}, hideAdblockHint() {},
     showExternalRetryLink() {}, showUnavailablePlayerMessage: () => { throw Error('Third provider should load'); },

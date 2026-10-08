@@ -17,7 +17,7 @@ import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261007-cinehax-auto";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261007-clean-public";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -3047,7 +3047,8 @@ async function fetchCinehaxCandidates(embedInfo) {
     return {
       directStreams: Array.isArray(data.directStreams) ? data.directStreams.filter(url => typeof url === "string" && /^https:\/\//.test(url)) : [],
       embedCandidates: (Array.isArray(data.embeds) ? data.embeds : []).filter(item => /^https:\/\//.test(item?.url || ""))
-        .map(item => ({ url: item.url, provider: { name: `Cinehax · ${item.name}`, label: "Reproductor externo" }, iframeEligible: true, resolveClean: false })),
+        .map(item => ({ url: item.url, provider: { name: `Cinehax · ${item.name}`, label: "Reproductor externo" }, iframeEligible: true,
+          resolveClean: item.url.startsWith("https://play.cinehax.com/clean-player/embed/") })),
     };
   } catch (error) {
     playerConsole("warn", "[cinehax-fallback] proveedor no disponible", error);

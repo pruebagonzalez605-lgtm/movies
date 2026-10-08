@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { extractCleanStreamsFromHtml, handleRequest } from '../src/index.js';
+import { extractCleanStreamsFromHtml, handleRequest, validateEmbedUrl } from '../src/index.js';
 
 test('discovers HTML5, JSON, escaped, percent encoded and base64 media without evaluating scripts', () => {
   const html = String.raw`
@@ -26,6 +26,38 @@ test('rejects ad videos, demo streams, credentials and duplicates', () => {
     <source src="http://vimeos.net/insecure.mp4">
     <source src="https://vimeos.net/film.mp4"><source src="https://vimeos.net/film.mp4">`;
   assert.deepEqual(extractCleanStreamsFromHtml(html), ['https://vimeos.net/film.mp4']);
+});
+
+test('reads entity-encoded player configuration while rejecting ads inside it', () => {
+  const html = '<div data-config="{&quot;src&quot;:&quot;https://cdn.example/master.m3u8?t=abc&amp;x=2&quot;,&quot;ad&quot;:&quot;https://cdn.example/ads/pre.mp4&quot;}"></div>';
+  assert.deepEqual(extractCleanStreamsFromHtml(html), ['https://cdn.example/master.m3u8?t=abc&x=2']);
+});
+
+test('public extraction accepts only player routes on the added providers', () => {
+  for (const url of ['https://player.videasy.to/movie/550', 'https://vidsrc.to/embed/tv/1405/8/12',
+    'https://vidsrc.sh/embed/movie/550', 'https://www.vidsrc.link/embed/movie/550',
+    'https://play.cinehax.com/clean-player/embed/abc']) assert.equal(validateEmbedUrl(url).href, url);
+  for (const url of ['https://play.cinehax.com/edge-data', 'https://vidsrc.sh/admin',
+    'https://player.videasy.to.evil.example/movie/550', 'https://voe.sx/e/abc']) assert.throws(() => validateEmbedUrl(url));
+});
+
+test('resolver follows permitted redirects and refuses offsite advertising redirects', async context => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push(String(url));
+    assert.equal(options.redirect, 'manual');
+    if (String(url).includes('videasy')) return new Response(null, { status: 302, headers: { Location: 'https://vidsrc.sh/embed/movie/550' } });
+    return new Response('<source src="https://cdn.example/movie.mp4">');
+  };
+  const request = new Request('https://proxy.example/resolve-stream?url=' + encodeURIComponent('https://player.videasy.to/movie/550'));
+  assert.equal((await handleRequest(request)).status, 200);
+  assert.equal(calls.length, 2);
+  calls.length = 0;
+  globalThis.fetch = async url => { calls.push(String(url)); return new Response(null, { status: 302, headers: { Location: 'https://ads.example/advert' } }); };
+  assert.equal((await handleRequest(request)).status, 502);
+  assert.equal(calls.length, 1);
 });
 
 test('resolver follows only allowed nested embeds and returns every clean alternative', async (context) => {
