@@ -1442,8 +1442,16 @@ export const MOVIES = [
     tmdbYear: 2012,
     gradient: ["#3d0d0d", "#8a6a1e"],
     src: "",
+  },
+  {
+    code: "149",
+    title: "La sustancia",
+    genre: "Terror",
+    tmdbTitle: "The Substance",
+    tmdbYear: 2024,
+    gradient: ["#3d0d0d", "#8a6a1e"],
+    src: "",
   }
-
 
   
 
