@@ -1533,4 +1533,58 @@ export const SERIES = [
       },
     ]
   },
+        {
+    title: "Agente Nocturno",
+    genre: "Accion",
+    gradient: ["#1a3a1a", "#0f2a0f"],
+    tmdbShow: "The Night Agent",
+    tmdbYear: 2023,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",          
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",  
+        ]
+      }, 
+      {
+        season: 3,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.39/M.mp4",  
+        ]
+      },     
+    ]
+  },
 ];
