@@ -1,39 +1,5 @@
 export const SERIES = [
   {
-    title: "Pasión de gavilanes",
-    addedAt: "2026-10-19",
-    genre: "drama",
-    gradient: ["#4a1c18", "#a64b24"],
-    tmdbShow: "Pasión de gavilanes",
-    tmdbYear: 2003,
-    seasons: [
-      { season: 1, srcs: Array(188).fill("") },
-      { season: 2, srcs: Array(82).fill("") },
-    ],
-  },
-  {
-    title: "Rigo",
-    addedAt: "2026-10-19",
-    genre: "drama",
-    gradient: ["#173c42", "#4b873f"],
-    tmdbShow: "Rigo",
-    tmdbYear: 2023,
-    seasons: [
-      { season: 1, srcs: Array(99).fill("") },
-    ],
-  },
-  {
-    title: "La hija del Mariachi",
-    addedAt: "2026-10-19",
-    genre: "drama",
-    gradient: ["#542530", "#b16b39"],
-    tmdbShow: "La hija del Mariachi",
-    tmdbYear: 2006,
-    seasons: [
-      { season: 1, srcs: Array(149).fill("") },
-    ],
-  },
-  {
     title: "Dragon Ball Super: Beerus",
     addedAt: "2026-10-16",
     genre: "animacion",
