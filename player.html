@@ -75,11 +75,9 @@
         </div>
 
         <!-- ==================== MEDIA SLOT ====================
-     Todo lo que reemplaza tryHlsWishFallback() (el iframe del Metodo 2 / 3)
-     va DENTRO de este div. Antes se usaba .screen-frame como contenedor y
-     container.replaceChildren(iframe) borraba tambien el boton de
-     Episodios y el panel de temporadas, que son hermanos del video.
-     Ahora quedan afuera y sobreviven al fallback externo. -->
+     Las fuentes alternativas se extraen como streams directos y se montan
+     dentro del reproductor propio. Los controles de episodios permanecen
+     como elementos hermanos de este slot. -->
         <div class="media-slot" id="mediaSlot">
           <video id="player" controls preload="metadata" playsinline webkit-playsinline></video>
           <button id="tvPlayerBackBtn" class="tv-player-back" type="button" aria-label="Volver al catálogo">← Volver</button>
@@ -102,8 +100,8 @@
      implica bajar el HTML del embed, extraerle el m3u8 limpio y a veces
      probar mas de un proveedor, asi que puede tardar unos segundos en los
      que antes no habia ninguna señal visual mas que el texto de estado
-     debajo del reproductor. Se oculta en cuanto hay algo que mostrar
-     (stream propio montado, iframe cargado, o error final). -->
+     debajo del reproductor. Se oculta al montar una fuente o mostrar el
+     error final. -->
           <div class="external-loading-overlay" id="externalLoadingOverlay" hidden aria-live="polite">
             <div class="external-loading-spinner" aria-hidden="true"></div>
             <p class="external-loading-text" id="externalLoadingText">Buscando una fuente alternativa…</p>
@@ -250,9 +248,6 @@
         <span class="player-quality-hint" id="playerQualityHint"></span>
       </div>
       <div class="status" id="playerStatus"></div>
-      <p class="adblock-hint" id="adblockHint" hidden>
-        Este reproductor y sus anuncios pertenecen a un proveedor externo, no a Colevana. Recomendamos usar un bloqueador de anuncios (AdBlock). Si el proveedor lo detecta y no reproduce, prueba otra fuente.
-      </p>
       <div class="rating-panel" id="ratingPanel">
         <div class="rating-global">
           <div class="stars" id="globalStars"></div>
@@ -288,7 +283,7 @@
   <script type="module" src="./src/scripts/services/update-checker.js?apk-updates=1"></script>
   <script type="module" src="./src/scripts/search-ui.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.polyfilled.min.js"></script>
-  <script type="module" src="./src/scripts/player-page.js?v=20261007-clean-public"></script>
+  <script type="module" src="./src/scripts/player-page.js?v=20261019-clean-player-no-ads"></script>
   <script type="module" src="./src/scripts/adblock-boot.js"></script>
 </body>
 

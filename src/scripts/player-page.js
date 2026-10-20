@@ -16,8 +16,8 @@ import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
-import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261007-clean-public";
+import { externalEmbedUrl } from "./services/external-playback.js";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates } from "./services/external-providers.js?v=20261019-clean-player-no-ads";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -1221,7 +1221,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
 
   bindVideoEvents(syncActiveVideo());
   renderQualityControls(sources);
-  hideAdblockHint();
+  hideExternalProviderNotice();
 
   // Fuente local = reproductor propio. En televisor tiene que arrancar a
   // pantalla completa sin que el usuario toque el boton de fullscreen.
@@ -2279,85 +2279,6 @@ function destroyPlayerUi() {
   });
 }
 
-function preferSpanishAudio(hls) {
-  if (!hls || !Array.isArray(hls.audioTracks) || !hls.audioTracks.length) {
-    playerConsole("info", "[hls] sin pistas de audio aún");
-    return false;
-  }
-  const tracks = hls.audioTracks;
-  console.info(
-    "[hls] pistas de audio:",
-    tracks.map((t, i) => ({
-      i,
-      name: t.name,
-      lang: t.lang || t.language,
-      default: t.default,
-    })),
-  );
-
-  const isEs = (t) => {
-    const lang = String(t.lang || t.language || "").toLowerCase().trim();
-    const name = String(t.name || "").toLowerCase();
-    return (
-      // ISO 639-1 ("es", "es-419", "es-MX"...)
-      lang === "es" || lang.startsWith("es-")
-      // ISO 639-2/B ("spa"), muy comun en streams remuxeados con ffmpeg
-      || lang === "spa" || lang.startsWith("spa-") || lang.startsWith("spa_")
-      || /(^|[^a-z])espa[nñ]ol|spanish|latino|castellano|dual.?es(?![a-z])/.test(name)
-    );
-  };
-
-  // Si hay mas de una pista y ninguna quedo identificada como ingles/otro
-  // idioma reconocible, asumimos que el proveedor uso codigos no estandar
-  // (p. ej. "aud1"/"aud2") y preferimos evitar tocar nada para no romper
-  // el audio que el usuario ya esta escuchando.
-  const isEn = (t) => {
-    const lang = String(t.lang || t.language || "").toLowerCase().trim();
-    const name = String(t.name || "").toLowerCase();
-    return (
-      lang === "en" || lang.startsWith("en-")
-      || lang === "eng" || lang.startsWith("eng-") || lang.startsWith("eng_")
-      || /(^|[^a-z])ingl[eé]s|english(?![a-z])/.test(name)
-    );
-  };
-
-  // 1) default marcado español  2) cualquier es  3) heurística por descarte
-  // 4) no tocar
-  let idx = tracks.findIndex((t) => isEs(t) && (t.default === true || t.default === "yes"));
-  if (idx < 0) idx = tracks.findIndex(isEs);
-  if (idx < 0 && tracks.length > 1) {
-    // El proveedor no etiquetó el idioma con un código/nombre reconocible
-    // (pasa con algunos remuxes: "aud1"/"aud2" sin lang). Si exactamente
-    // una pista es identificable como inglés, asumimos que la(s) otra(s)
-    // es el doblaje y la probamos: es mejor apuesta que quedarse en inglés.
-    const englishTracks = tracks.filter(isEn);
-    const nonEnglish = tracks.filter((t) => !isEn(t));
-    if (englishTracks.length && nonEnglish.length === 1) {
-      idx = tracks.indexOf(nonEnglish[0]);
-      playerConsole("info", "[hls] sin lang explicito, usando pista no-ingles por descarte");
-    }
-  }
-  if (idx < 0) {
-    console.warn(
-      "[hls] no se encontró pista en español entre",
-      tracks.length,
-      "pista(s):",
-      tracks.map((t) => t.lang || t.language || t.name || "?").join(", "),
-    );
-    return false;
-  }
-  if (hls.audioTrack !== idx) {
-    console.info("[hls] forzando audio ES →", idx, tracks[idx]?.name || tracks[idx]?.lang);
-    try {
-      hls.audioTrack = idx;
-    } catch (e) {
-      playerConsole("warn", "[hls] no se pudo setear audioTrack", e);
-      return false;
-    }
-  }
-  return true;
-}
-
 const AUDIO_SELECTOR_ID = "playerAudioTrackSelector";
 
 function removeAudioTrackSelector() {
@@ -2463,7 +2384,7 @@ async function mountDirectStream(container, streamUrl) {
   restoreMediaSlotOverlays(container);
 
   dom.video = video;
-  hideAdblockHint();
+  hideExternalProviderNotice();
   resetCastButton();
   resetDownloadButton();
 
@@ -2493,10 +2414,8 @@ async function mountDirectStream(container, streamUrl) {
           hls.on(Hls.Events.FRAG_LOADED, () => done(true));
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             playerConsole("info", "[hls] manifest ok, esperando fragmento...");
-            preferSpanishAudio(hls);
           });
           hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
-            preferSpanishAudio(hls);
             showAudioTrackSelector(hls);
           });
           hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_, data) => {
@@ -2525,7 +2444,6 @@ async function mountDirectStream(container, streamUrl) {
           state._hls = null;
           throw new Error("hls_playback_failed");
         }
-        preferSpanishAudio(hls);
         showAudioTrackSelector(hls);
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = streamUrl;
@@ -2700,10 +2618,8 @@ async function resolveEmbedStream(embedUrl) {
         if (data?.proxied) return viaHlsProxy(data.proxied, embedUrl);
         return null;
       }
-      // El MP4 de MovieDays se sirve directamente desde su CDN. /proxy-hls
-      // está diseñado para manifiestos HLS y no debe envolver archivos MP4.
-      // Mirrors: primero URL directa (IP del usuario + CORS *),
-      // después la misma vía proxy-hls (por si el directo falla).
+      // Los MP4 van directos; para HLS se prueba primero el proxy, que elimina
+      // segmentos publicitarios reconocibles del manifiesto.
       const candidates = [];
       for (const stream of rawStreams) {
         if (/\.(mp4|webm)$/i.test(new URL(stream).pathname)) {
@@ -2711,9 +2627,9 @@ async function resolveEmbedStream(embedUrl) {
           continue;
         }
         for (const u of expandStreamMirrors(stream)) {
-        candidates.push(u);
         const proxied = viaHlsProxy(u, embedUrl);
         if (proxied && proxied !== u) candidates.push(proxied);
+        candidates.push(u);
         }
       }
       playerConsole(
@@ -2779,91 +2695,8 @@ function collectExternalCandidates(data) {
   return candidates;
 }
 
-// Monta un candidato en el iframe. Se considera exitoso en cuanto el iframe
-// termina de cargar su documento (evento "load"). No depende de recibir
-// postMessage del proveedor, ya que muchos (p. ej. GoodStream) reproducen
-// correctamente sin emitir ningún mensaje reconocible, lo que antes
-// generaba falsos negativos y el mensaje "No se pudo cargar ninguna
-// alternativa externa." aunque el video sí funcionara.
-function mountExternalCandidate(container, candidate, loadTimeoutMs = 8000) {
-  return new Promise((resolve) => {
-    state.tvVisibility?.destroy();
-    container.classList.remove("tv-controls-hidden");
-    stopExternalTracking();
-    destroyPlayerUi();
-    if (dom.mobileQuickControls) dom.mobileQuickControls.hidden = true;
-    if (dom.tvControls) dom.tvControls.hidden = true;
-    if (state._hls) {
-      try { state._hls.destroy(); } catch (_) {}
-      state._hls = null;
-    }
-
-    // El iframe es position:absolute; el slot necesita altura propia
-    // (padding 16:9). Si antes se montó stream limpio y se limpiaron los
-    // estilos inline, sin esto el frame queda colapsado (barra negra fina).
-    container.style.cssText =
-      "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
-
-    const iframe = document.createElement("iframe");
-    let settled = false;
-    let assumeMountedTimer = null;
-
-    const finish = (ok) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(loadTimer);
-      if (assumeMountedTimer) window.clearTimeout(assumeMountedTimer);
-      iframe.removeEventListener("load", onLoad);
-      iframe.removeEventListener("error", onError);
-      resolve(ok);
-    };
-
-    const onLoad = () => finish(true);
-    const onError = () => finish(false);
-
-    const loadTimer = window.setTimeout(() => finish(false), loadTimeoutMs);
-    if (candidate.provider.assumeMountedAfterMs) {
-      assumeMountedTimer = window.setTimeout(
-        () => finish(true),
-        candidate.provider.assumeMountedAfterMs,
-      );
-    }
-
-    iframe.src = candidate.url;
-    iframe.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border:none;";
-    iframe.setAttribute("frameborder", "0");
-    iframe.title = `Reproductor externo de ${candidate.provider.name}`;
-    iframe.tabIndex = 0;
-    iframe.setAttribute("allowfullscreen", "");
-    const sandbox = getProviderSandbox(candidate.url);
-    if (sandbox !== null) iframe.setAttribute("sandbox", sandbox);
-    iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
-    iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-    iframe.addEventListener("load", onLoad);
-    iframe.addEventListener("error", onError);
-
-    resetCastButton();
-    resetDownloadButton();
-    container.replaceChildren(iframe);
-    restoreMediaSlotOverlays(container);
-  });
-}
-
 const RETRY_LINK_ID = "playerExternalRetryLink";
-const ADBLOCK_HINT_ID = "adblockHint";
-
-function showAdblockHint() {
-  const el = document.getElementById(ADBLOCK_HINT_ID);
-  if (el) { el.hidden = false; el.textContent = EXTERNAL_AD_NOTICE; }
-  if (dom.externalNotice) {
-    dom.externalNotice.querySelector("p").textContent = EXTERNAL_AD_NOTICE;
-    dom.externalNotice.hidden = false;
-  }
-}
-
-function hideAdblockHint() {
-  const el = document.getElementById(ADBLOCK_HINT_ID);
-  if (el) el.hidden = true;
+function hideExternalProviderNotice() {
   if (dom.externalNotice) dom.externalNotice.hidden = true;
 }
 
@@ -3058,10 +2891,7 @@ async function fetchCinehaxCandidates(embedInfo) {
 
 async function fetchExternalCandidates(embedInfo) {
   const independentCandidates = buildProviderCandidates(embedInfo);
-  // Un embed comprobado no necesita esperar búsquedas que pueden estar caídas.
-  if (independentCandidates[0]?.verifiedSpanish) {
-    return { directStreams: buildVerifiedDirectStreams(embedInfo), embedCandidates: independentCandidates, movieDaysSearched: false };
-  }
+  const verifiedDirectStreams = buildVerifiedDirectStreams(embedInfo);
   const cinehax = await fetchCinehaxCandidates(embedInfo);
   independentCandidates.unshift(...cinehax.embedCandidates);
   let movieDaysSearched = false;
@@ -3082,7 +2912,7 @@ async function fetchExternalCandidates(embedInfo) {
     if (!script) throw new Error("No data");
 
     const data = JSON.parse(script.textContent);
-    const directStreams = [...new Set([...collectDirectStreams(data), ...cinehax.directStreams])];
+    const directStreams = [...new Set([...verifiedDirectStreams, ...collectDirectStreams(data), ...cinehax.directStreams])];
     const embedCandidates = collectExternalCandidates(data);
     playerConsole("info", "[external-player] streams directos:", directStreams);
 
@@ -3091,7 +2921,7 @@ async function fetchExternalCandidates(embedInfo) {
       playerConsole("info", "[external-player] vimeus.com sin fuentes, probando MovieDays...");
       const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
       if (moviedaysCandidates.length) {
-        return { directStreams: [], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched };
+        return { directStreams: verifiedDirectStreams, embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched };
       }
     }
 
@@ -3100,7 +2930,7 @@ async function fetchExternalCandidates(embedInfo) {
     playerConsole("error", "Error obteniendo candidatos externos (vimeus.com):", e);
     playerConsole("info", "[external-player] vimeus.com fallo, probando MovieDays...");
     const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
-    return { directStreams: cinehax.directStreams, embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched: true };
+    return { directStreams: [...new Set([...verifiedDirectStreams, ...cinehax.directStreams])], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched: true };
   }
 }
 
@@ -3141,47 +2971,11 @@ async function tryHlsWishFallback(showMessage = true) {
   }
 
   let { directStreams, embedCandidates, movieDaysSearched = false } = await fetchExternalCandidates(embedInfo);
-  const externalCandidates = embedCandidates.filter((candidate) => candidate.iframeEligible !== false);
   let streamIndex = 0;
   let cleanIndex = 0;
-  let embedIndex = 0;
   let secondarySearchDone = movieDaysSearched;
-
-  const tryNextExternal = async () => {
-    while (embedIndex < externalCandidates.length) {
-      const candidate = externalCandidates[embedIndex++];
-      if (showMessage) {
-        dom.status.textContent = `Probando ${embedIndex} de ${externalCandidates.length}: ${candidate.provider.name}…`;
-        dom.status.style.color = "#e8c468";
-      }
-      // load confirma solo la carga del documento, no la reproducción.
-      if (!(await mountExternalCandidate(container, candidate))) continue;
-
-      bindExternalPlaybackTracking(state.currentProgressKey);
-      setTimeout(offerSavedProgress, 800);
-      if (showMessage) dom.status.textContent = `Reproductor externo: ${candidate.provider.name}`;
-      showAdblockHint();
-      showExternalRetryLink("¿No reproduce? Probar otro proveedor", async () => {
-        showExternalLoadingOverlay("Probando otro proveedor…");
-        try {
-          await tryNextExternal();
-        } finally {
-          hideExternalLoadingOverlay();
-        }
-      });
-      return true;
-    }
-
-    hideAdblockHint();
-    showUnavailablePlayerMessage("No respondió ningún reproductor externo.");
-    if (showMessage) dom.status.textContent = "No se pudo cargar ningún reproductor externo.";
-    showExternalRetryLink("Buscar fuentes de nuevo", async () => {
-      await tryHlsWishFallback(true);
-    });
-    return false;
-  };
-
-  // Priorizar videos directos; si fallan, abrir automáticamente el proveedor.
+  // Solo montar video directo dentro del reproductor propio. Los iframes de
+  // proveedores externos no se pueden limpiar de anuncios desde esta página.
   const tryNextCandidate = async () => {
     while (streamIndex < directStreams.length) {
       const streamUrl = directStreams[streamIndex];
@@ -3191,9 +2985,12 @@ async function tryHlsWishFallback(showMessage = true) {
         dom.status.textContent = "Cargando reproductor...";
         dom.status.style.color = "";
       }
-      const directCandidates = [streamUrl];
       const proxiedDirect = viaHlsProxy(streamUrl);
-      if (proxiedDirect && proxiedDirect !== streamUrl) directCandidates.push(proxiedDirect);
+      // Priorizar el proxy: elimina segmentos publicitarios reconocibles del HLS.
+      const isHls = /\.m3u8(?:[?#]|$)/i.test(streamUrl);
+      const directCandidates = proxiedDirect && proxiedDirect !== streamUrl
+        ? [proxiedDirect, ...(isHls ? [] : [streamUrl])]
+        : [streamUrl];
 
       for (const candidateUrl of directCandidates) {
         playerConsole("info", "[player] probando stream directo:", candidateUrl.slice(0, 120));
@@ -3202,7 +2999,7 @@ async function tryHlsWishFallback(showMessage = true) {
           const ok = await mountDirectStream(container, candidateUrl);
           if (ok) {
             removeExternalRetryLink();
-            hideAdblockHint();
+            hideExternalProviderNotice();
             return true;
           }
         } catch (e) {
@@ -3215,10 +3012,7 @@ async function tryHlsWishFallback(showMessage = true) {
       }
     }
 
-    // Si caducó o falló el HLS compartido, abrir su Voe de respaldo sin esperar
-    // a otras búsquedas ni intentar extraer una fuente tras la verificación.
-    if (embedCandidates[0]?.verifiedSpanish) return await tryNextExternal();
-
+    // Seguir con los proveedores que permiten extraer el stream directo.
     if (cleanIndex >= embedCandidates.length) {
       // Buscar también en MovieDays cuando el listado existe pero sus videos fallan.
       if (!secondarySearchDone) {
@@ -3228,20 +3022,15 @@ async function tryHlsWishFallback(showMessage = true) {
         const seen = new Set(embedCandidates.map((item) => item.url));
         const fresh = extra.filter((item) => !seen.has(item.url) && seen.add(item.url));
         embedCandidates.push(...fresh);
-        externalCandidates.push(...fresh.filter((item) => item.iframeEligible !== false));
         if (fresh.length) return tryNextCandidate();
       }
-      if (externalCandidates.length) {
-        showExternalLoadingOverlay("Cargando reproductor externo…");
-        return await tryNextExternal();
-      }
-      const unavailableMessage = "No hay una fuente disponible para este título.";
+      const unavailableMessage = "No hay una fuente limpia disponible para este título.";
       showUnavailablePlayerMessage(unavailableMessage);
       if (showMessage) {
         dom.status.textContent = unavailableMessage;
         dom.status.style.color = "#e8c468";
       }
-      hideAdblockHint();
+      hideExternalProviderNotice();
       showExternalRetryLink("Reintentar búsqueda de fuentes", async () => {
         await tryHlsWishFallback(true);
       });
@@ -3258,7 +3047,13 @@ async function tryHlsWishFallback(showMessage = true) {
     // eslint-disable-next-line no-await-in-loop
     const resolved = candidate.resolveClean === false ? null : await resolveEmbedStream(candidate.url);
     const cleanList = Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
-    for (const cleanStream of cleanList) {
+    const playbackList = cleanList.filter((url) => {
+      if (/\.(mp4|webm)(?:[?#]|$)/i.test(url)) return true;
+      // Si se configuró el Worker, omitir el manifiesto sin filtrar.
+      return !MEDIA_CONFIG?.proxyBaseUrl || /\/proxy-hls\?/i.test(url)
+        || /github\.com|workers\.dev/i.test(url);
+    });
+    for (const cleanStream of playbackList) {
       const viaProxy = /\/proxy-hls\?/i.test(cleanStream);
       playerConsole(
         "info",
@@ -3271,7 +3066,7 @@ async function tryHlsWishFallback(showMessage = true) {
         const okDirect = await mountDirectStream(container, cleanStream);
         if (okDirect) {
           removeExternalRetryLink();
-          hideAdblockHint();
+          hideExternalProviderNotice();
           return true;
         }
       } catch (e) {
@@ -3288,7 +3083,6 @@ async function tryHlsWishFallback(showMessage = true) {
     return tryNextCandidate();
   };
 
-  if (!directStreams.length && embedCandidates[0]?.verifiedSpanish) return await tryNextExternal();
   return await tryNextCandidate();
   } finally {
     hideExternalLoadingOverlay();

@@ -46,26 +46,14 @@ export function buildProviderCandidates(info) {
   const episode = Number(info.episode);
   if (info.kind === "episode" && (!Number.isSafeInteger(season) || season < 0
     || !Number.isSafeInteger(episode) || episode <= 0)) return [];
-  // Fuente de este episodio comprobada por el usuario con audio en español.
-  // Usar el embed canónico de Voe; Cinehax puede cambiarlo por un temporizador.
-  const verified = info.kind === "episode" && id === 62560 && season === 1 && episode === 1
-    ? [{
-      provider: { name: "Voe (Español Latino)", label: "Reproductor externo" },
-      url: "https://voe.sx/e/7b9skbphpmon",
-      iframeEligible: true,
-      resolveClean: false,
-      verifiedSpanish: true,
-    }]
-    : [];
-  return [...verified, ...TMDB_EMBED_PROVIDERS.map(provider => ({
+  return TMDB_EMBED_PROVIDERS.map(provider => ({
     provider: { name: provider.name, label: "Reproductor externo" },
     url: info.kind === "movie" ? `${provider.origin}${provider.movie}/${id}`
       : `${provider.origin}${provider.tv}/${id}/${season}/${episode}`,
     iframeEligible: true,
-    // Probar primero las fuentes públicas; los reproductores que necesitan
-    // JavaScript o verificación conservan el iframe como respaldo.
+    // Resolver el stream del proveedor y montarlo en el reproductor propio.
     resolveClean: true,
-  }))];
+  }));
 }
 
 export function mergeProviderCandidates(...groups) {

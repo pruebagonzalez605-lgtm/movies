@@ -2,20 +2,3 @@
 [data-cv-adblock="removed"] {
   display: none !important;
 }
-
-.adblock-hint {
-  text-align: center;
-  margin: 10px auto 0;
-  max-width: 520px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid #2a2a32;
-  background: rgba(20, 20, 25, 0.92);
-  color: var(--text-dim, #8b8a86);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.adblock-hint[hidden] {
-  display: none !important;
-}
