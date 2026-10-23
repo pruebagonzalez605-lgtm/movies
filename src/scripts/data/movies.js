@@ -1730,5 +1730,15 @@ export const MOVIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     saga: "Dragon Ball",
     src: "",
+  },
+  {
+    code: "175",
+    title: "Serpientes a bordo",
+    addedAt: "2026-10-23",
+    genre: "thriller",
+    tmdbTitle: "Snakes on a Plane",
+    tmdbYear: 2006,
+    gradient: ["#1d262b", "#54616a"],
+    src: "",
   }
 ];
