@@ -1,5 +1,93 @@
 export const SERIES = [
   {
+    title: "Stranger Things",
+    addedAt: "2026-10-24",
+    genre: "drama",
+    gradient: ["#220d18", "#732c2a"],
+    tmdbShow: "Stranger Things",
+    tmdbId: 66732,
+    tmdbYear: 2016,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "", "", "", "", "", "", "", "",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "", "", "", "", "", "", "", "", "",
+        ]
+      },
+      {
+        season: 3,
+        srcs: [
+          "", "", "", "", "", "", "", "",
+        ]
+      },
+      {
+        season: 4,
+        srcs: [
+          "", "", "", "", "", "", "", "", "",
+        ]
+      },
+      {
+        season: 5,
+        srcs: [
+          "", "", "", "", "", "", "", "",
+        ]
+      },
+    ],
+  },
+  {
+    title: "Crystal Lake",
+    addedAt: "2026-10-24",
+    genre: "terror",
+    gradient: ["#101c20", "#3a5b60"],
+    tmdbShow: "Crystal Lake",
+    tmdbId: 213562,
+    tmdbYear: 2026,
+    saga: "Viernes 13",
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "", "", "", "", "", "", "", "",
+        ]
+      },
+    ],
+  },
+  {
+    title: "Lupin",
+    addedAt: "2026-10-24",
+    genre: "crimen",
+    gradient: ["#12242c", "#386477"],
+    tmdbShow: "Lupin",
+    tmdbId: 96677,
+    tmdbYear: 2021,
+    seasons: [
+      {
+        season: 1,
+        srcs: [
+          "", "", "", "", "", "", "", "", "", "",
+        ]
+      },
+      {
+        season: 2,
+        srcs: [
+          "", "", "", "", "", "", "",
+        ]
+      },
+      {
+        season: 3,
+        srcs: [
+          "", "", "", "", "", "", "", "",
+        ]
+      },
+    ],
+  },
+  {
     title: "Dragon Ball Super: Beerus",
     addedAt: "2026-10-16",
     genre: "animacion",

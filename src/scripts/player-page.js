@@ -2394,9 +2394,12 @@ async function mountDirectStream(container, streamUrl) {
       if (Hls?.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
-          manifestLoadingMaxRetry: 1,
-          levelLoadingMaxRetry: 1,
-          fragLoadingMaxRetry: 1,
+          manifestLoadingMaxRetry: 3,
+          manifestLoadingRetryDelay: 1000,
+          levelLoadingMaxRetry: 3,
+          levelLoadingRetryDelay: 1000,
+          fragLoadingMaxRetry: 3,
+          fragLoadingRetryDelay: 1000,
         });
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
@@ -2410,7 +2413,9 @@ async function mountDirectStream(container, streamUrl) {
             window.clearTimeout(t);
             resolve(v);
           };
-          const t = window.setTimeout(() => done(false), 5000);
+          // Algunos CDN tardan varios segundos en devolver el primer segmento,
+          // aunque el manifiesto y las pistas de audio ya hayan cargado.
+          const t = window.setTimeout(() => done(false), 15000);
           hls.on(Hls.Events.FRAG_LOADED, () => done(true));
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             playerConsole("info", "[hls] manifest ok, esperando fragmento...");
@@ -2429,7 +2434,9 @@ async function mountDirectStream(container, streamUrl) {
               done("cdn403");
               return;
             }
-            if (data?.fatal || code === 403 || code === 404 || code === 401) {
+            // Un 401/404 no fatal puede corresponder a una pista o segmento
+            // alternativo; HLS.js debe poder continuar y aplicar sus reintentos.
+            if (data?.fatal) {
               done(false);
             }
           });
@@ -2987,9 +2994,8 @@ async function tryHlsWishFallback(showMessage = true) {
       }
       const proxiedDirect = viaHlsProxy(streamUrl);
       // Priorizar el proxy: elimina segmentos publicitarios reconocibles del HLS.
-      const isHls = /\.m3u8(?:[?#]|$)/i.test(streamUrl);
       const directCandidates = proxiedDirect && proxiedDirect !== streamUrl
-        ? [proxiedDirect, ...(isHls ? [] : [streamUrl])]
+        ? [proxiedDirect, streamUrl]
         : [streamUrl];
 
       for (const candidateUrl of directCandidates) {
@@ -3005,6 +3011,7 @@ async function tryHlsWishFallback(showMessage = true) {
         } catch (e) {
           playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
           if (e?.message === "hls_forbidden_by_cdn") {
+            if (candidateUrl === proxiedDirect && streamUrl !== proxiedDirect) continue;
             // Pasar a la siguiente fuente; puede usar otro CDN.
             break;
           }
@@ -3047,12 +3054,7 @@ async function tryHlsWishFallback(showMessage = true) {
     // eslint-disable-next-line no-await-in-loop
     const resolved = candidate.resolveClean === false ? null : await resolveEmbedStream(candidate.url);
     const cleanList = Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
-    const playbackList = cleanList.filter((url) => {
-      if (/\.(mp4|webm)(?:[?#]|$)/i.test(url)) return true;
-      // Si se configuró el Worker, omitir el manifiesto sin filtrar.
-      return !MEDIA_CONFIG?.proxyBaseUrl || /\/proxy-hls\?/i.test(url)
-        || /github\.com|workers\.dev/i.test(url);
-    });
+    const playbackList = cleanList;
     for (const cleanStream of playbackList) {
       const viaProxy = /\/proxy-hls\?/i.test(cleanStream);
       playerConsole(
@@ -3073,6 +3075,7 @@ async function tryHlsWishFallback(showMessage = true) {
         playerConsole("warn", "[direct-stream] fallo:", e?.message || e);
         // Primer 403 de vimeos/goodstream/hlswish vía Worker → no probar más mirrors
         if (e?.message === "hls_forbidden_by_cdn") {
+          if (viaProxy) continue;
           playerConsole("info", "[player] CDN bloquea Worker; mirrors inútiles");
           break;
         }
