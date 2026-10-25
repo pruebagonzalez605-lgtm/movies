@@ -1,5 +1,44 @@
 export const SERIES = [
   {
+    title: "Attack on Titan",
+    addedAt: "2026-10-24",
+    genre: "animacion",
+    gradient: ["#292018", "#735333"],
+    tmdbShow: "Attack on Titan",
+    tmdbYear: 2013,
+    seasons: [
+      { season: 1, srcs: Array(25).fill("") },
+      { season: 2, srcs: Array(12).fill("") },
+      { season: 3, srcs: Array(22).fill("") },
+      { season: 4, srcs: Array(28).fill("") },
+    ],
+  },
+  {
+    title: "Crystal Lake",
+    addedAt: "2026-10-24",
+    genre: "terror",
+    gradient: ["#101c20", "#3a5b60"],
+    tmdbShow: "Crystal Lake",
+    tmdbYear: 2026,
+    saga: "Viernes 13",
+    seasons: [
+      { season: 1, srcs: Array(8).fill("") },
+    ],
+  },
+  {
+    title: "Lupin",
+    addedAt: "2026-10-24",
+    genre: "crimen",
+    gradient: ["#12242c", "#386477"],
+    tmdbShow: "Lupin",
+    tmdbYear: 2021,
+    seasons: [
+      { season: 1, srcs: Array(10).fill("") },
+      { season: 2, srcs: Array(7).fill("") },
+      { season: 3, srcs: Array(8).fill("") },
+    ],
+  },
+  {
     title: "Dragon Ball Super: Beerus",
     addedAt: "2026-10-16",
     genre: "animacion",
