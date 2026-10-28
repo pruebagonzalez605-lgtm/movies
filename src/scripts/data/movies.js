@@ -1908,5 +1908,15 @@ export const MOVIES = [
     tmdbYear: 2018,
     gradient: ["#1c2834", "#4e687c"],
     src: "",
+  },
+  {
+    code: "191",
+    title: "Verity",
+    addedAt: "2026-10-28",
+    genre: "terror",
+    tmdbTitle: "Verity",
+    tmdbYear: 2026,
+    gradient: ["#1c2834", "#4e687c"],
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.40/VTY.mp4",
   }
 ];
