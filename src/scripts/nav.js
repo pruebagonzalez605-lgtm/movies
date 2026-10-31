@@ -98,3 +98,9 @@ if (catalogMain) {
 import("./shared/device.js")
   .then((mod) => mod.applyDeviceClass())
   .catch(() => {});
+
+// El aviso de donaciones vive solo en las paginas de menu. player.html
+// comparte la navegacion, pero deliberadamente no carga este componente.
+if (document.body?.dataset.page && !["player", "aportes"].includes(document.body.dataset.page)) {
+  import("./shared/donation-prompt.js?v=20261031-aportes").catch(() => {});
+}
