@@ -82,7 +82,14 @@ export const SERIES = [
       {
         season: 3,
         srcs: [
-          "", "", "", "", "", "", "", "",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X1.mp4", 
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X3.mp4", 
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X4.mp4", 
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X5.mp4", 
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X6.mp4", 
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X7.mp4", 
+          "",
         ]
       },
     ],
