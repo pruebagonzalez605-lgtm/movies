@@ -14,6 +14,11 @@ const EMBED_HOSTS = new Set([
   "vidsrc.sh",
   "www.vidsrc.link",
   "play.cinehax.com",
+  "api.moviemaster.lat",
+  "unlimplay.com",
+  "videoapi.la",
+  "tukiplay.com",
+  "facilitoplay.com",
   "vimeos.net",
   "www.vimeos.net",
   "goodstream.one",
@@ -221,6 +226,11 @@ export function validateEmbedUrl(rawUrl) {
     "vidsrc.sh": /^\/embed\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
     "www.vidsrc.link": /^\/embed\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
     "play.cinehax.com": /^\/clean-player\/embed\/[a-zA-Z0-9_-]+\/?$/,
+    "api.moviemaster.lat": /^\/e\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
+    "unlimplay.com": /^\/f\/embed\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
+    "videoapi.la": /^\/e\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
+    "tukiplay.com": /^\/embed\/(?:movie\/[1-9]\d*|tv\/[1-9]\d*\/\d+\/[1-9]\d*)\/?$/,
+    "facilitoplay.com": /^\/e\/(?:movie\/[1-9]\d*|serie\/[1-9]\d*\/\d+\/\d+)\/?$/,
   };
   const route = publicRoutes[url.hostname.toLowerCase()];
   if (route && !route.test(url.pathname)) throw new Error("forbidden_embed_path");

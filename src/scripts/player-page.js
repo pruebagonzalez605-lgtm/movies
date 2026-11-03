@@ -33,6 +33,11 @@ const PLAYER_DEBUG = new URLSearchParams(window.location.search).has("debugPlaye
 const EXTERNAL_PLAYER_ORIGINS = [
   "https://hlswish.com",
   "https://www.hlswish.com",
+  "https://api.moviemaster.lat",
+  "https://unlimplay.com",
+  "https://videoapi.la",
+  "https://tukiplay.com",
+  "https://facilitoplay.com",
   "https://vimeus.com",
   "https://www.vimeus.com",
   "https://goodstream.one",
@@ -2888,7 +2893,7 @@ async function fetchCinehaxCandidates(embedInfo) {
       directStreams: Array.isArray(data.directStreams) ? data.directStreams.filter(url => typeof url === "string" && /^https:\/\//.test(url)) : [],
       embedCandidates: (Array.isArray(data.embeds) ? data.embeds : []).filter(item => /^https:\/\//.test(item?.url || ""))
         .map(item => ({ url: item.url, provider: { name: `Cinehax · ${item.name}`, label: "Reproductor externo" }, iframeEligible: true,
-          resolveClean: item.url.startsWith("https://play.cinehax.com/clean-player/embed/") })),
+          resolveClean: item.resolveClean ?? item.url.startsWith("https://play.cinehax.com/clean-player/embed/") })),
     };
   } catch (error) {
     playerConsole("warn", "[cinehax-fallback] proveedor no disponible", error);
