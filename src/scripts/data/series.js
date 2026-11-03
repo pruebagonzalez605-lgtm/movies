@@ -70,13 +70,13 @@ export const SERIES = [
       {
         season: 1,
         srcs: [
-          "", "", "", "", "", "", "", "", "", "",
+          "", "", "", "", "",
         ]
       },
       {
         season: 2,
         srcs: [
-          "", "", "", "", "", "", "",
+          "", "", "", "", "",
         ]
       },
       {
@@ -89,7 +89,6 @@ export const SERIES = [
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X5.mp4", 
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X6.mp4", 
           "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.41/LPN3X7.mp4", 
-          "",
         ]
       },
     ],
