@@ -111,6 +111,20 @@ export const SERIES = [
     ],
   },
   {
+    title: "El juego del calamar",
+    addedAt: "2026-11-04",
+    genre: "drama",
+    gradient: ["#14342d", "#cf3450"],
+    tmdbShow: "Squid Game",
+    tmdbId: 93405,
+    tmdbYear: 2021,
+    seasons: [
+      { season: 1, srcs: Array(9).fill("") },
+      { season: 2, srcs: Array(7).fill("") },
+      { season: 3, srcs: Array(6).fill("") },
+    ],
+  },
+  {
     title: "Dragon Ball Super: Beerus",
     addedAt: "2026-10-16",
     genre: "animacion",
