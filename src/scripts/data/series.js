@@ -94,6 +94,23 @@ export const SERIES = [
     ],
   },
   {
+    title: "El cuento de la criada",
+    addedAt: "2026-11-04",
+    genre: "drama",
+    gradient: ["#35191d", "#8a3f45"],
+    tmdbShow: "The Handmaid's Tale",
+    tmdbId: 69478,
+    tmdbYear: 2017,
+    seasons: [
+      { season: 1, srcs: Array(10).fill("") },
+      { season: 2, srcs: Array(13).fill("") },
+      { season: 3, srcs: Array(13).fill("") },
+      { season: 4, srcs: Array(10).fill("") },
+      { season: 5, srcs: Array(10).fill("") },
+      { season: 6, srcs: Array(10).fill("") },
+    ],
+  },
+  {
     title: "Dragon Ball Super: Beerus",
     addedAt: "2026-10-16",
     genre: "animacion",
