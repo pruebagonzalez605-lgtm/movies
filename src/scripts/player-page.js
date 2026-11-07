@@ -2123,7 +2123,13 @@ async function getExternalEmbedInfo() {
         playerConsole("warn", "No se pudo resolver tmdbId de la serie:", e);
       }
     }
-    return tmdbId ? { kind: "episode", tmdbId, season, episode } : null;
+    return tmdbId ? {
+      kind: "episode",
+      tmdbId,
+      season,
+      episode,
+      movieDaysType: serie.movieDaysType || "serie",
+    } : null;
   }
 
   return null;
@@ -2690,7 +2696,7 @@ function collectExternalCandidates(data) {
     for (const item of found) {
       if (item.provider !== provider || seen.has(item.url)) continue;
       seen.add(item.url);
-      candidates.push(item);
+      candidates.push({ ...item, iframeEligible: true });
     }
   }
   playerConsole("info", "[external-player] candidatos reconocidos:", candidates.map((item) => ({
@@ -2770,6 +2776,50 @@ function showExternalRetryLink(label, onRetry) {
   else dom.status.insertAdjacentElement("afterend", link);
 }
 
+function mountExternalCandidate(container, candidate) {
+  if (!container || !candidate?.iframeEligible || !candidate.url) return false;
+
+  let url;
+  try {
+    url = new URL(candidate.url);
+    if (url.protocol !== "https:" || url.username || url.password) return false;
+  } catch {
+    return false;
+  }
+
+  stopExternalTracking();
+  removeAudioTrackSelector();
+  destroyPlayerUi();
+  if (state._hls) {
+    try { state._hls.destroy(); } catch (_) {}
+    state._hls = null;
+  }
+
+  const iframe = document.createElement("iframe");
+  iframe.src = url.href;
+  iframe.title = `Reproductor externo: ${candidate.provider?.name || url.hostname}`;
+  iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+  iframe.allowFullscreen = true;
+  iframe.referrerPolicy = "origin";
+  iframe.loading = "eager";
+  iframe.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;";
+
+  container.style.cssText = "background:#000;position:relative;padding-top:56.25%;overflow:hidden;border-radius:8px;";
+  container.replaceChildren(iframe);
+  restoreMediaSlotOverlays(container);
+  state.playbackMode = "external";
+  bindExternalPlaybackTracking(state.currentProgressKey);
+  hideExternalProviderNotice();
+  if (dom.status) {
+    dom.status.textContent = `Abriendo fuente externa: ${candidate.provider?.name || url.hostname}`;
+    dom.status.style.color = "";
+  }
+  showExternalRetryLink("Buscar otra fuente", async () => {
+    await tryHlsWishFallback(true);
+  });
+  return true;
+}
+
 function showUnavailablePlayerMessage(message) {
   state.tvVisibility?.destroy();
   dom.mediaSlot.classList.remove("tv-controls-hidden");
@@ -2826,7 +2876,7 @@ function buildMovieDaysFallbackUrl(embedInfo) {
   const params = new URLSearchParams();
   params.set("tmdb", embedInfo.tmdbId);
   if (embedInfo.kind === "episode") {
-    params.set("type", "serie");
+    params.set("type", embedInfo.movieDaysType || "serie");
     params.set("se", embedInfo.season);
     params.set("ep", embedInfo.episode);
   } else {
@@ -3035,6 +3085,12 @@ async function tryHlsWishFallback(showMessage = true) {
         const fresh = extra.filter((item) => !seen.has(item.url) && seen.add(item.url));
         embedCandidates.push(...fresh);
         if (fresh.length) return tryNextCandidate();
+      }
+      const iframeCandidate = [...embedCandidates].reverse()
+        .find((item) => item.iframeEligible && item.url);
+      if (iframeCandidate && mountExternalCandidate(container, iframeCandidate)) {
+        playerConsole("info", "[external-player] usando iframe como último recurso:", iframeCandidate.provider?.name);
+        return true;
       }
       const unavailableMessage = "No hay una fuente limpia disponible para este título.";
       showUnavailablePlayerMessage(unavailableMessage);

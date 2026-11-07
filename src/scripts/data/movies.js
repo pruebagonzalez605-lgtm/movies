@@ -2205,4 +2205,15 @@ export const MOVIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     src: "",
   },
+  {
+    code: "216",
+    title: "La propuesta",
+    addedAt: "2026-11-07",
+    genre: "comedia",
+    tmdbTitle: "The Proposal",
+    tmdbId: 18240,
+    tmdbYear: 2009,
+    gradient: ["#3d0d1a", "#8a1e4a"],
+    src: "",
+  },
 ];

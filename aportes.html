@@ -51,6 +51,35 @@
       </div>
       <img class="donations-qr" src="./assets/donations/donation-qr.jpg" alt="Código QR para realizar un aporte voluntario a Colevana" width="550" height="550">
     </section>
+
+    <section class="donor-board" aria-labelledby="donorBoardTitle">
+      <header class="donor-board-header">
+        <div>
+          <span class="donor-board-kicker">Comunidad Colevana</span>
+          <h2 id="donorBoardTitle">Donadores recientes</h2>
+          <p>Gracias a quienes ayudan a que Colevana siga creciendo.</p>
+        </div>
+        <span class="donor-sort-label" aria-label="Ordenado por monto, de mayor a menor">
+          <span aria-hidden="true">↓</span> Aporte mayor a menor
+        </span>
+      </header>
+      <div class="donor-table-scroll">
+        <table class="donor-table">
+          <caption class="sr-only">Últimos aportes ordenados por monto, de mayor a menor</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="donor-rank-heading">Puesto</th>
+              <th scope="col">Donador</th>
+              <th scope="col">Fecha</th>
+              <th scope="col" class="donor-amount-heading" aria-sort="descending">Aporte</th>
+            </tr>
+          </thead>
+          <tbody id="donorTableBody"></tbody>
+        </table>
+        <p class="donor-empty" id="donorEmptyState" hidden>Aún no hay aportes registrados. ¡Gracias por apoyar a Colevana!</p>
+      </div>
+      <p class="donor-board-note">Mostramos los últimos 10 aportes, ordenados del monto más alto al más bajo.</p>
+    </section>
   </main>
 
   <script type="module" src="./src/scripts/nav.js?v=20261031-aportes"></script>
@@ -58,5 +87,6 @@
   <script type="module" src="./src/scripts/services/tv-app-prompt.js"></script>
   <script type="module" src="./src/scripts/services/update-checker.js"></script>
   <script type="module" src="./src/scripts/search-ui.js"></script>
+  <script type="module" src="./src/scripts/donations-page.js"></script>
 </body>
 </html>

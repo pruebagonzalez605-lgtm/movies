@@ -150,6 +150,7 @@ export const SERIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     tmdbShow: "Dragon Ball Super: Beerus",
     tmdbYear: 2026,
+    movieDaysType: "anime",
     seasons: [
       {
         season: 1,
@@ -167,6 +168,7 @@ export const SERIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     tmdbShow: "Dragon Ball",
     tmdbYear: 1986,
+    movieDaysType: "anime",
     seasons: [
       {
         season: 1,
@@ -198,6 +200,7 @@ export const SERIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     tmdbShow: "Dragon Ball Z",
     tmdbYear: 1989,
+    movieDaysType: "anime",
     seasons: [
       {
         season: 1,
@@ -286,6 +289,7 @@ export const SERIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     tmdbShow: "Dragon Ball Z Kai",
     tmdbYear: 2009,
+    movieDaysType: "anime",
     seasons: [
       {
         season: 1,
@@ -323,6 +327,7 @@ export const SERIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     tmdbShow: "Dragon Ball GT",
     tmdbYear: 1996,
+    movieDaysType: "anime",
     seasons: [
       {
         season: 1,
@@ -345,6 +350,7 @@ export const SERIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     tmdbShow: "Dragon Ball Super",
     tmdbYear: 2015,
+    movieDaysType: "anime",
     seasons: [
       {
         season: 1,
@@ -374,6 +380,7 @@ export const SERIES = [
     gradient: ["#3d1f0d", "#8a5a1e"],
     tmdbShow: "Dragon Ball Daima",
     tmdbYear: 2024,
+    movieDaysType: "anime",
     seasons: [
       {
         season: 1,
@@ -1981,6 +1988,7 @@ export const SERIES = [
     tmdbShow: "Naruto",
     tmdbId: 46260,
     tmdbYear: 2002,
+    movieDaysType: "anime",
     seasons: [
       { season: 1, srcs: Array(52).fill("") },
       { season: 2, srcs: Array(52).fill("") },
@@ -1997,6 +2005,7 @@ export const SERIES = [
     tmdbShow: "Naruto Shippuden",
     tmdbId: 31910,
     tmdbYear: 2007,
+    movieDaysType: "anime",
     seasons: [
       { season: 1, srcs: Array(32).fill("") },
       { season: 2, srcs: Array(21).fill("") },
@@ -2029,6 +2038,7 @@ export const SERIES = [
     tmdbShow: "Boruto: Naruto Next Generations",
     tmdbId: 70881,
     tmdbYear: 2017,
+    movieDaysType: "anime",
     seasons: [
       { season: 1, srcs: Array(293).fill("") },
     ],
@@ -2042,6 +2052,7 @@ export const SERIES = [
     tmdbShow: "Naruto SD: Rock Lee no Seishun Full-Power Ninden",
     tmdbId: 43168,
     tmdbYear: 2012,
+    movieDaysType: "anime",
     seasons: [
       { season: 1, srcs: Array(51).fill("") },
     ],
