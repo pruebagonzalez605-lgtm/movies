@@ -3,4 +3,5 @@
 // Ejemplo: { name: "Nombre público", date: "2026-11-07", amount: 50000, currency: "COP" }
 export const DONORS = [
   { name: "KINGTAPIAS", date: "2026-11-07", amount: 10000, currency: "COP" },
+  { name: "XDREAM", date: "2026-11-07", amount: 12928, currency: "COP" },
 ];
