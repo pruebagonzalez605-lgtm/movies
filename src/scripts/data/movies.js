@@ -2216,4 +2216,15 @@ export const MOVIES = [
     gradient: ["#3d0d1a", "#8a1e4a"],
     src: "",
   },
+  {
+    code: "217",
+    title: "El abismo secreto",
+    addedAt: "2026-11-07",
+    genre: "ciencia-ficcion",
+    tmdbTitle: "The Gorge",
+    tmdbId: 950396,
+    tmdbYear: 2025,
+    gradient: ["#10232a", "#506a70"],
+    src: "",
+  },
 ];
