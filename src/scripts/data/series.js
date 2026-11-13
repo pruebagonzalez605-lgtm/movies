@@ -2057,4 +2057,16 @@ export const SERIES = [
       { season: 1, srcs: Array(51).fill("") },
     ],
   },
+  {
+    title: "Palacio",
+    addedAt: "2026-11-12",
+    genre: "drama",
+    gradient: ["#1b1725", "#58434f"],
+    tmdbShow: "Palacio",
+    tmdbId: 297491,
+    tmdbYear: 2026,
+    seasons: [
+      { season: 1, srcs: Array(8).fill("") },
+    ],
+  },
 ];
