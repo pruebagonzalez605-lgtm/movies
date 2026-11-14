@@ -146,9 +146,9 @@ function corsHeaders(request, env) {
   const requestOrigin = request.headers.get("Origin");
   const configuredOrigins = env.ALLOWED_SITE_ORIGIN || "https://colevana.com,http://127.0.0.1:5501,http://localhost:5501,http://127.0.0.1:5500,http://localhost:5500";
   const allowedOrigins = configuredOrigins.split(",").map((value) => value.trim()).filter(Boolean);
-  const origin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
-  return {
-    "Access-Control-Allow-Origin": origin,
+  // No devolver el primer origen configurado si no coincide con el llamador:
+  // puede ser incorrecto para CORS y abrir acceso a un sitio no autorizado.
+  const headers = {
     "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
     "Access-Control-Allow-Headers": "Range, If-Range, If-None-Match, If-Modified-Since",
     "Access-Control-Expose-Headers": "Accept-Ranges, Content-Length, Content-Range, ETag, Last-Modified",
@@ -156,6 +156,23 @@ function corsHeaders(request, env) {
     "Cross-Origin-Resource-Policy": "cross-origin",
     Vary: "Origin",
   };
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    headers["Access-Control-Allow-Origin"] = requestOrigin;
+  }
+  return headers;
+}
+
+function withFreshCorsHeaders(response, request, env) {
+  const headers = new Headers(response.headers);
+  headers.delete("Access-Control-Allow-Origin");
+  for (const [name, value] of Object.entries(corsHeaders(request, env))) {
+    headers.set(name, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 function jsonResponse(request, env, status, body) {
@@ -543,7 +560,7 @@ async function handleResolveStream(request, env, requestUrl, ctx) {
   const cacheKey = cache ? new Request(requestUrl.toString(), { method: "GET" }) : null;
   if (cache && cacheKey) {
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (cached) return withFreshCorsHeaders(cached, request, env);
   }
 
   let html;
@@ -675,7 +692,7 @@ async function handleListing(request, env, requestUrl, ctx) {
   const cacheKey = cache ? new Request(requestUrl.toString(), { method: "GET" }) : null;
   if (cache && cacheKey) {
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (cached) return withFreshCorsHeaders(cached, request, env);
   }
 
   // Cache negativo: cuando confirmamos (con logging real, ver wrangler tail)
@@ -692,7 +709,7 @@ async function handleListing(request, env, requestUrl, ctx) {
     const cachedDown = await cache.match(downCacheKey);
     if (cachedDown) {
       console.log(`[listing] short-circuit: recent known failure for ${listingUrl.href}, skipping fetch`);
-      return cachedDown;
+      return withFreshCorsHeaders(cachedDown, request, env);
     }
   }
 
@@ -854,7 +871,7 @@ async function handleMovieDaysFallback(request, env, requestUrl, ctx) {
   const cacheKey = cache ? new Request(requestUrl.toString(), { method: "GET" }) : null;
   if (cache && cacheKey) {
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (cached) return withFreshCorsHeaders(cached, request, env);
   }
 
   const upstreamUrl = new URL(`${MOVIEDAYS_BASE}/api/share.php`);
