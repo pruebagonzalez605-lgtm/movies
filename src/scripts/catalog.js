@@ -123,26 +123,21 @@ function setHeroContent(config) {
     const card = document.createElement(cardTag);
     card.className = `catalog-spotlight-card catalog-spotlight-note${config.spotlightStyle === "compact" ? " is-compact" : ""}`;
     if (item.href) card.href = item.href;
+    const isObject = item && typeof item === "object";
     if (config.spotlightStyle === "compact") {
       card.innerHTML = `
         <span>${item.label || config.kicker}</span>
         <strong>${item.title || item}</strong>
       `;
-      if (item.poster) {
-        applyPosterImage(card, item.poster, item.gradient || ["#1c1c22", "#141419"], {
-          overlay:
-            "linear-gradient(180deg, rgba(8,8,12,0.1) 0%, rgba(8,8,12,0.18) 35%, rgba(8,8,12,0.55) 62%, rgba(8,8,12,0.95) 100%)",
-          resolvePoster: item.resolvePoster,
-        });
-      } else if (item.resolvePoster) {
-        applyPosterImage(card, null, item.gradient || ["#1c1c22", "#141419"], {
-          overlay:
-            "linear-gradient(180deg, rgba(8,8,12,0.1) 0%, rgba(8,8,12,0.18) 35%, rgba(8,8,12,0.55) 62%, rgba(8,8,12,0.95) 100%)",
-          resolvePoster: item.resolvePoster,
-        });
-      }
     } else {
-      card.innerHTML = `<span>Vista</span><strong>${item}</strong>`;
+      card.innerHTML = `<span>${(isObject && item.label) || "Vista"}</span><strong>${isObject ? item.title : item}</strong>`;
+    }
+    if (isObject && (item.poster || item.resolvePoster)) {
+      applyPosterImage(card, item.poster || null, item.gradient || ["#1c1c22", "#141419"], {
+        overlay:
+          "linear-gradient(180deg, rgba(8,8,12,0.1) 0%, rgba(8,8,12,0.18) 35%, rgba(8,8,12,0.55) 62%, rgba(8,8,12,0.95) 100%)",
+        resolvePoster: item.resolvePoster,
+      });
     }
     spotlight.appendChild(card);
   });
@@ -504,7 +499,18 @@ async function renderMoviesPage() {
     kicker: "PELÍCULAS · COLEVANA",
     title: "Tu próxima película empieza aquí.",
     intro: "Explora el catálogo, descubre algo nuevo y empieza a verlo cuando quieras.",
-    spotlight: ["Destacados", "Géneros", "Ver ahora"],
+    spotlight: ["Destacados", "Géneros", "Ver ahora"].map((title, index) => {
+      const movie = movies[index];
+      if (!movie) return title;
+      return {
+        label: "Vista",
+        title,
+        href: buildMoviePlayerUrl(movie),
+        poster: movie.poster || null,
+        resolvePoster: () => resolveMovieCardPoster(movie),
+        gradient: movie.gradient,
+      };
+    }),
     spotlightStyle: "default",
   });
 
