@@ -1,4 +1,4 @@
-import { MOVIES } from "../data/movies.js?v=20261114-sitewide-lighthouse1";
+import { MOVIES } from "../data/movies.js?v=20261114-kuroko";
 import {
   GENRE_DEFINITIONS,
   GENRE_BY_ID,
@@ -26,7 +26,7 @@ function loadTmdbService() {
 
 function loadSeriesData() {
   if (!seriesDataPromise) {
-    seriesDataPromise = import("../data/series.js?v=20261114-sitewide-lighthouse1")
+    seriesDataPromise = import("../data/series.js?v=20261114-kuroko")
       .then((module) => module.SERIES)
       .catch((error) => {
         seriesDataPromise = null;

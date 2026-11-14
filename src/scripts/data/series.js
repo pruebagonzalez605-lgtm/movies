@@ -2081,4 +2081,20 @@ export const SERIES = [
       { season: 1, srcs: Array(8).fill("") },
     ],
   },
+  {
+    title: "Kuroko no Basket",
+    addedAt: "2026-11-14",
+    genre: "animacion",
+    saga: "Kuroko no Basket",
+    gradient: ["#12213b", "#3975a8"],
+    tmdbShow: "Kuroko's Basketball",
+    tmdbId: 45783,
+    tmdbYear: 2012,
+    movieDaysType: "anime",
+    seasons: [
+      { season: 1, srcs: Array(25).fill("") },
+      { season: 2, srcs: Array(25).fill("") },
+      { season: 3, srcs: Array(25).fill("") },
+    ],
+  },
 ];

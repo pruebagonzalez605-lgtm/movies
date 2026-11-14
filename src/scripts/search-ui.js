@@ -2,7 +2,7 @@ let searchModulePromise = null;
 
 function searchSite(query, options) {
   if (!searchModulePromise) {
-    searchModulePromise = import("./shared/catalog-data.js?v=20261114-sitewide-lighthouse1")
+    searchModulePromise = import("./shared/catalog-data.js?v=20261114-kuroko")
       .catch((error) => {
         searchModulePromise = null;
         throw error;

@@ -15,7 +15,7 @@ import {
   getItemGenreSync,
   optimizePosterUrl,
   slugify,
-} from "./shared/catalog-data.js?v=20261114-sitewide-lighthouse1";
+} from "./shared/catalog-data.js?v=20261114-kuroko";
 import { GENRE_BY_ID } from "./config/genres.js";
 import { initKickAuthUI } from "./shared/kick-auth-ui.js";
 import {
