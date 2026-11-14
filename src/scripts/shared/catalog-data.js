@@ -1,4 +1,4 @@
-import { MOVIES } from "../data/movies.js?v=20261114-1447";
+import { MOVIES } from "../data/movies.js?v=20261114-1510";
 import {
   GENRE_DEFINITIONS,
   GENRE_BY_ID,
@@ -15,7 +15,7 @@ let tmdbServicePromise = null;
 
 function loadTmdbService() {
   if (!tmdbServicePromise) {
-    tmdbServicePromise = import("../services/tmdb.js?v=20261114-1447")
+    tmdbServicePromise = import("../services/tmdb.js?v=20261114-1510")
       .catch((error) => {
         tmdbServicePromise = null;
         throw error;
@@ -26,7 +26,7 @@ function loadTmdbService() {
 
 function loadSeriesData() {
   if (!seriesDataPromise) {
-    seriesDataPromise = import("../data/series.js?v=20261114-1447")
+    seriesDataPromise = import("../data/series.js?v=20261114-1510")
       .then((module) => module.SERIES)
       .catch((error) => {
         seriesDataPromise = null;
