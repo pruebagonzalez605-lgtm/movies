@@ -77,3 +77,10 @@ test('resolver follows only allowed nested embeds and returns every clean altern
   assert.deepEqual(calls, ['https://goodstream.one/embed-film', 'https://vimeos.net/embed-film']);
   assert.deepEqual(result.streams, ['https://vimeos.net/master.m3u8', 'https://vimeos.net/film.mp4']);
 });
+
+test('half-built stream templates like "stream.m3u8?url=" are not returned as streams', async () => {
+  const { extractCleanStreamsFromHtml } = await import('../src/index.js');
+  const html = `<script>var src = "https://vimeos.unlimplay.com/stream.m3u8?url=" + encodeURIComponent(x);
+    var ok = "https://cdn.example/hls/master.m3u8?token=abc";</script>`;
+  assert.deepEqual(extractCleanStreamsFromHtml(html, 'https://unlimplay.com/f/embed/tv/1/1/1'), ['https://cdn.example/hls/master.m3u8?token=abc']);
+});

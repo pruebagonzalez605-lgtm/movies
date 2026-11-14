@@ -7,7 +7,7 @@ import { buildProviderCandidates, mergeProviderCandidates, TMDB_EMBED_PROVIDERS,
 test('each provider has separate movie and episode routes with the exact requested episode', () => {
   const movies = buildProviderCandidates({ kind: 'movie', tmdbId: 57214 });
   const episodes = buildProviderCandidates({ kind: 'episode', tmdbId: 1405, season: 8, episode: 12 });
-  assert.equal(movies.length, 4);
+  assert.equal(movies.length, TMDB_EMBED_PROVIDERS.length);
   assert.equal(episodes.length, TMDB_EMBED_PROVIDERS.length);
   assert.ok(movies.every(c => c.url.endsWith('/movie/57214') && c.resolveClean === true));
   assert.ok(episodes.every(c => c.url.endsWith('/tv/1405/8/12') && c.iframeEligible));
@@ -20,7 +20,7 @@ test('each provider has separate movie and episode routes with the exact request
 
 test('merge retains alternate providers and episodes while removing duplicate URLs', () => {
   const all = buildProviderCandidates({ kind: 'movie', tmdbId: 57214 });
-  assert.equal(mergeProviderCandidates(all, all, [{ url: 'https://new.example/embed' }]).length, 5);
+  assert.equal(mergeProviderCandidates(all, all, [{ url: 'https://new.example/embed' }]).length, TMDB_EMBED_PROVIDERS.length + 1);
 });
 
 const source = readFileSync(new URL('../../src/scripts/player-page.js', import.meta.url), 'utf8');
@@ -61,7 +61,9 @@ test('iframe mounting rejects unsafe URLs and omits sandbox only for supported p
       'allow-scripts allow-same-origin allow-presentation allow-forms');
     assert.equal(attributes.has('allowfullscreen'), true);
   }
-  assert.equal(getProviderSandbox('https://player.videasy.to/movie/57214'), null);
+  assert.equal(getProviderSandbox('https://vidsrc.to/embed/movie/57214'), null);
+  // Videasy ya no es proveedor de confianza (dominio caído): va con sandbox.
+  assert.notEqual(getProviderSandbox('https://player.videasy.to/movie/57214'), null);
   assert.notEqual(getProviderSandbox('https://player.videasy.to.evil.example/movie/57214'), null);
   assert.notEqual(getProviderSandbox('invalid URL'), null);
 });
@@ -74,7 +76,7 @@ function readFunction(name, nextMarker) {
 test('episodes use the four TMDB providers in order', () => {
   const episode = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
   const candidates = buildProviderCandidates(episode);
-  assert.deepEqual(candidates.map(candidate => candidate.provider.name), ['Videasy', 'VidSrc', 'VidSrc SH', 'VidSrc Link']);
+  assert.deepEqual(candidates.map(candidate => candidate.provider.name), ['VidSrc', 'VidSrc SH', 'VidSrc Link']);
   assert.ok(candidates.every(candidate => candidate.resolveClean === true));
 });
 
@@ -98,7 +100,7 @@ test('direct HLS plays in the native player first and only falls back to an ifra
     });
     vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
     assert.equal(await context.tryHlsWishFallback(), true);
-    assert.deepEqual(calls, works ? ['native'] : ['native', 'https://player.videasy.to/tv/62560/1/1']);
+    assert.deepEqual(calls, works ? ['native'] : ['native', 'https://vidsrc.to/embed/tv/62560/1/1']);
   }
 });
 
@@ -112,7 +114,7 @@ test('independent providers remain available when both listing services are down
   });
   vm.runInContext(readFunction('fetchExternalCandidates', 'async function tryHlsWishFallback'), context);
   const result = await context.fetchExternalCandidates({ kind: 'movie', tmdbId: 57214 });
-  assert.equal(result.embedCandidates.length, 4);
+  assert.equal(result.embedCandidates.length, TMDB_EMBED_PROVIDERS.length);
   assert.equal(result.movieDaysSearched, true);
   assert.equal(requests, 1);
 });
@@ -130,7 +132,7 @@ test('a successful primary listing still offers independent sources', async () =
   vm.runInContext(readFunction('fetchExternalCandidates', 'async function tryHlsWishFallback'), context);
   const result = await context.fetchExternalCandidates({ kind: 'movie', tmdbId: 57214 });
   assert.equal(result.embedCandidates[0], primary);
-  assert.equal(result.embedCandidates.length, 5);
+  assert.equal(result.embedCandidates.length, TMDB_EMBED_PROVIDERS.length + 1);
   assert.equal(result.movieDaysSearched, false);
 });
 
@@ -148,7 +150,7 @@ test('automatic discovery keeps title-specific streams when older listings fail'
     vm.runInContext(readFunction('fetchExternalCandidates', 'async function tryHlsWishFallback'), context);
     const result = await context.fetchExternalCandidates(info);
     assert.equal(result.directStreams[0], stream);
-    assert.equal(result.embedCandidates.length, 5);
+    assert.equal(result.embedCandidates.length, TMDB_EMBED_PROVIDERS.length + 1);
   }
 });
 
@@ -171,5 +173,5 @@ test('playback tries public extraction on every provider before a single iframe 
   vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
   assert.equal(await context.tryHlsWishFallback(), true);
   assert.deepEqual(resolved, candidates.map(candidate => candidate.url));
-  assert.deepEqual(mounted, ['Videasy']);
+  assert.deepEqual(mounted, ['VidSrc']);
 });

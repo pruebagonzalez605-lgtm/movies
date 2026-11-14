@@ -1,7 +1,7 @@
 // Endpoints públicos documentados por los proveedores. La disponibilidad
 // del documento del reproductor no garantiza que tengan cada título.
+// Videasy se quitó en nov. 2026: player.videasy.to dejó de resolver en DNS.
 export const TMDB_EMBED_PROVIDERS = [
-  { name: "Videasy", origin: "https://player.videasy.to", movie: "/movie", tv: "/tv" },
   { name: "VidSrc", origin: "https://vidsrc.to", movie: "/embed/movie", tv: "/embed/tv" },
   { name: "VidSrc SH", origin: "https://vidsrc.sh", movie: "/embed/movie", tv: "/embed/tv" },
   { name: "VidSrc Link", origin: "https://www.vidsrc.link", movie: "/embed/movie", tv: "/embed/tv" },

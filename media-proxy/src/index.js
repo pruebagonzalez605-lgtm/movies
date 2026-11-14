@@ -325,6 +325,8 @@ export function extractCleanStreamsFromHtml(html, baseUrl) {
       const url = new URL(value.replace(/[,;]+$/, ""), baseUrl);
       if (url.protocol !== "https:" || url.username || url.password) return;
       if (!/\.(?:m3u8|mp4|webm)$/i.test(url.pathname)) return;
+      // "stream.m3u8?url=" + variable: plantilla de JS a medio armar, no un stream.
+      if (/[?&][^=&]+=$/.test(url.href)) return;
       if (STREAM_AD_HINT.test(url.href) || isDecoyStreamUrl(url.href)) return;
       unique.add(url.href);
     } catch { /* Recurso no válido */ }

@@ -11,13 +11,13 @@ import {
   resolveMovieCardPoster,
   resolveSeriesCardPoster,
   slugify,
-} from "./shared/catalog-data.js?v=20261114-1331";
+} from "./shared/catalog-data.js?v=20261114-1343";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261114-1331";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261114-1343";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -3107,7 +3107,7 @@ async function tryHlsWishFallback(showMessage = true) {
         embedCandidates.push(...fresh);
         if (fresh.length) return tryNextCandidate();
       }
-      // Preferir el primer proveedor TMDB conocido (Videasy, VidSrc...) en su
+      // Preferir el primer proveedor TMDB conocido (VidSrc, VidSrc SH...) en su
       // orden; solo si no hay ninguno, el ultimo embed elegible de la lista.
       const eligible = embedCandidates.filter((item) => item.iframeEligible && item.url);
       const iframeCandidate = eligible.find((item) => getProviderSandbox(item.url) === null)
