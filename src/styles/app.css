@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap");
-
 :root {
   --bg: #0b0b0f;
   --panel: #141419;
@@ -641,23 +639,32 @@ video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; borde
 .screen-frame .plyr__volume::before {
   content: "";
   position: absolute;
+  z-index: 0;
   left: 50%;
-  bottom: 44px;
+  bottom: 17px;
   width: 38px;
   height: 108px;
   border-radius: 999px;
-  background: transparent;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(197, 211, 228, 0.1);
+  background: rgba(79, 93, 110, 0.18);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
   opacity: 0;
   pointer-events: none;
   transform: translateX(-50%) translateY(8px);
   transition: opacity 0.16s ease, transform 0.16s ease;
 }
 
+.screen-frame .plyr__volume > .plyr__control {
+  position: relative;
+  z-index: 3;
+}
+
 .screen-frame .plyr__volume input[data-plyr="volume"] {
   position: absolute;
   z-index: 2;
-  left: 50%;
+  left: calc(50% - 6px);
   bottom: 55px;
   display: block;
   width: 84px;
@@ -917,6 +924,7 @@ body.resume-open { overflow: hidden; }
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   align-content: stretch;
+  min-height: 200px;
 }
 
 .catalog-spotlight-card.is-compact {
@@ -1855,15 +1863,18 @@ body.modal-open {
   }
 
   .screen-frame .plyr__volume::before {
-    bottom: 36px;
-    width: 30px;
-    height: 82px;
+    bottom: 28px;
+    width: 34px;
+    height: 96px;
   }
 
   .screen-frame .plyr__volume input[data-plyr="volume"] {
-    bottom: 43px;
-    width: 64px;
-    min-width: 64px;
+    bottom: 39px;
+    width: 70px;
+    min-width: 70px;
+    margin: 0;
+    transform: translateX(-50%) rotate(-90deg);
+    -webkit-transform: translateX(-50%) rotate(-90deg);
   }
 
   .player-quick-settings {
@@ -3730,7 +3741,7 @@ html.tv-device .genre-chip.tv-focus {
   padding: 3px 9px 3px 6px;
   border-radius: 999px;
   line-height: 1.3;
-  color: rgb(var(--pill-rgb, 232, 196, 104));
+  color: #f6f5f1;
   background: rgba(var(--pill-rgb, 232, 196, 104), 0.14);
   border: 1px solid rgba(var(--pill-rgb, 232, 196, 104), 0.38);
   box-shadow: 0 4px 12px -8px rgba(var(--pill-rgb, 232, 196, 104), 1);
@@ -3780,7 +3791,6 @@ html.tv-device #mediaSlot .plyr__video-wrapper {
 html.tv-device #mediaSlot.tv-controls-hidden .tv-playback-controls,
 html.tv-device #mediaSlot.tv-controls-hidden .plyr__controls,
 html.tv-device #mediaSlot.tv-controls-hidden .plyr__control--overlaid,
-html.tv-device #mediaSlot.tv-controls-hidden .tv-player-back,
 html.tv-device #mediaSlot.tv-controls-hidden .episode-toggle-btn {
   opacity: 0 !important; visibility: hidden !important; pointer-events: none !important;
 }
@@ -3816,29 +3826,6 @@ html.tv-device .tv-playback-controls:not([hidden]) {
 html.tv-device .plyr__control { min-width: 50px; min-height: 50px; }
 html.tv-device .plyr__controls { gap: 8px; padding-bottom: 20px; }
 
-.tv-player-back {
-  display: none;
-}
-
-html.tv-locked-fullscreen #mediaSlot .tv-player-back,
-#mediaSlot:fullscreen .tv-player-back,
-#mediaSlot:-webkit-full-screen .tv-player-back {
-  position: absolute;
-  top: max(24px, env(safe-area-inset-top));
-  left: max(28px, env(safe-area-inset-left));
-  z-index: 10020;
-  display: inline-flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 10px 16px;
-  border: 1px solid rgba(255,255,255,.4);
-  border-radius: 5px;
-  background: rgba(0,0,0,.72);
-  color: #fff;
-  font: 700 16px Montserrat, sans-serif;
-  cursor: pointer;
-}
-
 html.tv-locked-fullscreen #mediaSlot .episode-toggle-btn,
 #mediaSlot:fullscreen .episode-toggle-btn,
 #mediaSlot:-webkit-full-screen .episode-toggle-btn {
@@ -3856,12 +3843,6 @@ html.tv-locked-fullscreen #mediaSlot .episode-grid-container,
   inset: 0 0 0 auto;
   z-index: 10030;
   width: min(480px, 92vw);
-}
-
-#mediaSlot .tv-player-back:focus-visible,
-#mediaSlot .tv-player-back.tv-focus {
-  outline: 4px solid #f2c77d;
-  outline-offset: 4px;
 }
 
 /* Colevana: identidad visual unificada en las páginas originales. */
@@ -4058,6 +4039,7 @@ body[data-page] .site-nav .nav-link[aria-current="page"]::after { transform: sca
 .home-rail-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 17px; }
 .home-rail-heading h2 { margin: 5px 0 0; font-family: Inter, Arial, sans-serif; font-size: clamp(25px, 2.35vw, 36px); font-weight: 800; line-height: 1.12; letter-spacing: -.045em; }
 .home-rail .catalog-grid { display: grid; grid-auto-flow: column; grid-auto-columns: clamp(156px, 16vw, 230px); grid-template-columns: none; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; padding: 3px 4px 18px; }
+.home-rail .catalog-grid.is-pending { min-height: clamp(320px, 31vw, 410px); }
 .home-rail .catalog-card { scroll-snap-align: start; }
 .home-rail-more, #homeMoviesMore, #homeSeriesMore, #homeSagasMore { margin: 0; padding: 0 0 4px; border: 0; border-radius: 0; background: none; color: #e8bc72; font-size: 12px; letter-spacing: .02em; text-transform: none; white-space: nowrap; }
 .home-rail-more:hover { color: #fff; }
@@ -4104,7 +4086,7 @@ a.catalog-spotlight-card:hover { transform: translateY(-4px); border-color: #e8b
 .carousel-label::before, .carousel-label::after { display: none; }
 .catalog-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 25px 15px; }
 .catalog-card, .search-result-card, .player-story-card { border: 0; border-radius: 5px; background: transparent; box-shadow: none; }
-.catalog-card { position: relative; min-height: 0; }
+.catalog-card { position: relative; min-height: 0; content-visibility: auto; contain-intrinsic-size: auto 350px; }
 .catalog-card:hover { border-color: transparent; transform: translateY(-4px); }
 .catalog-select-card.is-selected { border-color: transparent; box-shadow: 0 0 0 2px #e8bc72; }
 .catalog-card-art { border-radius: 5px; overflow: hidden; background-color: #222831; }
@@ -4170,9 +4152,11 @@ a.catalog-spotlight-card:hover { transform: translateY(-4px); border-color: #e8b
   .home-rail + .home-rail { margin-top: 35px; }
   .home-rail-heading h2 { font-size: 26px; }
   .home-rail .catalog-grid { grid-auto-columns: clamp(145px, 40vw, 205px); gap: 11px; margin-right: calc(-1 * var(--content-gutter)); padding-right: var(--content-gutter); }
+  .home-rail .catalog-grid.is-pending { min-height: 360px; }
   .catalog-hero { display: grid; grid-template-columns: 1fr; min-height: 0; padding: 26px; }
   .catalog-hero-copy h1 { font-size: clamp(34px, 9vw, 52px); }
   .catalog-spotlight, .catalog-spotlight-compact { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(125px, 1fr); grid-template-columns: none; overflow-x: auto; }
+  .catalog-spotlight-compact { min-height: 156px; }
   .catalog-spotlight-card, .catalog-spotlight-card.is-compact { min-height: 156px; }
   .catalog-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 20px 11px; }
   .search-results-grid { grid-template-columns: 1fr; }

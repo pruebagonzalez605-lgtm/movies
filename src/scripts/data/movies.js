@@ -832,6 +832,7 @@ export const MOVIES = [
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 1988,
     tmdbId: 10585,
+    poster: "https://static.rogerebert.com/uploads/movie/movie_poster/childs-play-1988/large_6r9MOdGpOpSTH4jCQemyhPOHbZn.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/",
   },
   {
@@ -1108,6 +1109,7 @@ export const MOVIES = [
     tmdbTitle: "Shrek",
     gradient: ["#3d0d0d", "#8a6a1e"],
     tmdbYear: 2001,
+    poster: "https://image.tmdb.org/t/p/w500/EKERKucZeBrkrR8xLDTkr5FeDc.jpg",
     saga: "Shrek",
     src: "",
   },
@@ -2082,6 +2084,7 @@ export const MOVIES = [
     tmdbTitle: "Naruto the Movie: Ninja Clash in the Land of Snow",
     tmdbId: 16907,
     tmdbYear: 2004,
+    poster: "https://image.tmdb.org/t/p/w500/eUNRUeSNzm8LktH4HRaYiAReB6R.jpg",
     gradient: ["#3d1f0d", "#8a5a1e"],
     src: "",
   },

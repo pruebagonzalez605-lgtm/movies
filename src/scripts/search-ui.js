@@ -1,4 +1,15 @@
-import { searchSite } from "./shared/catalog-data.js";
+let searchModulePromise = null;
+
+function searchSite(query, options) {
+  if (!searchModulePromise) {
+    searchModulePromise = import("./shared/catalog-data.js?v=20261114-sitewide-lighthouse1")
+      .catch((error) => {
+        searchModulePromise = null;
+        throw error;
+      });
+  }
+  return searchModulePromise.then((module) => module.searchSite(query, options));
+}
 
 function buildDropdownCard(result) {
   const link = document.createElement("a");
@@ -15,7 +26,10 @@ function buildDropdownCard(result) {
 
   const art = link.querySelector(".site-search-result-art");
   if (result.poster) {
-    art.style.backgroundImage = `linear-gradient(180deg, rgba(8,8,12,0.08), rgba(8,8,12,0.72)), url('${result.poster}')`;
+    const posterUrl = result.poster
+      .replace("image.tmdb.org/t/p/w500/", "image.tmdb.org/t/p/w342/")
+      .replace(/(\._V1_FMjpg_)(?:UX|UY)\d+(_\.jpg)/i, "$1UX342$2");
+    art.style.backgroundImage = `linear-gradient(180deg, rgba(8,8,12,0.08), rgba(8,8,12,0.72)), url('${posterUrl}')`;
     art.style.backgroundSize = "cover";
     art.style.backgroundPosition = "center";
   } else {
@@ -60,7 +74,7 @@ function initSearchForm(form) {
       dropdown.innerHTML = '<div class="site-search-empty">Buscando...</div>';
       openDropdown(form);
 
-      const results = await searchSite(query, { limit: 6 });
+      const results = await searchSite(query, { limit: 6 }).catch(() => []);
       if (currentToken !== token) return;
 
       dropdown.innerHTML = "";

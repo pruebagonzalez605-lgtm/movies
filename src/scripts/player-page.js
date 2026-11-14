@@ -11,7 +11,7 @@ import {
   resolveMovieCardPoster,
   resolveSeriesCardPoster,
   slugify,
-} from "./shared/catalog-data.js";
+} from "./shared/catalog-data.js?v=20261114-sitewide-lighthouse1";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
@@ -83,7 +83,6 @@ const dom = {
   mqForwardBtn: document.getElementById("mqForwardBtn"),
   externalLoadingOverlay: document.getElementById("externalLoadingOverlay"),
   externalLoadingText: document.getElementById("externalLoadingText"),
-  tvBackBtn: document.getElementById("tvPlayerBackBtn"),
   tvControls: document.getElementById("tvPlaybackControls"),
   externalNotice: document.getElementById("externalProviderNotice"),
   episodeToggleBtn: document.getElementById("toggleEpisodeBtn"),
@@ -95,7 +94,6 @@ function restoreMediaSlotOverlays(container) {
     dom.mobileQuickControls,
     dom.nextEpisodeOverlay,
     dom.externalLoadingOverlay,
-    dom.tvBackBtn,
     dom.tvControls,
     dom.externalNotice,
   ]) {
@@ -119,6 +117,7 @@ const state = {
   watchdogInterval: null,
   watchdogLastTime: 0,
   watchdogStallCount: 0,
+  lastHlsStallRecoveryAt: 0,
   waitingTimer: null,
   playerUi: null,
   tvVisibility: null,
@@ -705,40 +704,53 @@ function resetCastButton() {
   btn.classList.remove("is-casting");
 }
 
-function withCacheBust(url) {
-  if (!url) return url;
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}_reconnect=${Date.now()}`;
-}
-
-function recoverPlayback() {
-  if (state.isRecovering || !state.currentBaseSrc) return;
+function recoverHlsPlayback() {
+  const hls = state._hls;
   const video = syncActiveVideo();
-  if (!video) return;
+  if (!hls || !video) return false;
+
+  const now = Date.now();
+  if (now - state.lastHlsStallRecoveryAt < 45000) {
+    dom.status.textContent = "La conexión sigue lenta. Esperando a que cargue más video…";
+    return true;
+  }
+
+  state.lastHlsStallRecoveryAt = now;
   state.isRecovering = true;
-  const resumeAt = video.currentTime || 0;
-  const wasPlaying = !video.paused;
-  dom.status.textContent = "La conexión se interrumpió. Reconectando...";
+  dom.status.textContent = "La conexión se interrumpió. Reintentando sin reiniciar el video…";
 
-  let recoveryTimeout;
-  const ready = () => {
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
     window.clearTimeout(recoveryTimeout);
-    video.removeEventListener("loadedmetadata", ready);
-    video.currentTime = Math.min(resumeAt, Number.isFinite(video.duration) ? video.duration : resumeAt);
-    if (wasPlaying) video.play().catch(() => {});
-    dom.status.textContent = "Video reconectado.";
+    video.removeEventListener("playing", onPlaying);
     state.isRecovering = false;
-    setTimeout(() => { if (dom.status.textContent.includes("reconectado")) dom.status.textContent = ""; }, 2500);
   };
-  recoveryTimeout = setTimeout(() => {
-    video.removeEventListener("loadedmetadata", ready);
-    state.isRecovering = false;
-  }, 10000);
+  const onPlaying = () => finish();
+  const recoveryTimeout = window.setTimeout(() => {
+    finish();
+    if (video.paused && !video.error) {
+      dom.status.textContent = "Sigue cargando. El video se reanudará cuando la fuente responda.";
+    }
+  }, 18000);
+  video.addEventListener("playing", onPlaying);
 
-  video.addEventListener("loadedmetadata", ready);
-  const activeSource = state.availableSources.find(s => Number(s.size) === state.currentQuality)?.src || video.currentSrc || state.currentBaseSrc;
-  video.src = withCacheBust(activeSource);
-  video.load();
+  try {
+    if (video.error?.code === window.MediaError?.MEDIA_ERR_DECODE && hls.recoverMediaError) {
+      hls.recoverMediaError();
+    } else {
+      // Deja que hls.js reconstruya la carga desde el punto actual; asignar
+      // de nuevo video.src rompe el MediaSource que hls.js ya está usando.
+      hls.stopLoad();
+      hls.startLoad(Number.isFinite(video.currentTime) ? video.currentTime : -1);
+    }
+    return true;
+  } catch (error) {
+    finish();
+    playerConsole("warn", "[hls] no se pudo reanudar la carga", error);
+    return true;
+  }
 }
 
 function switchPlaybackQuality(quality, reason = "") {
@@ -798,7 +810,11 @@ function handlePlaybackStall() {
     switchPlaybackQuality(lower.size, `La conexion esta lenta. Bajando a ${lower.size}p...`);
     return;
   }
-  recoverPlayback();
+  if (recoverHlsPlayback()) return;
+
+  // Los MP4 suelen recuperarse solos cuando vuelve la red. Recargar la misma
+  // URL aquí interrumpe el buffer y puede devolver al usuario al comienzo.
+  dom.status.textContent = "La conexión está lenta. Esperando a que cargue más video…";
 }
 
 function updateQualityControls() {
@@ -1151,6 +1167,7 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   state.currentProgressKey = contentKey;
   state.currentContentTitle = title;
   state.resumePrompted = false;
+  state.lastHlsStallRecoveryAt = 0;
   state.playbackMode = "video";
   state.localPlaybackFallbackAttempted = false;
   stopExternalTracking();
@@ -1859,11 +1876,6 @@ function bindEvents() {
     if (dom.externalNotice) dom.externalNotice.hidden = true;
     document.getElementById(RETRY_LINK_ID)?.focus();
   });
-  dom.tvBackBtn?.addEventListener("click", () => {
-    persistCurrentProgress();
-    window.location.assign(dom.backLink.href);
-  });
-
   const onFsChange = () => {
     if (!isPlayerFullscreen() && state.nextEpisodeVisible) {
       hideNextEpisodeOverlay();
@@ -2051,7 +2063,7 @@ async function init() {
     }
 
     if (type === "episode") {
-      const serie = findSeriesBySlug(params.get("series") || "");
+      const serie = await findSeriesBySlug(params.get("series") || "");
       const season = Number(params.get("season"));
       const episode = Number(params.get("episode"));
       if (!serie || !season || !episode) throw new Error("episode_not_found");
@@ -2112,7 +2124,7 @@ async function getExternalEmbedInfo() {
     const seriesSlug = params.get("series");
     const season = Number(params.get("season"));
     const episode = Number(params.get("episode"));
-    const serie = findSeriesBySlug(seriesSlug || "");
+    const serie = await findSeriesBySlug(seriesSlug || "");
     if (!serie || !season || !episode) return null;
 
     let tmdbId = explicitTmdbId || serie.tmdb_id || serie.tmdbId;
@@ -2360,6 +2372,7 @@ async function mountDirectStream(container, streamUrl) {
 
   state.suppressVideoErrorUi = true;
   state.playbackMode = "video";
+  state.lastHlsStallRecoveryAt = 0;
   state.currentBaseSrc = streamUrl;
   state.currentOriginalSrc = streamUrl;
   // Deteccion de HLS tolerante: basta con que ".m3u8" aparezca en la URL
@@ -3169,7 +3182,7 @@ async function loadEpisodeGrid() {
   currentSeasonNum = Number(params.get("season"));
   currentEpisodeNum = Number(params.get("episode"));
 
-  currentSeries = findSeriesBySlug(seriesSlug);
+  currentSeries = await findSeriesBySlug(seriesSlug);
   if (!currentSeries) return;
 
   document.getElementById("gridSeriesTitle").textContent = currentSeries.title;

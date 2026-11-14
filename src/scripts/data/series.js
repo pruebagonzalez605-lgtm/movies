@@ -2069,4 +2069,16 @@ export const SERIES = [
       { season: 1, srcs: Array(8).fill("") },
     ],
   },
+  {
+    title: "El cuerpo",
+    addedAt: "2026-11-14",
+    genre: "misterio",
+    gradient: ["#151c26", "#52606e"],
+    tmdbShow: "The Body",
+    tmdbId: 291507,
+    tmdbYear: 2026,
+    seasons: [
+      { season: 1, srcs: Array(8).fill("") },
+    ],
+  },
 ];

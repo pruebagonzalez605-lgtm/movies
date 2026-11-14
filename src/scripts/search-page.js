@@ -1,11 +1,26 @@
 import { initKickAuthUI } from "./shared/kick-auth-ui.js";
-import {
-  searchSite,
-  resolveItemGenre,
-  getItemGenreSync,
-} from "./shared/catalog-data.js";
 import { GENRE_DEFINITIONS, GENRE_BY_ID } from "./config/genres.js";
 import { createGenreFilter, genrePillHtml } from "./ui/genre-filter.js";
+
+let catalogDataPromise = null;
+
+function loadCatalogData() {
+  if (!catalogDataPromise) {
+    catalogDataPromise = import("./shared/catalog-data.js?v=20261114-sitewide-lighthouse1")
+      .catch((error) => {
+        catalogDataPromise = null;
+        throw error;
+      });
+  }
+  return catalogDataPromise;
+}
+
+function optimizePosterUrl(url) {
+  if (!url || url === "...") return null;
+  return url
+    .replace("image.tmdb.org/t/p/w500/", "image.tmdb.org/t/p/w342/")
+    .replace(/(\._V1_FMjpg_)(?:UX|UY)\d+(_\.jpg)/i, "$1UX342$2");
+}
 
 const params = new URLSearchParams(window.location.search);
 const query = (params.get("q") || "").trim();
@@ -51,8 +66,9 @@ function renderResultCard(result) {
   `;
 
   const art = card.querySelector(".search-result-art");
-  if (result.poster) {
-    art.style.backgroundImage = `linear-gradient(180deg, rgba(8,8,12,0.08), rgba(8,8,12,0.78)), url('${result.poster}')`;
+  const posterUrl = optimizePosterUrl(result.poster);
+  if (posterUrl) {
+    art.style.backgroundImage = `linear-gradient(180deg, rgba(8,8,12,0.08), rgba(8,8,12,0.78)), url('${posterUrl}')`;
     art.style.backgroundSize = "cover";
     art.style.backgroundPosition = "center";
   } else {
@@ -89,6 +105,7 @@ function renderResults() {
 /** Resuelve los generos de los resultados y muestra el filtro si vale la pena */
 async function setupGenres() {
   if (!genreFilter) return;
+  const { resolveItemGenre, getItemGenreSync } = await loadCatalogData();
 
   const resolved = await Promise.all(
     state.results.map((result) =>
@@ -139,6 +156,7 @@ async function init() {
   introNode.textContent = "Tu buscador revisa peliculas, series, sagas y episodios disponibles dentro del sitio.";
   countNode.textContent = "Buscando...";
 
+  const { searchSite } = await loadCatalogData();
   const results = await searchSite(query);
   state.results = results;
   state.selected = null;

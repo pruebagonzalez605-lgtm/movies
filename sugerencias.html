@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Montserrat:ital,wght@0,100..900;1,100..900&display=optional" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Montserrat:ital,wght@0,100..900;1,100..900&display=optional" rel="stylesheet"></noscript>
   <title>Sugerencias | Colevana</title>
   <link rel="icon" type="image/x-icon" href="./assets/icons/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="./site.webmanifest">
-  <link rel="stylesheet" href="./src/styles/app.css?v=20261031-donations">
+  <link rel="stylesheet" href="./src/styles/app.css?v=20261114-sitewide-lighthouse1">
 </head>
 
 <body data-page="sugerencias">
@@ -64,7 +64,7 @@
     </section>
 
     <section class="catalog-section">
-      <div class="carousel-label">Sugerencias de la comunidad</div>
+      <h2 class="carousel-label">Sugerencias de la comunidad</h2>
       <div class="suggestions-panel">
         <div class="suggestion-form" id="suggestionForm" style="display:none;">
           <textarea id="suggestionInput" maxlength="300" rows="3"
@@ -78,10 +78,8 @@
   </main>
 
   <script type="module" src="./src/scripts/nav.js?v=20261031-aportes"></script>
-  <script type="module" src="./src/scripts/tv/spatial-nav.js?v=20261006-tv-focus-border"></script>
-  <script type="module" src="./src/scripts/services/tv-app-prompt.js"></script>
-  <script type="module" src="./src/scripts/services/update-checker.js"></script>
-  <script type="module" src="./src/scripts/search-ui.js"></script>
+  <script type="module" src="./src/scripts/environment-boot.js?v=20261114-sitewide-lighthouse1"></script>
+  <script type="module" src="./src/scripts/search-ui.js?v=20261114-sitewide-lighthouse1"></script>
   <script type="module" src="./src/scripts/suggestions-page.js"></script>
 </body>
 

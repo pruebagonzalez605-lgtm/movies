@@ -13,8 +13,9 @@ import {
   collectAvailableGenres,
   filterItemsByGenre,
   getItemGenreSync,
+  optimizePosterUrl,
   slugify,
-} from "./shared/catalog-data.js";
+} from "./shared/catalog-data.js?v=20261114-sitewide-lighthouse1";
 import { GENRE_BY_ID } from "./config/genres.js";
 import { initKickAuthUI } from "./shared/kick-auth-ui.js";
 import {
@@ -55,17 +56,60 @@ const genreFilter = genreFilterMount
     })
   : null;
 
+const posterObserver = "IntersectionObserver" in window
+  ? new IntersectionObserver((entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const node = entry.target;
+        observer.unobserve(node);
+        loadPosterForNode(node);
+      });
+    }, { rootMargin: "220px 0px" })
+  : null;
+
+function loadPosterForNode(node) {
+  const loadImage = (posterUrl) => {
+    if (!posterUrl || !node.isConnected) return;
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => {
+      if (!node.isConnected) return;
+      node.style.backgroundImage = `${node.dataset.posterOverlay || ""}url('${posterUrl}')`;
+      node.style.backgroundSize = "cover";
+      node.style.backgroundPosition = "center";
+    };
+    image.src = posterUrl;
+  };
+
+  if (node.dataset.posterUrl && node.dataset.posterUrl !== "null") {
+    loadImage(node.dataset.posterUrl);
+    return;
+  }
+  const resolver = node.__posterResolver;
+  if (!resolver || node.dataset.posterLoading === "true") return;
+  node.dataset.posterLoading = "true";
+  Promise.resolve(resolver())
+    .then((posterUrl) => {
+      if (!posterUrl) return;
+      const optimizedPosterUrl = optimizePosterUrl(posterUrl);
+      node.dataset.posterUrl = optimizedPosterUrl;
+      loadImage(optimizedPosterUrl);
+    })
+    .catch(() => {})
+    .finally(() => { node.dataset.posterLoading = "false"; });
+}
+
 function applyPosterImage(node, posterUrl, gradient, options = {}) {
   const overlay = options.overlay || "linear-gradient(180deg, rgba(8,8,12,0.12), rgba(8,8,12,0.85))";
   node.style.background = `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`;
-  if (!posterUrl) return;
-  const img = new Image();
-  img.onload = () => {
-    node.style.backgroundImage = `${overlay}, url('${posterUrl}')`;
-    node.style.backgroundSize = "cover";
-    node.style.backgroundPosition = "center";
-  };
-  img.src = posterUrl;
+  node.dataset.posterOverlay = overlay ? `${overlay}, ` : "";
+  node.__posterResolver = options.resolvePoster || null;
+  const optimizedPosterUrl = optimizePosterUrl(posterUrl);
+  if (optimizedPosterUrl) node.dataset.posterUrl = optimizedPosterUrl;
+  else delete node.dataset.posterUrl;
+  if (!optimizedPosterUrl && !options.resolvePoster) return;
+  if (posterObserver) posterObserver.observe(node);
+  else loadPosterForNode(node);
 }
 
 function setHeroContent(config) {
@@ -88,6 +132,13 @@ function setHeroContent(config) {
         applyPosterImage(card, item.poster, item.gradient || ["#1c1c22", "#141419"], {
           overlay:
             "linear-gradient(180deg, rgba(8,8,12,0.1) 0%, rgba(8,8,12,0.18) 35%, rgba(8,8,12,0.55) 62%, rgba(8,8,12,0.95) 100%)",
+          resolvePoster: item.resolvePoster,
+        });
+      } else if (item.resolvePoster) {
+        applyPosterImage(card, null, item.gradient || ["#1c1c22", "#141419"], {
+          overlay:
+            "linear-gradient(180deg, rgba(8,8,12,0.1) 0%, rgba(8,8,12,0.18) 35%, rgba(8,8,12,0.55) 62%, rgba(8,8,12,0.95) 100%)",
+          resolvePoster: item.resolvePoster,
         });
       }
     } else {
@@ -187,7 +238,9 @@ function createMovieCard(movie, posterUrl) {
       <span class="catalog-link">Ver ahora</span>
     </div>
   `;
-  applyPosterImage(link.querySelector(".catalog-card-art"), posterUrl, movie.gradient || ["#1c1c22", "#141419"]);
+  applyPosterImage(link.querySelector(".catalog-card-art"), posterUrl, movie.gradient || ["#1c1c22", "#141419"], {
+    resolvePoster: () => resolveMovieCardPoster(movie),
+  });
   return link;
 }
 
@@ -209,7 +262,9 @@ function createSeriesCard(serie, posterUrl) {
       <span class="catalog-link catalog-link-ghost">Ver temporadas</span>
     </div>
   `;
-  applyPosterImage(card.querySelector(".catalog-card-art"), posterUrl, serie.gradient || ["#1c1c22", "#141419"]);
+  applyPosterImage(card.querySelector(".catalog-card-art"), posterUrl, serie.gradient || ["#1c1c22", "#141419"], {
+    resolvePoster: () => resolveSeriesCardPoster(serie),
+  });
   return card;
 }
 
@@ -294,12 +349,15 @@ function renderItems(list) {
     return;
   }
 
+  const indexes = new Map(genreState.allItems.map((item, index) => [item, index]));
+  const fragment = document.createDocumentFragment();
   list.forEach((item) => {
-    const idx = genreState.allItems.indexOf(item);
+    const idx = indexes.get(item) ?? -1;
     const card = createCardForItem(item, genreState.posters[idx]);
     genreState.cardsByItem.set(item, card);
-    primaryGrid.appendChild(card);
+    fragment.appendChild(card);
   });
+  primaryGrid.appendChild(fragment);
 }
 
 function applyGenreFilter() {
@@ -316,14 +374,12 @@ function applyGenreFilter() {
  * Resuelve el genero de cada saga a partir del genero dominante de sus
  * peliculas (una saga no tiene genero propio en los datos).
  */
-async function resolveSagaGenres(sagas) {
-  const movies = sagas.flatMap((saga) => saga.movies);
-  const movieGenres = await resolveAllGenres(movies, "movie");
+function resolveSagaGenres(sagas) {
   const map = new Map();
   sagas.forEach((saga) => {
     const counts = new Map();
     saga.movies.forEach((movie) => {
-      const genre = movieGenres.get(movie);
+      const genre = getItemGenreSync(movie);
       if (genre) counts.set(genre, (counts.get(genre) || 0) + 1);
     });
     let best = null;
@@ -348,7 +404,7 @@ async function setupGenreFilters(items, kind) {
   genreFilter.setLoading("Detectando géneros…");
 
   genreState.resolvedMap = kind === "saga"
-    ? await resolveSagaGenres(items)
+    ? resolveSagaGenres(items)
     : await resolveAllGenres(items, kind);
 
   const available = collectAvailableGenres(items, genreState.resolvedMap);
@@ -389,7 +445,8 @@ function openSeriesModal(serie) {
 }
 
 /** Modal con las peliculas de una saga */
-function openSagaModal(saga, posterMap) {
+function openSagaModal(saga) {
+  const posterNodes = [];
   openCatalogModal({
     kicker: "Saga",
     title: saga.name,
@@ -398,20 +455,22 @@ function openSagaModal(saga, posterMap) {
       const grid = document.createElement("div");
       grid.className = "catalog-inline-grid catalog-inline-grid-posters";
       saga.movies.forEach((movie) => {
-        grid.appendChild(
-          createMovieInlineCard(
-            movie,
-            posterMap.get(movie.title) || movie.poster || null,
-            saga.name,
-          ),
-        );
+        const card = createMovieInlineCard(movie, movie.poster || null, saga.name);
+        posterNodes.push({ movie, art: card.querySelector(".catalog-inline-thumb") });
+        grid.appendChild(card);
       });
       content.appendChild(grid);
     },
   });
-}
 
-let sagaMoviePosterMap = new Map();
+  // Las portadas de películas se resuelven únicamente al abrir su saga.
+  Promise.all(posterNodes.map(async ({ movie, art }) => {
+    const poster = await resolveMovieCardPoster(movie);
+    if (poster && art.isConnected) {
+      applyPosterImage(art, poster, movie.gradient || ["#1c1c22", "#141419"]);
+    }
+  }));
+}
 
 function createSagaCard(saga, posterUrl) {
   const card = document.createElement("button");
@@ -428,11 +487,13 @@ function createSagaCard(saga, posterUrl) {
       <span class="catalog-link catalog-link-ghost">Ver peliculas</span>
     </div>
   `;
-  applyPosterImage(card.querySelector(".catalog-card-art"), posterUrl, saga.gradient);
+  applyPosterImage(card.querySelector(".catalog-card-art"), posterUrl, saga.gradient, {
+    resolvePoster: () => resolveSagaCardPoster(saga),
+  });
   card.addEventListener("click", () => {
     [...primaryGrid.children].forEach((node) => node.classList.remove("is-selected"));
     card.classList.add("is-selected");
-    openSagaModal(saga, sagaMoviePosterMap);
+    openSagaModal(saga);
   });
   return card;
 }
@@ -447,22 +508,10 @@ async function renderMoviesPage() {
     spotlightStyle: "default",
   });
 
-  const featured = movies.slice(0, 3);
-  const featuredPosters = await Promise.all(featured.map((movie) => resolveMovieCardPoster(movie)));
-  spotlight.innerHTML = "";
-  featured.forEach((movie, index) => {
-    const chip = document.createElement("a");
-    chip.className = "catalog-spotlight-card";
-    chip.href = buildMoviePlayerUrl(movie);
-    chip.innerHTML = `<span>${movie.code}</span><strong>${movie.title}</strong>`;
-    applyPosterImage(chip, featuredPosters[index], movie.gradient || ["#1c1c22", "#141419"]);
-    spotlight.appendChild(chip);
-  });
-
-  const posters = await Promise.all(movies.map((movie) => resolveMovieCardPoster(movie)));
-  genreState.posters = posters;
+  genreState.posters = movies.map((movie) => movie.poster || null);
   genreState.allItems = movies;
   genreState.kind = "movie";
+  genreState.resolvedMap = new Map(movies.map((movie) => [movie, getItemGenreSync(movie)]));
   renderItems(movies);
 
   if (secondarySection) secondarySection.style.display = "none";
@@ -472,11 +521,12 @@ async function renderMoviesPage() {
 }
 
 async function renderSeriesPage() {
-  const series = getSeriesSorted();
-  const posters = await Promise.all(series.map((serie) => resolveSeriesCardPoster(serie)));
+  const series = await getSeriesSorted();
+  const posters = series.map((serie) => serie.poster || null);
   genreState.posters = posters;
   genreState.allItems = series;
   genreState.kind = "series";
+  genreState.resolvedMap = new Map(series.map((serie) => [serie, getItemGenreSync(serie)]));
 
   setHeroContent({
     kicker: "SERIES · COLEVANA",
@@ -487,6 +537,7 @@ async function renderSeriesPage() {
       title: serie.title,
       href: `./series.html?item=${encodeURIComponent(slugify(serie.title))}`,
       poster: posters[index],
+      resolvePoster: () => resolveSeriesCardPoster(serie),
       gradient: serie.gradient,
     })),
     spotlightStyle: "compact",
@@ -506,13 +557,16 @@ async function renderSeriesPage() {
 
 async function renderSagasPage() {
   const sagas = getSagas();
-  const sagaPosters = await Promise.all(sagas.map((saga) => resolveSagaCardPoster(saga)));
+  // Pintamos inmediatamente con portadas locales y dejamos la búsqueda remota
+  // para después del primer render.
+  const sagaPosters = sagas.map((saga) => saga.poster || null);
 
   const sagaSpotlight = sagas.slice(0, 3).map((saga, index) => ({
     label: `${saga.movies.length} peliculas`,
     title: saga.name,
     href: `./sagas.html?item=${encodeURIComponent(saga.slug)}`,
     poster: sagaPosters[index],
+    resolvePoster: () => resolveSagaCardPoster(saga),
     gradient: saga.gradient,
   }));
   setHeroContent({
@@ -523,26 +577,20 @@ async function renderSagasPage() {
     spotlightStyle: "compact",
   });
 
-  const sagaMoviePosterEntries = await Promise.all(
-    sagas.flatMap((saga) =>
-      saga.movies.map(async (movie) => [movie.title, await resolveMovieCardPoster(movie)]),
-    ),
-  );
-  sagaMoviePosterMap = new Map(sagaMoviePosterEntries);
-
   genreState.posters = sagaPosters;
   genreState.allItems = sagas;
   genreState.kind = "saga";
+  genreState.resolvedMap = resolveSagaGenres(sagas);
+  setupGenreFilters(sagas, "saga");
   renderItems(sagas);
   const requestedSaga = new URLSearchParams(location.search).get("item");
   if (requestedSaga) {
     const match = sagas.find((saga) => saga.slug === requestedSaga);
-    if (match) openSagaModal(match, sagaMoviePosterMap);
+    if (match) openSagaModal(match);
   }
 
   if (secondarySection) secondarySection.style.display = "none";
 
-  setupGenreFilters(sagas, "saga");
 }
 
 initKickAuthUI();

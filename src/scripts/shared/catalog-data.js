@@ -1,13 +1,4 @@
-import { MOVIES } from "../data/movies.js";
-import { SERIES } from "../data/series.js";
-import {
-  resolveMoviePoster,
-  tmdbFindTvId,
-  tmdbGetSeasonEpisodes,
-  tmdbSearchTvPoster,
-  tmdbSearchMovieGenres,
-  tmdbSearchTvGenres,
-} from "../services/tmdb.js";
+import { MOVIES } from "../data/movies.js?v=20261114-sitewide-lighthouse1";
 import {
   GENRE_DEFINITIONS,
   GENRE_BY_ID,
@@ -19,6 +10,32 @@ import {
 /** Dias que un item se considera "nuevo" */
 export const NEW_WINDOW_DAYS = 14;
 
+let seriesDataPromise = null;
+let tmdbServicePromise = null;
+
+function loadTmdbService() {
+  if (!tmdbServicePromise) {
+    tmdbServicePromise = import("../services/tmdb.js?v=20261114-sitewide-lighthouse1")
+      .catch((error) => {
+        tmdbServicePromise = null;
+        throw error;
+      });
+  }
+  return tmdbServicePromise;
+}
+
+function loadSeriesData() {
+  if (!seriesDataPromise) {
+    seriesDataPromise = import("../data/series.js?v=20261114-sitewide-lighthouse1")
+      .then((module) => module.SERIES)
+      .catch((error) => {
+        seriesDataPromise = null;
+        throw error;
+      });
+  }
+  return seriesDataPromise;
+}
+
 export function slugify(str) {
   return (str || "")
     .toString()
@@ -27,6 +44,13 @@ export function slugify(str) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+}
+
+export function optimizePosterUrl(url) {
+  if (!url || url === "...") return null;
+  return url
+    .replace("image.tmdb.org/t/p/w500/", "image.tmdb.org/t/p/w342/")
+    .replace(/(\.\_V1_FMjpg_)(?:UX|UY)\d+(_\.jpg)/i, "$1UX342$2");
 }
 
 function normalizeText(str) {
@@ -80,16 +104,16 @@ export function getMovies() {
   return MOVIES;
 }
 
-export function getSeries() {
-  return SERIES;
+export async function getSeries() {
+  return loadSeriesData();
 }
 
 export function getMoviesSorted() {
   return sortCatalogItems(MOVIES);
 }
 
-export function getSeriesSorted() {
-  return sortCatalogItems(SERIES);
+export async function getSeriesSorted() {
+  return sortCatalogItems(await loadSeriesData());
 }
 
 export function getSagas() {
@@ -136,14 +160,15 @@ export async function resolveItemGenre(item, kind = "movie") {
 
   // 2) Consultar TMDB
   try {
+    const tmdb = await loadTmdbService();
     const title = kind === "series"
       ? (item.tmdbShow || item.title)
       : (item.tmdbTitle || item.title);
     const year = item.tmdbYear || null;
 
     const tmdbIds = kind === "series"
-      ? await tmdbSearchTvGenres(title, year)
-      : await tmdbSearchMovieGenres(title, year);
+      ? await tmdb.tmdbSearchTvGenres(title, year)
+      : await tmdb.tmdbSearchMovieGenres(title, year);
 
     const id = mapTmdbGenreIds(tmdbIds);
     _genreResolveCache.set(item, id);
@@ -208,8 +233,9 @@ export function findMovieBySlug(slug) {
   return MOVIES.find((movie) => slugify(movie.title) === slug) || null;
 }
 
-export function findSeriesBySlug(slug) {
-  return SERIES.find((serie) => slugify(serie.title) === slug) || null;
+export async function findSeriesBySlug(slug) {
+  const series = await loadSeriesData();
+  return series.find((serie) => slugify(serie.title) === slug) || null;
 }
 
 export function buildMoviePlayerUrl(movie) {
@@ -227,7 +253,8 @@ export function buildEpisodePlayerUrl(serie, seasonNumber, episodeNumber) {
 }
 
 export async function resolveMovieCardPoster(movie) {
-  return resolveMoviePoster(movie);
+  const tmdb = await loadTmdbService();
+  return tmdb.resolveMoviePoster(movie);
 }
 
 export async function resolveSagaCardPoster(saga) {
@@ -238,7 +265,8 @@ export async function resolveSagaCardPoster(saga) {
 }
 
 export async function resolveSeriesCardPoster(serie) {
-  const poster = await tmdbSearchTvPoster(serie.tmdbShow || serie.title, serie.tmdbYear);
+  const tmdb = await loadTmdbService();
+  const poster = await tmdb.tmdbSearchTvPoster(serie.tmdbShow || serie.title, serie.tmdbYear);
   return poster || serie.poster || null;
 }
 
@@ -269,13 +297,14 @@ async function autoDetectSeasonSrcs({ releaseTag, prefix, maxEpisodes = 20 }) {
 }
 
 export async function ensureSeasonEpisodes(serie, season) {
+  const tmdb = await loadTmdbService();
   if (season.episodes) {
     const missingPoster = season.episodes.some((episode) => !episode.poster);
     if (missingPoster && !season._posterFetchAttempted) {
       season._posterFetchAttempted = true;
-      const tvId = await tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
+      const tvId = await tmdb.tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
       if (tvId) {
-        const tmdbEpisodes = await tmdbGetSeasonEpisodes(tvId, season.season);
+        const tmdbEpisodes = await tmdb.tmdbGetSeasonEpisodes(tvId, season.season);
         season.episodes.forEach((episode, index) => {
           const metadata = tmdbEpisodes.find(item => item.episodeNumber === index + 1);
           if (!episode.poster && metadata?.poster) {
@@ -301,8 +330,8 @@ export async function ensureSeasonEpisodes(serie, season) {
     return season.episodes;
   }
 
-  const tvId = await tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
-  const tmdbEpisodes = tvId ? await tmdbGetSeasonEpisodes(tvId, season.season) : [];
+  const tvId = await tmdb.tmdbFindTvId(serie.tmdbShow || serie.title, serie.tmdbYear);
+  const tmdbEpisodes = tvId ? await tmdb.tmdbGetSeasonEpisodes(tvId, season.season) : [];
 
   season.episodes = season.srcs.map((src, index) => {
     const tmdbEpisode = tmdbEpisodes.find(episode => episode.episodeNumber === index + 1) || {};
@@ -337,14 +366,13 @@ export async function searchSite(query, options = {}) {
     if (results.length >= limit) break;
     const haystack = normalizeText(`${movie.title} ${movie.saga || ""}`);
     if (!queryMatches(haystack, normalizedQuery)) continue;
-    const moviePoster = await resolveMovieCardPoster(movie);
     pushResult({
       kind: "movie",
       title: movie.title,
       subtitle: movie.saga ? `Saga ${movie.saga}` : "Pelicula",
       description: "Abrir esta pelicula en el reproductor.",
       href: buildMoviePlayerUrl(movie),
-      poster: moviePoster,
+      poster: movie.poster && movie.poster !== "..." ? movie.poster : null,
       gradient: movie.gradient || ["#1c1c22", "#141419"],
       code: movie.code || "Movie",
       // Referencia al item original: permite resolver el genero (y filtrar
@@ -354,18 +382,22 @@ export async function searchSite(query, options = {}) {
     });
   }
 
-  for (const serie of SERIES) {
+  // El autocompletado suele encontrar primero películas. Evitamos descargar
+  // el catálogo completo de series cuando ya hay resultados suficientes.
+  if (results.length >= limit) return results;
+  const seriesCatalog = await loadSeriesData();
+
+  for (const serie of seriesCatalog) {
     if (results.length >= limit) break;
     const haystack = normalizeText(`${serie.title} ${serie.tmdbShow || ""}`);
     if (!queryMatches(haystack, normalizedQuery)) continue;
-    const seriePoster = await resolveSeriesCardPoster(serie);
     pushResult({
       kind: "series",
       title: serie.title,
       subtitle: `${serie.seasons.length} temporadas`,
       description: "Abrir esta serie y explorar sus capitulos.",
       href: "./series.html",
-      poster: seriePoster,
+      poster: serie.poster || null,
       gradient: serie.gradient || ["#1c1c22", "#141419"],
       code: "Serie",
       sourceItem: serie,
@@ -377,14 +409,13 @@ export async function searchSite(query, options = {}) {
     if (results.length >= limit) break;
     const haystack = normalizeText(`${saga.name} ${saga.movies.map((movie) => movie.title).join(" ")}`);
     if (!queryMatches(haystack, normalizedQuery)) continue;
-    const sagaPoster = await resolveSagaCardPoster(saga);
     pushResult({
       kind: "saga",
       title: saga.name,
       subtitle: `${saga.movies.length} peliculas`,
       description: "Abrir esta saga y elegir una pelicula.",
       href: "./sagas.html",
-      poster: sagaPoster,
+      poster: saga.poster && saga.poster !== "..." ? saga.poster : null,
       gradient: saga.gradient || ["#1c1c22", "#141419"],
       code: "Saga",
       sourceItem: saga.movies[0] || null,
@@ -392,9 +423,10 @@ export async function searchSite(query, options = {}) {
     });
   }
 
-  for (const serie of SERIES) {
+  if (results.length >= limit) return results;
+  if (Number.isFinite(options.limit) && results.length) return results;
+  for (const serie of seriesCatalog) {
     if (results.length >= limit) break;
-    let serieFallbackPoster;
     for (const season of serie.seasons) {
       if (results.length >= limit) break;
       const episodes = await ensureSeasonEpisodes(serie, season);
@@ -402,16 +434,13 @@ export async function searchSite(query, options = {}) {
         if (results.length >= limit) break;
         const haystack = normalizeText(episode.title || "");
         if (!queryMatches(haystack, normalizedQuery)) continue;
-        if (!episode.poster && serieFallbackPoster === undefined) {
-          serieFallbackPoster = await resolveSeriesCardPoster(serie);
-        }
         pushResult({
           kind: "episode",
           title: `${serie.title} - ${episode.title || `Episodio ${index + 1}`}`,
           subtitle: `Temporada ${season.season} - Episodio ${index + 1}`,
           description: episode.description || "Abrir este episodio en el reproductor.",
           href: buildEpisodePlayerUrl(serie, season.season, index + 1),
-          poster: episode.poster || serieFallbackPoster || null,
+          poster: episode.poster || serie.poster || null,
           gradient: serie.gradient || ["#1c1c22", "#141419"],
           code: `E${index + 1}`,
           sourceItem: serie,

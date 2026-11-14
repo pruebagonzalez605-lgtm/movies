@@ -92,6 +92,7 @@ export function createGenreFilter({ mount, label = "Género", onChange } = {}) {
   const section = document.createElement("section");
   section.className = "genre-filter-section is-loading";
   section.setAttribute("aria-label", "Filtrar por género");
+  section.setAttribute("aria-busy", "true");
   section.innerHTML = SECTION_TEMPLATE;
 
   if (mount.tagName === "SECTION" || mount.dataset.genreFilter !== undefined) {
@@ -159,6 +160,7 @@ export function createGenreFilter({ mount, label = "Género", onChange } = {}) {
   function setGenres(genres, { total } = {}) {
     state.genres = genres || [];
     section.classList.remove("is-loading");
+    section.setAttribute("aria-busy", "false");
     chipsEl.innerHTML = "";
 
     const totalCount = total != null
