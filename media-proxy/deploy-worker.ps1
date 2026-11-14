@@ -16,6 +16,11 @@ if ($nodeMajor -lt 22) {
   throw "Wrangler necesita Node 22 o superior. Instala Node 22 LTS y vuelve a ejecutar este script."
 }
 
+& npm.cmd test
+if ($LASTEXITCODE -ne 0) {
+  throw "Hay tests fallando; no se despliega."
+}
+
 $arguments = @("wrangler", "deploy")
 if (-not $Permanent) {
   $arguments += "--temporary"

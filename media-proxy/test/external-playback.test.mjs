@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { EXTERNAL_AD_NOTICE, externalEmbedUrl } from '../../src/scripts/services/external-playback.js';
+import { getProviderSandbox } from '../../src/scripts/services/external-providers.js';
 
 const source = readFileSync(new URL('../../src/scripts/player-page.js', import.meta.url), 'utf8');
 function functionSource(name, nextMarker) {
@@ -37,7 +38,7 @@ for (const kind of ['movie', 'episode']) {
     const calls = [];
     const container = { style: {} };
     const context = vm.createContext({
-      state: {}, dom: { status: { style: {} } }, document: { getElementById: () => container },
+      state: {}, dom: { status: { style: {} } }, document: { getElementById: () => container }, getProviderSandbox,
       window: { setTimeout() {} }, setTimeout() {}, playerConsole() {},
       showExternalLoadingOverlay() {}, hideExternalLoadingOverlay() {},
       getExternalEmbedInfo: async () => ({ kind, tmdbId: 123, season: 1, episode: 1 }),

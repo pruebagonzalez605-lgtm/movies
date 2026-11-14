@@ -7,7 +7,9 @@
     "build:www": "node scripts/build-www.mjs",
     "sync:version": "node scripts/sync-android-version.mjs",
     "cap:sync": "npm run build:www && npm run sync:version && npx cap sync android",
-    "cap:open": "npx cap open android"
+    "cap:open": "npx cap open android",
+    "test": "node --test \"test/*.test.mjs\" \"test/*.test.js\"",
+    "deploy": "npm test && npx wrangler deploy"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.0",

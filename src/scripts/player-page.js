@@ -11,13 +11,13 @@ import {
   resolveMovieCardPoster,
   resolveSeriesCardPoster,
   slugify,
-} from "./shared/catalog-data.js?v=20261114-kuroko";
+} from "./shared/catalog-data.js?v=20261114-1331";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261019-clean-player-no-ads";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261114-1331";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -2975,7 +2975,6 @@ async function fetchCinehaxCandidates(embedInfo) {
 
 async function fetchExternalCandidates(embedInfo) {
   const independentCandidates = buildProviderCandidates(embedInfo);
-  const verifiedDirectStreams = buildVerifiedDirectStreams(embedInfo);
   const cinehax = await fetchCinehaxCandidates(embedInfo);
   independentCandidates.unshift(...cinehax.embedCandidates);
   let movieDaysSearched = false;
@@ -2996,7 +2995,7 @@ async function fetchExternalCandidates(embedInfo) {
     if (!script) throw new Error("No data");
 
     const data = JSON.parse(script.textContent);
-    const directStreams = [...new Set([...verifiedDirectStreams, ...collectDirectStreams(data), ...cinehax.directStreams])];
+    const directStreams = [...new Set([...collectDirectStreams(data), ...cinehax.directStreams])];
     const embedCandidates = collectExternalCandidates(data);
     playerConsole("info", "[external-player] streams directos:", directStreams);
 
@@ -3005,7 +3004,7 @@ async function fetchExternalCandidates(embedInfo) {
       playerConsole("info", "[external-player] vimeus.com sin fuentes, probando MovieDays...");
       const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
       if (moviedaysCandidates.length) {
-        return { directStreams: verifiedDirectStreams, embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched };
+        return { directStreams: [], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched };
       }
     }
 
@@ -3014,7 +3013,7 @@ async function fetchExternalCandidates(embedInfo) {
     playerConsole("error", "Error obteniendo candidatos externos (vimeus.com):", e);
     playerConsole("info", "[external-player] vimeus.com fallo, probando MovieDays...");
     const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
-    return { directStreams: [...new Set([...verifiedDirectStreams, ...cinehax.directStreams])], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched: true };
+    return { directStreams: [...new Set(cinehax.directStreams)], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched: true };
   }
 }
 
@@ -3108,8 +3107,11 @@ async function tryHlsWishFallback(showMessage = true) {
         embedCandidates.push(...fresh);
         if (fresh.length) return tryNextCandidate();
       }
-      const iframeCandidate = [...embedCandidates].reverse()
-        .find((item) => item.iframeEligible && item.url);
+      // Preferir el primer proveedor TMDB conocido (Videasy, VidSrc...) en su
+      // orden; solo si no hay ninguno, el ultimo embed elegible de la lista.
+      const eligible = embedCandidates.filter((item) => item.iframeEligible && item.url);
+      const iframeCandidate = eligible.find((item) => getProviderSandbox(item.url) === null)
+        || eligible[eligible.length - 1];
       if (iframeCandidate && mountExternalCandidate(container, iframeCandidate)) {
         playerConsole("info", "[external-player] usando iframe como último recurso:", iframeCandidate.provider?.name);
         return true;

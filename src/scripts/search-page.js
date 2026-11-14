@@ -6,7 +6,7 @@ let catalogDataPromise = null;
 
 function loadCatalogData() {
   if (!catalogDataPromise) {
-    catalogDataPromise = import("./shared/catalog-data.js?v=20261114-kuroko")
+    catalogDataPromise = import("./shared/catalog-data.js?v=20261114-1331")
       .catch((error) => {
         catalogDataPromise = null;
         throw error;

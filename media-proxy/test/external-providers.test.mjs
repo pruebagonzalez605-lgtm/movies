@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import { buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, TMDB_EMBED_PROVIDERS, getProviderSandbox } from '../../src/scripts/services/external-providers.js';
+import { buildProviderCandidates, mergeProviderCandidates, TMDB_EMBED_PROVIDERS, getProviderSandbox } from '../../src/scripts/services/external-providers.js';
 
 test('each provider has separate movie and episode routes with the exact requested episode', () => {
   const movies = buildProviderCandidates({ kind: 'movie', tmdbId: 57214 });
@@ -30,7 +30,7 @@ test('iframe mounting rejects unsafe URLs and omits sandbox only for supported p
   const trusted = [
     ...buildProviderCandidates({ kind: 'movie', tmdbId: 57214 }),
     ...buildProviderCandidates({ kind: 'episode', tmdbId: 62560, season: 1, episode: 1 }),
-  ].filter(candidate => !candidate.verifiedSpanish).map(candidate => candidate.url);
+  ].map(candidate => candidate.url);
   const restricted = [
     'https://player.videasy.to.evil.example/movie/57214',
     'http://player.videasy.to/movie/57214', 'https://user:pass@player.videasy.to/movie/57214',
@@ -71,25 +71,11 @@ function readFunction(name, nextMarker) {
   return source.slice(start, source.indexOf(nextMarker, start));
 }
 
-test('episodes use the four TMDB providers in order once the shared stream has expired', () => {
+test('episodes use the four TMDB providers in order', () => {
   const episode = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
   const candidates = buildProviderCandidates(episode);
   assert.deepEqual(candidates.map(candidate => candidate.provider.name), ['Videasy', 'VidSrc', 'VidSrc SH', 'VidSrc Link']);
-  assert.ok(candidates.every(candidate => candidate.resolveClean === true && !candidate.verifiedSpanish));
-  assert.deepEqual(buildVerifiedDirectStreams(episode), []);
-});
-
-test('shared HLS applies only to the confirmed episode and expires before using the embed backup', () => {
-  const info = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
-  const expiry = 1791430901000;
-  const [url] = buildVerifiedDirectStreams(info, expiry - 1);
-  assert.match(url, /\/master\.m3u8\?/);
-  const params = new URL(url).searchParams;
-  assert.equal((Number(params.get('s')) + Number(params.get('e'))) * 1000, expiry);
-  assert.deepEqual(buildVerifiedDirectStreams(info, expiry), []);
-  assert.deepEqual(buildVerifiedDirectStreams(info, expiry + 1), []);
-  assert.deepEqual(buildVerifiedDirectStreams({ ...info, episode: 2 }, expiry - 1), []);
-  assert.deepEqual(buildVerifiedDirectStreams(info, NaN), []);
+  assert.ok(candidates.every(candidate => candidate.resolveClean === true));
 });
 
 test('direct HLS plays in the native player first and only falls back to an iframe if it fails', async () => {
@@ -108,18 +94,18 @@ test('direct HLS plays in the native player first and only falls back to an ifra
       resolveEmbedStream: async () => null,
       mountExternalCandidate: (_, candidate) => { calls.push(candidate.url); return true; },
       fetchMovieDaysCandidates: async () => [],
-      hideExternalProviderNotice() {}, showExternalRetryLink() {},
+      hideExternalProviderNotice() {}, showExternalRetryLink() {}, getProviderSandbox,
     });
     vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
     assert.equal(await context.tryHlsWishFallback(), true);
-    assert.deepEqual(calls, works ? ['native'] : ['native', 'https://www.vidsrc.link/embed/tv/62560/1/1']);
+    assert.deepEqual(calls, works ? ['native'] : ['native', 'https://player.videasy.to/tv/62560/1/1']);
   }
 });
 
 test('independent providers remain available when both listing services are down', async () => {
   let requests = 0;
   const context = vm.createContext({
-    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, MEDIA_CONFIG: { proxyBaseUrl: 'https://proxy.example' },
+    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: { proxyBaseUrl: 'https://proxy.example' },
     buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
     fetchSourceListing: async () => { throw Error('offline'); },
     fetchMovieDaysCandidates: async () => { requests++; return []; }, playerConsole() {},
@@ -134,7 +120,7 @@ test('independent providers remain available when both listing services are down
 test('a successful primary listing still offers independent sources', async () => {
   const primary = { provider: { name: 'Vimeos' }, url: 'https://vimeos.net/embed-film' };
   const context = vm.createContext({
-    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, MEDIA_CONFIG: {},
+    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: {},
     buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
     fetchSourceListing: async () => ({ ok: true, text: async () => '<script id="data">{}</script>' }),
     DOMParser: class { parseFromString() { return { querySelector: () => ({ textContent: '{}' }) }; } },
@@ -151,7 +137,7 @@ test('a successful primary listing still offers independent sources', async () =
 test('automatic discovery keeps title-specific streams when older listings fail', async () => {
   for (const info of [{ kind: 'movie', tmdbId: 550 }, { kind: 'episode', tmdbId: 1405, season: 8, episode: 12 }]) {
     const stream = `https://cdn.example/${info.tmdbId}/${info.season || 0}/${info.episode || 0}.m3u8`;
-    const context = vm.createContext({ buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates,
+    const context = vm.createContext({ buildProviderCandidates, mergeProviderCandidates,
       fetchCinehaxCandidates: async requested => {
         assert.equal(requested, info);
         return { directStreams: [stream], embedCandidates: [{ url: 'https://voe.sx/e/source', provider: { name: 'Cinehax' } }] };
@@ -179,11 +165,11 @@ test('playback tries public extraction on every provider before a single iframe 
     fetchMovieDaysCandidates: async () => { throw Error('Must not repeat failed listing'); },
     resolveEmbedStream: async url => { resolved.push(url); return null; },
     mountExternalCandidate: (_, candidate) => { mounted.push(candidate.provider.name); return true; },
-    hideExternalProviderNotice() {}, showExternalRetryLink() {},
+    hideExternalProviderNotice() {}, showExternalRetryLink() {}, getProviderSandbox,
     showUnavailablePlayerMessage: () => { throw Error('An iframe should load'); },
   });
   vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
   assert.equal(await context.tryHlsWishFallback(), true);
   assert.deepEqual(resolved, candidates.map(candidate => candidate.url));
-  assert.equal(mounted.length, 1);
+  assert.deepEqual(mounted, ['Videasy']);
 });
