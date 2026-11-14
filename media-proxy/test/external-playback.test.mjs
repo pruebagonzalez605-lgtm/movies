@@ -23,7 +23,7 @@ test('listing preserves unrecognized external providers and MovieDays shortlinks
   const context = vm.createContext({ URL, externalEmbedUrl, EXTERNAL_PROVIDERS: [],
     MOVIEDAYS_GENERIC_PROVIDER: { name: 'MovieDays' }, playerConsole() {} });
   vm.runInContext(functionSource('mapMovieDaysEmbedToCandidate', 'function buildMovieDaysFallbackUrl'), context);
-  vm.runInContext(functionSource('collectExternalCandidates', '// Monta un candidato'), context);
+  vm.runInContext(functionSource('collectExternalCandidates', 'const RETRY_LINK_ID'), context);
   const result = context.collectExternalCandidates([
     { url: 'https://moviedays.top/film' }, { embed_url: 'https://new-provider.example/episode' },
     { url: 'https://new-provider.example/episode' }, { url: 'https://example.com/poster.png' },
@@ -54,7 +54,8 @@ for (const kind of ['movie', 'episode']) {
     });
     vm.runInContext('async ' + functionSource('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
     assert.equal(await context.tryHlsWishFallback(), true);
-    assert.deepEqual(calls, ['https://moviedays.top/film', 'notice', '¿No reproduce? Probar otro proveedor']);
+    // El iframe es el último recurso; el aviso y el enlace de reintento los pone mountExternalCandidate.
+    assert.deepEqual(calls, ['https://moviedays.top/film']);
     assert.equal(context.state.externalFallbackInProgress, false);
   });
 }

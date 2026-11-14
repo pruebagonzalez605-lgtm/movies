@@ -45,7 +45,7 @@ const EMBED_HOSTS = new Set([
  * CDNs de video permitidos para /proxy-hls (anti open-proxy).
  * Incluye hosts vistos en embeds Vimeos / GoodStream / HLSWish.
  */
-function isAllowedHlsHost(hostname) {
+export function isAllowedHlsHost(hostname) {
   const h = String(hostname || "").toLowerCase();
   if (!h) return false;
 
@@ -68,16 +68,10 @@ function isAllowedHlsHost(hostname) {
     // reemplazar/ajustar esta entrada si no coincide.
     "moviedays.top",
   ];
-  for (const d of baseDomains) {
-    if (h === d || h.endsWith("." + d)) return true;
-  }
-
-  // Patrones frecuentes de CDN de estos hosts
-  if (/^s\d+\./.test(h) && h.includes("vimeos")) return true;
-  if (/^p\d+\./.test(h) && h.includes("vimeos")) return true;
-  if (h.includes("vimeos") || h.includes("goodstream") || h.includes("hlswish") || h.includes("moviedays")) return true;
-
-  return false;
+  // Solo dominio exacto o subdominio real. No usar includes(): aceptaria
+  // hosts ajenos como "vimeos.atacante.com" y el Worker quedaria como
+  // proxy abierto.
+  return baseDomains.some((d) => h === d || h.endsWith("." + d));
 }
 
 /**

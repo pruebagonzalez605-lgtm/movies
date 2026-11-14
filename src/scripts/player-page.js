@@ -17,7 +17,7 @@ import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates } from "./services/external-providers.js?v=20261019-clean-player-no-ads";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261019-clean-player-no-ads";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -2551,6 +2551,9 @@ function viaHlsProxy(streamUrl, embedUrl = null) {
   try {
     const u = new URL(streamUrl);
     if (u.hostname.includes("workers.dev") || u.hostname === "github.com") return streamUrl;
+    // vimeos / goodstream / hlswish bloquean las IPs del Worker y el proxy
+    // siempre termina en 403: se reproducen directo desde el navegador.
+    if (isProxyHlsCdnBlockedUrl(streamUrl)) return streamUrl;
   } catch {
     return streamUrl;
   }
@@ -2813,6 +2816,12 @@ function mountExternalCandidate(container, candidate) {
   iframe.title = `Reproductor externo: ${candidate.provider?.name || url.hostname}`;
   iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
   iframe.allowFullscreen = true;
+  iframe.setAttribute("allowfullscreen", "");
+  // Solo las rutas de reproductor de los proveedores TMDB conocidos van sin
+  // sandbox (lo rechazan). Cualquier otro host queda aislado: sin
+  // allow-top-navigation ni allow-popups no puede redirigir la web a anuncios.
+  const sandbox = getProviderSandbox(url.href);
+  if (sandbox !== null) iframe.setAttribute("sandbox", sandbox);
   iframe.referrerPolicy = "origin";
   iframe.loading = "eager";
   iframe.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { handleRequest, validateUpstream, stripAdSegmentsFromPlaylist } from "../src/index.js";
+import { handleRequest, validateUpstream, stripAdSegmentsFromPlaylist, isAllowedHlsHost } from "../src/index.js";
 
 const env = {
   ALLOWED_GITHUB_OWNER: "pruebagonzalez605-lgtm",
@@ -293,4 +293,13 @@ test("/proxy-hls returns the original 403 when self-heal also fails", async (con
 
   assert.equal(response.status, 403);
   assert.equal(body.error, "hls_forbidden_by_cdn");
+});
+
+test("proxy-hls only allows exact CDN domains and their subdomains", () => {
+  for (const host of ["vimeos.net", "s14.vimeos.net", "p2.vimeos.zip", "x.goodstream.one", "hlswish.com", "cdn.moviedays.top"]) {
+    assert.equal(isAllowedHlsHost(host), true, host);
+  }
+  for (const host of ["vimeos.evil.com", "evilvimeos.net", "goodstream.one.evil.com", "myhlswish.com", "moviedays.example"]) {
+    assert.equal(isAllowedHlsHost(host), false, host);
+  }
 });

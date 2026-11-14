@@ -24,9 +24,9 @@ test('merge retains alternate providers and episodes while removing duplicate UR
 });
 
 const source = readFileSync(new URL('../../src/scripts/player-page.js', import.meta.url), 'utf8');
-test('iframe mounting omits sandbox only for supported provider origins and player routes', async () => {
+test('iframe mounting rejects unsafe URLs and omits sandbox only for supported provider player routes', async () => {
   const start = source.indexOf('function mountExternalCandidate(');
-  const mountSource = source.slice(start, source.indexOf('const RETRY_LINK_ID', start));
+  const mountSource = source.slice(start, source.indexOf('function showUnavailablePlayerMessage', start));
   const trusted = [
     ...buildProviderCandidates({ kind: 'movie', tmdbId: 57214 }),
     ...buildProviderCandidates({ kind: 'episode', tmdbId: 62560, season: 1, episode: 1 }),
@@ -41,20 +41,21 @@ test('iframe mounting omits sandbox only for supported provider origins and play
   ];
   for (const url of [...trusted, ...restricted]) {
     const attributes = new Map();
-    const listeners = new Map();
-    const iframe = { style: {}, setAttribute: (key, value) => attributes.set(key, value),
-      addEventListener: (event, callback) => listeners.set(event, callback),
-      removeEventListener: event => listeners.delete(event) };
+    const iframe = { style: {}, setAttribute: (key, value) => attributes.set(key, value) };
     const context = vm.createContext({
-      getProviderSandbox, state: {}, dom: {}, document: { createElement: () => iframe },
-      window: { setTimeout: () => 1, clearTimeout() {} },
-      stopExternalTracking() {}, destroyPlayerUi() {}, resetCastButton() {}, resetDownloadButton() {},
-      restoreMediaSlotOverlays() {},
+      getProviderSandbox, URL, state: {}, dom: {}, document: { createElement: () => iframe },
+      stopExternalTracking() {}, removeAudioTrackSelector() {}, destroyPlayerUi() {},
+      restoreMediaSlotOverlays() {}, bindExternalPlaybackTracking() {}, hideExternalProviderNotice() {},
+      showExternalRetryLink() {},
     });
     vm.runInContext(mountSource, context);
-    const loaded = context.mountExternalCandidate({ classList: { remove() {} }, style: {},
-      replaceChildren() { listeners.get('load')(); } }, { url, provider: { name: 'Videasy' } });
-    assert.equal(await loaded, true);
+    const mounted = context.mountExternalCandidate({ style: {}, replaceChildren() {} },
+      { url, provider: { name: 'Videasy' }, iframeEligible: true });
+    if (url.startsWith('http://') || url.includes('@')) {
+      assert.equal(mounted, false, url);
+      continue;
+    }
+    assert.equal(mounted, true, url);
     assert.equal(attributes.has('sandbox'), restricted.includes(url), url);
     if (restricted.includes(url)) assert.equal(attributes.get('sandbox'),
       'allow-scripts allow-same-origin allow-presentation allow-forms');
@@ -70,22 +71,12 @@ function readFunction(name, nextMarker) {
   return source.slice(start, source.indexOf(nextMarker, start));
 }
 
-test('verified Spanish source applies only to Mr Robot S1E1 and avoids failed listing requests', async () => {
+test('episodes use the four TMDB providers in order once the shared stream has expired', () => {
   const episode = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
   const candidates = buildProviderCandidates(episode);
-  assert.equal(candidates[0].url, 'https://voe.sx/e/7b9skbphpmon');
-  assert.equal(candidates[0].verifiedSpanish, true);
-  assert.equal(candidates.length, 5);
-  for (const info of [{ ...episode, episode: 2 }, { ...episode, season: 2 },
-    { ...episode, tmdbId: 1405 }, { kind: 'movie', tmdbId: 62560 }]) {
-    assert.ok(buildProviderCandidates(info).every(candidate => !candidate.verifiedSpanish));
-  }
-  const context = vm.createContext({ buildProviderCandidates, buildVerifiedDirectStreams,
-    buildExternalListingUrl() { throw Error('Must not wait for listings'); },
-    fetchMovieDaysCandidates() { throw Error('Must not wait for secondary listings'); },
-  });
-  vm.runInContext(readFunction('fetchExternalCandidates', 'async function tryHlsWishFallback'), context);
-  assert.equal((await context.fetchExternalCandidates(episode)).embedCandidates[0].url, candidates[0].url);
+  assert.deepEqual(candidates.map(candidate => candidate.provider.name), ['Videasy', 'VidSrc', 'VidSrc SH', 'VidSrc Link']);
+  assert.ok(candidates.every(candidate => candidate.resolveClean === true && !candidate.verifiedSpanish));
+  assert.deepEqual(buildVerifiedDirectStreams(episode), []);
 });
 
 test('shared HLS applies only to the confirmed episode and expires before using the embed backup', () => {
@@ -101,7 +92,7 @@ test('shared HLS applies only to the confirmed episode and expires before using 
   assert.deepEqual(buildVerifiedDirectStreams(info, NaN), []);
 });
 
-test('shared HLS plays in the native player first and falls back to Voe if playback fails', async () => {
+test('direct HLS plays in the native player first and only falls back to an iframe if it fails', async () => {
   for (const works of [true, false]) {
     const calls = [];
     const episode = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
@@ -114,43 +105,21 @@ test('shared HLS plays in the native player first and falls back to Voe if playb
         movieDaysSearched: false, embedCandidates: buildProviderCandidates(episode) }),
       viaHlsProxy: url => url,
       mountDirectStream: async () => { calls.push('native'); return works; },
-      mountExternalCandidate: async (_, candidate) => { calls.push(candidate.url); return true; },
-      fetchMovieDaysCandidates: async () => { throw Error('Must not delay backup'); },
-      bindExternalPlaybackTracking() {}, offerSavedProgress() {}, showAdblockHint() {}, hideAdblockHint() {},
-      showExternalRetryLink() {},
+      resolveEmbedStream: async () => null,
+      mountExternalCandidate: (_, candidate) => { calls.push(candidate.url); return true; },
+      fetchMovieDaysCandidates: async () => [],
+      hideExternalProviderNotice() {}, showExternalRetryLink() {},
     });
     vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
     assert.equal(await context.tryHlsWishFallback(), true);
-    assert.deepEqual(calls, works ? ['native'] : ['native', 'https://voe.sx/e/7b9skbphpmon']);
+    assert.deepEqual(calls, works ? ['native'] : ['native', 'https://www.vidsrc.link/embed/tv/62560/1/1']);
   }
-});
-
-test('verified Spanish iframe mounts first without extraction or automatic timed switching', async () => {
-  const calls = [];
-  const episode = { kind: 'episode', tmdbId: 62560, season: 1, episode: 1 };
-  const context = vm.createContext({
-    state: {}, dom: { status: { style: {} } }, document: { getElementById: () => ({ style: {} }) },
-    window: { setTimeout() {}, clearTimeout() {} }, setTimeout() {}, playerConsole() {},
-    showExternalLoadingOverlay() {}, hideExternalLoadingOverlay() {},
-    getExternalEmbedInfo: async () => episode, removeExternalRetryLink() {}, removeAudioTrackSelector() {},
-    fetchExternalCandidates: async () => ({ directStreams: [], movieDaysSearched: false,
-      embedCandidates: buildProviderCandidates(episode) }),
-    fetchMovieDaysCandidates: async () => { throw Error('Must not delay verified source'); },
-    resolveEmbedStream: async () => { throw Error('Must not extract verified iframe'); },
-    mountExternalCandidate: async (_, candidate) => { calls.push(candidate.url); return true; },
-    bindExternalPlaybackTracking() {}, offerSavedProgress() {}, showAdblockHint() {},
-    showExternalRetryLink() {},
-  });
-  vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
-  assert.equal(await context.tryHlsWishFallback(), true);
-  assert.deepEqual(calls, ['https://voe.sx/e/7b9skbphpmon']);
-  assert.match(context.dom.status.textContent, /Español Latino/);
 });
 
 test('independent providers remain available when both listing services are down', async () => {
   let requests = 0;
   const context = vm.createContext({
-    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: { proxyBaseUrl: 'https://proxy.example' },
+    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, MEDIA_CONFIG: { proxyBaseUrl: 'https://proxy.example' },
     buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
     fetchSourceListing: async () => { throw Error('offline'); },
     fetchMovieDaysCandidates: async () => { requests++; return []; }, playerConsole() {},
@@ -165,7 +134,7 @@ test('independent providers remain available when both listing services are down
 test('a successful primary listing still offers independent sources', async () => {
   const primary = { provider: { name: 'Vimeos' }, url: 'https://vimeos.net/embed-film' };
   const context = vm.createContext({
-    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: {},
+    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates, MEDIA_CONFIG: {},
     buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
     fetchSourceListing: async () => ({ ok: true, text: async () => '<script id="data">{}</script>' }),
     DOMParser: class { parseFromString() { return { querySelector: () => ({ textContent: '{}' }) }; } },
@@ -182,7 +151,7 @@ test('a successful primary listing still offers independent sources', async () =
 test('automatic discovery keeps title-specific streams when older listings fail', async () => {
   for (const info of [{ kind: 'movie', tmdbId: 550 }, { kind: 'episode', tmdbId: 1405, season: 8, episode: 12 }]) {
     const stream = `https://cdn.example/${info.tmdbId}/${info.season || 0}/${info.episode || 0}.m3u8`;
-    const context = vm.createContext({ buildProviderCandidates, mergeProviderCandidates,
+    const context = vm.createContext({ buildProviderCandidates, buildVerifiedDirectStreams, mergeProviderCandidates,
       fetchCinehaxCandidates: async requested => {
         assert.equal(requested, info);
         return { directStreams: [stream], embedCandidates: [{ url: 'https://voe.sx/e/source', provider: { name: 'Cinehax' } }] };
@@ -197,22 +166,24 @@ test('automatic discovery keeps title-specific streams when older listings fail'
   }
 });
 
-test('playback tries public extraction before iframe fallback without repeated listings', async () => {
-  const calls = [];
+test('playback tries public extraction on every provider before a single iframe fallback', async () => {
+  const resolved = [];
+  const mounted = [];
+  const candidates = buildProviderCandidates({ kind: 'movie', tmdbId: 57214 });
   const context = vm.createContext({
     state: {}, dom: { status: { style: {} } }, document: { getElementById: () => ({ style: {} }) },
     window: { setTimeout() {}, clearTimeout() {} }, setTimeout() {}, playerConsole() {}, showExternalLoadingOverlay() {}, hideExternalLoadingOverlay() {},
     getExternalEmbedInfo: async () => ({ kind: 'movie', tmdbId: 57214 }),
     removeExternalRetryLink() {}, removeAudioTrackSelector() {},
-    fetchExternalCandidates: async () => ({ directStreams: [], movieDaysSearched: true,
-      embedCandidates: buildProviderCandidates({ kind: 'movie', tmdbId: 57214 }) }),
+    fetchExternalCandidates: async () => ({ directStreams: [], movieDaysSearched: true, embedCandidates: candidates }),
     fetchMovieDaysCandidates: async () => { throw Error('Must not repeat failed listing'); },
-    resolveEmbedStream: async () => null,
-    mountExternalCandidate: async (_, candidate) => { calls.push(candidate.provider.name); return calls.length === 3; },
-    bindExternalPlaybackTracking() {}, offerSavedProgress() {}, showAdblockHint() {}, hideAdblockHint() {},
-    showExternalRetryLink() {}, showUnavailablePlayerMessage: () => { throw Error('Third provider should load'); },
+    resolveEmbedStream: async url => { resolved.push(url); return null; },
+    mountExternalCandidate: (_, candidate) => { mounted.push(candidate.provider.name); return true; },
+    hideExternalProviderNotice() {}, showExternalRetryLink() {},
+    showUnavailablePlayerMessage: () => { throw Error('An iframe should load'); },
   });
   vm.runInContext(readFunction('tryHlsWishFallback', '// ==================== EPISODE GRID'), context);
   assert.equal(await context.tryHlsWishFallback(), true);
-  assert.deepEqual(calls, ['Videasy', 'VidSrc', 'VidSrc SH']);
+  assert.deepEqual(resolved, candidates.map(candidate => candidate.url));
+  assert.equal(mounted.length, 1);
 });
