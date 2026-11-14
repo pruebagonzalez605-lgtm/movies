@@ -102,5 +102,5 @@ import("./shared/device.js")
 // El aviso de donaciones vive solo en las paginas de menu. player.html
 // comparte la navegacion, pero deliberadamente no carga este componente.
 if (document.body?.dataset.page && !["player", "aportes"].includes(document.body.dataset.page)) {
-  import("./shared/donation-prompt.js?v=20261114-1343").catch(() => {});
+  import("./shared/donation-prompt.js?v=20261114-1444").catch(() => {});
 }

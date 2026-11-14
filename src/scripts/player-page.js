@@ -11,13 +11,13 @@ import {
   resolveMovieCardPoster,
   resolveSeriesCardPoster,
   slugify,
-} from "./shared/catalog-data.js?v=20261114-1343";
+} from "./shared/catalog-data.js?v=20261114-1444";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261114-1343";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261114-1444";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -2539,6 +2539,11 @@ async function mountDirectStream(container, streamUrl) {
 }
 
 
+// Hosts HLS que /proxy-hls acepta y puede servir (lista del Worker, sin los
+// CDNs que bloquean sus IPs). Cualquier otro host el proxy lo rechaza con
+// 400, asi que se reproduce directo sin perder tiempo en ese intento.
+const PROXYABLE_HLS_DOMAINS = ["vimeus.com", "lamovie.link", "ggpick.com", "moviedays.top"];
+
 function viaHlsProxy(streamUrl, embedUrl = null) {
   const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
   if (!proxyBase || !streamUrl) return streamUrl;
@@ -2554,6 +2559,8 @@ function viaHlsProxy(streamUrl, embedUrl = null) {
     // vimeos / goodstream / hlswish bloquean las IPs del Worker y el proxy
     // siempre termina en 403: se reproducen directo desde el navegador.
     if (isProxyHlsCdnBlockedUrl(streamUrl)) return streamUrl;
+    const host = u.hostname.toLowerCase();
+    if (!PROXYABLE_HLS_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`))) return streamUrl;
   } catch {
     return streamUrl;
   }
@@ -2973,9 +2980,43 @@ async function fetchCinehaxCandidates(embedInfo) {
   }
 }
 
+// Cuevana (cuevana3w.pro): el Worker busca el titulo y confirma que es el
+// mismo de TMDB por el poster. Su CDN bloquea al Worker, asi que solo se usa
+// el iframe de morencius.com (va sin sandbox, ver getProviderSandbox), y se
+// monta antes que otros proveedores porque el titulo esta verificado.
+async function fetchCuevanaCandidates(embedInfo) {
+  const proxyBase = (MEDIA_CONFIG?.proxyBaseUrl || "").replace(/\/+$/, "");
+  if (!proxyBase) return { embedCandidates: [] };
+  const params = new URLSearchParams({ tmdb: embedInfo.tmdbId,
+    type: embedInfo.kind === "episode" ? "tv" : "movie" });
+  if (embedInfo.kind === "episode") {
+    params.set("season", embedInfo.season);
+    params.set("episode", embedInfo.episode);
+  }
+  try {
+    const response = await fetchSourceListing(`${proxyBase}/cuevana-fallback?${params}`, 14000);
+    if (!response.ok) return { embedCandidates: [] };
+    const data = await response.json();
+    return {
+      embedCandidates: (Array.isArray(data.embeds) ? data.embeds : [])
+        .filter(item => /^https:\/\/morencius\.com\/v\/[A-Za-z0-9]+$/.test(item?.url || ""))
+        .map(item => ({ url: item.url, provider: { name: `Cuevana · ${item.name || "Morencius"}`, label: "Reproductor externo" },
+          iframeEligible: true, resolveClean: false, preferIframe: true })),
+    };
+  } catch (error) {
+    playerConsole("warn", "[cuevana-fallback] proveedor no disponible", error);
+    return { embedCandidates: [] };
+  }
+}
+
 async function fetchExternalCandidates(embedInfo) {
   const independentCandidates = buildProviderCandidates(embedInfo);
-  const cinehax = await fetchCinehaxCandidates(embedInfo);
+  const [cinehax, cuevana] = await Promise.all([
+    fetchCinehaxCandidates(embedInfo),
+    fetchCuevanaCandidates(embedInfo),
+  ]);
+  // Cuevana va primero: su titulo esta verificado contra TMDB.
+  const preferredEmbeds = cuevana.embedCandidates;
   independentCandidates.unshift(...cinehax.embedCandidates);
   let movieDaysSearched = false;
   try {
@@ -3004,16 +3045,16 @@ async function fetchExternalCandidates(embedInfo) {
       playerConsole("info", "[external-player] vimeus.com sin fuentes, probando MovieDays...");
       const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
       if (moviedaysCandidates.length) {
-        return { directStreams: [], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched };
+        return { directStreams: [], embedCandidates: mergeProviderCandidates(preferredEmbeds, moviedaysCandidates, independentCandidates), movieDaysSearched };
       }
     }
 
-    return { directStreams, embedCandidates: mergeProviderCandidates(embedCandidates, independentCandidates), movieDaysSearched };
+    return { directStreams, embedCandidates: mergeProviderCandidates(preferredEmbeds, embedCandidates, independentCandidates), movieDaysSearched };
   } catch (e) {
     playerConsole("error", "Error obteniendo candidatos externos (vimeus.com):", e);
     playerConsole("info", "[external-player] vimeus.com fallo, probando MovieDays...");
     const moviedaysCandidates = await fetchMovieDaysCandidates(embedInfo);
-    return { directStreams: [...new Set(cinehax.directStreams)], embedCandidates: mergeProviderCandidates(moviedaysCandidates, independentCandidates), movieDaysSearched: true };
+    return { directStreams: [...new Set(cinehax.directStreams)], embedCandidates: mergeProviderCandidates(preferredEmbeds, moviedaysCandidates, independentCandidates), movieDaysSearched: true };
   }
 }
 
@@ -3134,6 +3175,13 @@ async function tryHlsWishFallback(showMessage = true) {
     if (showMessage) {
       dom.status.textContent = "Cargando reproductor...";
       dom.status.style.color = "";
+    }
+
+    // Iframe de un titulo verificado (Cuevana): mejor que extraer de
+    // proveedores que pueden traer otro video con el mismo id.
+    if (candidate.preferIframe && mountExternalCandidate(container, candidate)) {
+      playerConsole("info", "[external-player] iframe verificado:", candidate.provider.name);
+      return true;
     }
 
     // eslint-disable-next-line no-await-in-loop

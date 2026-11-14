@@ -7,11 +7,20 @@ export const TMDB_EMBED_PROVIDERS = [
   { name: "VidSrc Link", origin: "https://www.vidsrc.link", movie: "/embed/movie", tv: "/embed/tv" },
 ];
 
+// Reproductor de morencius.com (servidor latino de Cuevana). Muestra "not
+// available due to sandboxed iframe" si lleva sandbox, y su CDN bloquea al
+// Worker, asi que el iframe es la unica forma de reproducirlo.
+const SANDBOX_FREE_PLAYERS = [
+  { origin: "https://morencius.com", path: /^\/v\/[A-Za-z0-9]{6,32}\/?$/ },
+];
+
 export function getProviderSandbox(value) {
   // Videasy y los reproductores internos de VidSrc rechazan sandbox incluso
   // con scripts y formularios permitidos. Validar origen y ruta, nunca el nombre.
   try {
     const url = new URL(value);
+    if (!url.username && !url.password && !url.search && SANDBOX_FREE_PLAYERS
+      .some(player => player.origin === url.origin && player.path.test(url.pathname))) return null;
     const provider = TMDB_EMBED_PROVIDERS.find(item => item.origin === url.origin);
     const isMovie = provider && url.pathname.startsWith(`${provider.movie}/`)
       && /^[1-9]\d*\/?$/.test(url.pathname.slice(provider.movie.length + 1));

@@ -1,4 +1,5 @@
 import { cinehaxPath, discoverCinehax } from "./cinehax.js";
+import { cuevanaRequest, discoverCuevana } from "./cuevana.js";
 const RELEASE_PATH_MARKER = "/releases/download/";
 const FORWARDED_REQUEST_HEADERS = [
   "range",
@@ -1354,6 +1355,17 @@ export async function handleRequest(request, env = {}, ctx) {
     catch (error) { return jsonResponse(request, env, 400, error.message); }
     try { return jsonResponse(request, env, 200, await discoverCinehax(path)); }
     catch { return jsonResponse(request, env, 502, "cinehax_unavailable"); }
+  }
+
+  if (requestUrl.pathname === "/cuevana-fallback") {
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+    if (request.method !== "GET") return jsonResponse(request, env, 405, "method_not_allowed");
+    let req;
+    try { req = cuevanaRequest(requestUrl.searchParams); }
+    catch (error) { return jsonResponse(request, env, 400, error.message); }
+    try {
+      return jsonResponse(request, env, 200, await discoverCuevana(req, { apiKey: env.TMDB_API_KEY || undefined }));
+    } catch { return jsonResponse(request, env, 502, "cuevana_unavailable"); }
   }
 
   if (requestUrl.pathname === "/listing") {

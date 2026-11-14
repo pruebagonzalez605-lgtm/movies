@@ -107,7 +107,7 @@ test('direct HLS plays in the native player first and only falls back to an ifra
 test('independent providers remain available when both listing services are down', async () => {
   let requests = 0;
   const context = vm.createContext({
-    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: { proxyBaseUrl: 'https://proxy.example' },
+    fetchCuevanaCandidates: async () => ({ embedCandidates: [] }), fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: { proxyBaseUrl: 'https://proxy.example' },
     buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
     fetchSourceListing: async () => { throw Error('offline'); },
     fetchMovieDaysCandidates: async () => { requests++; return []; }, playerConsole() {},
@@ -122,7 +122,7 @@ test('independent providers remain available when both listing services are down
 test('a successful primary listing still offers independent sources', async () => {
   const primary = { provider: { name: 'Vimeos' }, url: 'https://vimeos.net/embed-film' };
   const context = vm.createContext({
-    fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: {},
+    fetchCuevanaCandidates: async () => ({ embedCandidates: [] }), fetchCinehaxCandidates: async () => ({ directStreams: [], embedCandidates: [] }), buildProviderCandidates, mergeProviderCandidates, MEDIA_CONFIG: {},
     buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
     fetchSourceListing: async () => ({ ok: true, text: async () => '<script id="data">{}</script>' }),
     DOMParser: class { parseFromString() { return { querySelector: () => ({ textContent: '{}' }) }; } },
@@ -140,7 +140,7 @@ test('automatic discovery keeps title-specific streams when older listings fail'
   for (const info of [{ kind: 'movie', tmdbId: 550 }, { kind: 'episode', tmdbId: 1405, season: 8, episode: 12 }]) {
     const stream = `https://cdn.example/${info.tmdbId}/${info.season || 0}/${info.episode || 0}.m3u8`;
     const context = vm.createContext({ buildProviderCandidates, mergeProviderCandidates,
-      fetchCinehaxCandidates: async requested => {
+      fetchCuevanaCandidates: async () => ({ embedCandidates: [] }), fetchCinehaxCandidates: async requested => {
         assert.equal(requested, info);
         return { directStreams: [stream], embedCandidates: [{ url: 'https://voe.sx/e/source', provider: { name: 'Cinehax' } }] };
       }, MEDIA_CONFIG: {}, buildExternalListingUrl: () => 'https://vimeus.com/e/movie',
