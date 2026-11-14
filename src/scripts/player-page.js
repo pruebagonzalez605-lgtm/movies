@@ -11,13 +11,13 @@ import {
   resolveMovieCardPoster,
   resolveSeriesCardPoster,
   slugify,
-} from "./shared/catalog-data.js?v=20261114-1444";
+} from "./shared/catalog-data.js?v=20261114-1447";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
-import { externalEmbedUrl } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261114-1444";
+import { externalEmbedUrl, EXTERNAL_AD_NOTICE } from "./services/external-playback.js";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261114-1447";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -2739,6 +2739,23 @@ function collectExternalCandidates(data) {
 const RETRY_LINK_ID = "playerExternalRetryLink";
 function hideExternalProviderNotice() {
   if (dom.externalNotice) dom.externalNotice.hidden = true;
+  const hint = document.getElementById("adblockHint");
+  if (hint) hint.hidden = true;
+}
+
+// Los anuncios de un iframe externo son del proveedor, no de Colevana:
+// se avisa debajo del reproductor (y encima en TV / pantalla completa).
+function showExternalProviderNotice() {
+  const hint = document.getElementById("adblockHint");
+  if (hint) {
+    hint.textContent = EXTERNAL_AD_NOTICE;
+    hint.hidden = false;
+  }
+  const text = dom.externalNotice?.querySelector("p");
+  if (text) {
+    text.textContent = EXTERNAL_AD_NOTICE;
+    dom.externalNotice.hidden = false;
+  }
 }
 
 /**
@@ -2838,7 +2855,7 @@ function mountExternalCandidate(container, candidate) {
   restoreMediaSlotOverlays(container);
   state.playbackMode = "external";
   bindExternalPlaybackTracking(state.currentProgressKey);
-  hideExternalProviderNotice();
+  showExternalProviderNotice();
   if (dom.status) {
     dom.status.textContent = `Abriendo fuente externa: ${candidate.provider?.name || url.hostname}`;
     dom.status.style.color = "";

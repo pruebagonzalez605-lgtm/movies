@@ -15,8 +15,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="./site.webmanifest">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.css">
-  <link rel="stylesheet" href="./src/styles/app.css?v=20261114-1444">
-  <link rel="stylesheet" href="./src/styles/adblock.css">
+  <link rel="stylesheet" href="./src/styles/app.css?v=20261114-1447">
+  <link rel="stylesheet" href="./src/styles/adblock.css?v=20261114-1447">
 </head>
 
 <body data-page="player">
@@ -248,6 +248,8 @@
         <span class="player-quality-hint" id="playerQualityHint"></span>
       </div>
       <div class="status" id="playerStatus"></div>
+      <!-- Aviso cuando se monta el iframe de un proveedor externo: sus anuncios no son de Colevana. -->
+      <p class="adblock-hint" id="adblockHint" role="note" hidden></p>
       <div class="rating-panel" id="ratingPanel">
         <div class="rating-global">
           <div class="stars" id="globalStars"></div>
@@ -277,11 +279,11 @@
       <button class="resume-dismiss" id="resumeCloseBtn" type="button">Cerrar</button>
     </div>
   </div>
-  <script type="module" src="./src/scripts/nav.js?v=20261114-1444"></script>
-  <script type="module" src="./src/scripts/environment-boot.js?v=20261114-1444"></script>
-  <script type="module" src="./src/scripts/search-ui.js?v=20261114-1444"></script>
+  <script type="module" src="./src/scripts/nav.js?v=20261114-1447"></script>
+  <script type="module" src="./src/scripts/environment-boot.js?v=20261114-1447"></script>
+  <script type="module" src="./src/scripts/search-ui.js?v=20261114-1447"></script>
   <script src="https://cdn.jsdelivr.net/npm/plyr@3.8.4/dist/plyr.polyfilled.min.js"></script>
-  <script type="module" src="./src/scripts/player-page.js?v=20261114-1444"></script>
+  <script type="module" src="./src/scripts/player-page.js?v=20261114-1447"></script>
   <script type="module" src="./src/scripts/adblock-boot.js"></script>
 </body>
 

@@ -45,7 +45,7 @@ test('iframe mounting rejects unsafe URLs and omits sandbox only for supported p
     const context = vm.createContext({
       getProviderSandbox, URL, state: {}, dom: {}, document: { createElement: () => iframe },
       stopExternalTracking() {}, removeAudioTrackSelector() {}, destroyPlayerUi() {},
-      restoreMediaSlotOverlays() {}, bindExternalPlaybackTracking() {}, hideExternalProviderNotice() {},
+      restoreMediaSlotOverlays() {}, bindExternalPlaybackTracking() {}, hideExternalProviderNotice() {}, showExternalProviderNotice() {},
       showExternalRetryLink() {},
     });
     vm.runInContext(mountSource, context);

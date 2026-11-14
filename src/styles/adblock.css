@@ -2,3 +2,21 @@
 [data-cv-adblock="removed"] {
   display: none !important;
 }
+
+/* Aviso bajo el reproductor cuando se usa un iframe de un proveedor externo. */
+.adblock-hint {
+  text-align: center;
+  margin: 10px auto 0;
+  max-width: 620px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #c2a574;
+  background: rgba(20, 20, 25, 0.92);
+  color: #e8dcc4;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.adblock-hint[hidden] {
+  display: none !important;
+}
