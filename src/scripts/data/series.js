@@ -2078,7 +2078,19 @@ export const SERIES = [
     tmdbId: 291507,
     tmdbYear: 2026,
     seasons: [
-      { season: 1, srcs: Array(8).fill("") },
+      {
+        season: 1,
+        srcs: [
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.42/TB1X1.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.42/TB1X2.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.42/TB1X3.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.42/TB1X4.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.42/TB1X5.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.42/TB1X6.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.42/TB1X7.mp4",
+          "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.42/TB1X8.mp4",
+        ],
+      },
     ],
   },
   {
