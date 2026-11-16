@@ -4209,9 +4209,27 @@ html.tv-device .site-search-dropdown { position: static; }
 html.tv-device .kick-corner, html.tv-device .kick-login-btn, html.tv-device .kick-user-badge { width: 100%; margin-left: 0; justify-content: center; }
 html.tv-device .kick-login-btn { min-height: 54px; font-size: 16px; }
 html.tv-device .home-feature { min-height: 72vh; }
+/* En TV el titulo del destacado se lee de lejos igual: mas chico para que los
+   nombres largos no ocupen media pantalla ni empujen los botones fuera. */
+html.tv-device .home-feature h1 { max-width: 760px; font-size: clamp(44px, 4.6vw, 70px); line-height: .92; }
 html.tv-device .home-feature-play, html.tv-device .home-feature-more { min-height: 66px; padding: 0 30px; font-size: 17px; }
 html.tv-device .home-rail .catalog-grid { grid-auto-columns: clamp(220px, 18vw, 300px); gap: 20px; }
 html.tv-device .catalog-card-copy h3 { font-size: 18px; }
+/* Foco del mando bien visible: los carruseles recortaban el borde dorado de la
+   tarjeta seleccionada (solo asomaba una linea a la derecha). Se les da aire
+   alrededor sin mover la alineacion del contenido. */
+html.tv-device .home-rail .catalog-grid { padding: 18px 18px 26px; margin: -18px -18px 0; scroll-padding-inline: 18px; }
+html.tv-device .home-rail .catalog-grid { scrollbar-width: none; }
+html.tv-device .home-rail .catalog-grid::-webkit-scrollbar { display: none; }
+html.tv-device .catalog-card.tv-focus,
+html.tv-device .catalog-spotlight-card.tv-focus {
+  outline: 5px solid #f6d38f;
+  outline-offset: 4px;
+  transform: scale(1.04);
+  box-shadow: 0 0 0 10px rgba(246, 211, 143, .18), 0 24px 50px -18px rgba(0, 0, 0, .8);
+}
+html.tv-device .tv-focus { outline-width: 4px; outline-color: #f6d38f; }
+html.tv-device { scroll-padding-top: 120px; }
 html.tv-device .catalog-main:not(.home-catalog-main) .catalog-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 
 /* Aviso pequeño y no modal para apoyar voluntariamente a Colevana. */
@@ -4247,6 +4265,10 @@ html.tv-device .catalog-main:not(.home-catalog-main) .catalog-grid { grid-templa
 .donation-prompt-copy p:last-child { margin-top: 7px; color: var(--text-dim); font-size: 11px; line-height: 1.4; }
 .donation-prompt-close { position: absolute; top: 7px; right: 8px; width: 34px; height: 34px; border: 0; border-radius: 50%; color: var(--text-dim); background: transparent; font: inherit; font-size: 25px; line-height: 1; cursor: pointer; }
 .donation-prompt-close:hover, .donation-prompt-close:focus-visible { color: var(--text); background: rgba(255, 255, 255, .1); outline: 2px solid var(--accent); outline-offset: 1px; }
+/* TV: mas chico y con una pista de como cerrarlo con el mando. */
+.donation-prompt.is-tv { width: 360px; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
+.donation-prompt.is-tv .donation-prompt-qr { width: 120px; }
+.donation-prompt.is-tv::after { content: "Pulsa Atrás para cerrar"; grid-column: 1 / -1; color: var(--text-dim); font-size: 11px; text-align: right; }
 @keyframes donation-prompt-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes donation-prompt-view-in { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 520px) {

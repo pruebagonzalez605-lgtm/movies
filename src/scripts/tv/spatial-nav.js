@@ -143,14 +143,29 @@ function findNextFocus(current, direction) {
 }
 
 function scrollIntoViewIfNeeded(el) {
-  el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  // Centrado vertical: con "nearest" las tarjetas altas quedaban cortadas
+  // por abajo o tapadas por la cabecera fija.
+  el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
 }
+
+// Al abrir una pagina no hay nada enfocado y la primera flecha iba al logo.
+// Se prefiere la accion principal de cada pagina.
+const PREFERRED_FIRST_FOCUS = [
+  ".home-feature-play",
+  "#mediaSlot .plyr__control--overlaid",
+  ".catalog-main .catalog-card",
+  ".catalog-main a, .catalog-main button",
+];
 
 function focusFirstAvailable() {
   const candidates = getFocusables();
   if (!candidates.length) return;
-  candidates[0].focus();
-  scrollIntoViewIfNeeded(candidates[0]);
+  const preferred = PREFERRED_FIRST_FOCUS
+    .map((selector) => candidates.find((el) => el.matches(selector)))
+    .find(Boolean);
+  const target = preferred || candidates[0];
+  target.focus();
+  scrollIntoViewIfNeeded(target);
 }
 
 function handleBack(event) {
@@ -163,7 +178,14 @@ function handleBack(event) {
   const openSeasonDropdown = document.querySelector(".season-dropdown-panel.open");
   const openEpisodeGrid = document.querySelector(".episode-grid-container.open");
   const playerMenu = document.querySelector(".plyr__menu__container:not([hidden])");
-  if (!openModal && !openSearchDropdown && !openSiteNav && !openSeasonDropdown && !openEpisodeGrid && !playerMenu) return false;
+  // Aviso de donacion: con el mando cuesta llegar a la X, asi que Atras lo cierra.
+  const donationClose = document.querySelector(".donation-prompt .donation-prompt-close");
+  if (!openModal && !openSearchDropdown && !openSiteNav && !openSeasonDropdown && !openEpisodeGrid && !playerMenu) {
+    if (!donationClose) return false;
+    event.preventDefault();
+    donationClose.click();
+    return true;
+  }
 
   event.preventDefault();
   if (playerMenu) {
@@ -325,6 +347,15 @@ function init() {
 
   markFocusForFallback();
   watchForModals();
+
+  // Con el mando hay que ver desde el principio que esta seleccionado. En el
+  // reproductor no: alli el foco lo maneja player-page.js.
+  if (document.body?.dataset.page !== "player") {
+    window.setTimeout(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) focusFirstAvailable();
+    }, 900);
+  }
 }
 
 init();

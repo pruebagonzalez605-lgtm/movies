@@ -1,7 +1,7 @@
 import {
   fetchLatestApkDownloadUrl,
   RELEASES_PAGE_URL,
-} from "../config/app-distribution.js?apk-updates=1";
+} from "../config/app-distribution.js?apk-updates=2";
 import { APP_VERSION } from "../config/app-version.js";
 
 // Guardamos la ULTIMA version que el usuario ya vio y descarto, no una

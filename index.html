@@ -4,6 +4,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script>
+    /* TV: el televisor dice medir ~960px de ancho y la web salia en modo tablet,
+       con todo gigante. Se dibuja a 1600px y el WebView lo escala a la pantalla. */
+    (function () {
+      try {
+        var nativeTv = window.ColevanaNative && window.ColevanaNative.isTv && window.ColevanaNative.isTv();
+        var uaTv = /android tv|googletv|google tv|smart-?tv|tizen|web0s|webos|hbbtv|bravia|crkey|leanback|colevanatv/i.test(navigator.userAgent);
+        if (nativeTv === true || (nativeTv !== false && uaTv)) {
+          var scale = Math.min(1, (window.screen.width || 960) / 1600).toFixed(4);
+          document.querySelector('meta[name="viewport"]').setAttribute("content", "width=1600, initial-scale=" + scale + ", minimum-scale=" + scale + ", maximum-scale=" + scale + ", user-scalable=no, viewport-fit=cover");
+          document.documentElement.classList.add("tv-device");
+        }
+      } catch (e) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://image.tmdb.org">
@@ -16,7 +31,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="./site.webmanifest">
-  <link rel="stylesheet" href="./src/styles/app.css?v=20261116-1441">
+  <link rel="stylesheet" href="./src/styles/app.css?v=20261116-1538">
 </head>
 
 <body data-page="home">
@@ -93,10 +108,10 @@
     </section>
   </main>
 
-  <script type="module" src="./src/scripts/nav.js?v=20261116-1441"></script>
-  <script type="module" src="./src/scripts/environment-boot.js?v=20261116-1441"></script>
-  <script type="module" src="./src/scripts/search-ui.js?v=20261116-1441"></script>
-  <script type="module" src="./src/scripts/home.js?v=20261116-1441"></script>
+  <script type="module" src="./src/scripts/nav.js?v=20261116-1538"></script>
+  <script type="module" src="./src/scripts/environment-boot.js?v=20261116-1538"></script>
+  <script type="module" src="./src/scripts/search-ui.js?v=20261116-1538"></script>
+  <script type="module" src="./src/scripts/home.js?v=20261116-1538"></script>
   <script type="module" src="./src/scripts/kick-home.js"></script>
 </body>
 

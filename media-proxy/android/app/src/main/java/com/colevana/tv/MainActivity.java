@@ -122,6 +122,12 @@ public class MainActivity extends BridgeActivity {
     getBridge().getWebView().addJavascriptInterface(new NativeDeviceBridge(), "ColevanaNative");
     if (isTvDevice()) {
       webSettings.setUserAgentString(webSettings.getUserAgentString() + " ColevanaTV/1");
+      // Un televisor 1080p le dice al WebView que mide ~960px de ancho, y la
+      // web salia en su diseño de tablet: textos, botones y avisos gigantes.
+      // En TV cada pagina pide un viewport de 1600px (script en el <head>);
+      // sin estas dos opciones el WebView ignora ese ancho.
+      webSettings.setUseWideViewPort(true);
+      webSettings.setLoadWithOverviewMode(true);
     }
 
     // Esta es una app de TV: la UI del sistema (barra de estado/navegacion)

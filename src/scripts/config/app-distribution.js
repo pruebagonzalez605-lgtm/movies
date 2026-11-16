@@ -1,22 +1,23 @@
+import { APP_VERSION } from "./app-version.js";
+
 export const APP_DISTRIBUTION_CONFIG = {
   // Usuario/organizacion y repositorio de GitHub donde se publican los
   // releases con el .apk adjunto (Settings > Releases del repo).
   githubOwner: "pruebagonzalez605-lgtm",
   githubRepo: "movies",
+  // Nombre del archivo adjunto en cada release del APK.
+  apkAssetName: "app-debug.apk",
 };
 
-const { githubOwner, githubRepo } = APP_DISTRIBUTION_CONFIG;
+const { githubOwner, githubRepo, apkAssetName } = APP_DISTRIBUTION_CONFIG;
 
-// Pagina de releases, sirve como respaldo si la API de GitHub falla o
-// si no se encuentra ningun release con un asset .apk adjunto.
+// Pagina de releases, sirve como respaldo si la version no es valida.
 export const RELEASES_PAGE_URL = `https://github.com/${githubOwner}/${githubRepo}/releases`;
 
-// Peliculas y APK comparten repositorio. Solo los tags 1.0.x, desde
-// 1.0.30, representan versiones instalables de la app.
+// Solo los tags 1.0.x, desde 1.0.30, representan versiones instalables de
+// la app (peliculas y APK comparten repositorio).
 const APK_TAG_PATTERN = /^v?1\.0\.(\d+)$/i;
 const FIRST_APK_PATCH = 30;
-const RELEASES_PER_PAGE = 100;
-const MAX_RELEASE_PAGES = 5;
 
 export function parseApkReleaseTag(tag) {
   const match = typeof tag === "string" ? APK_TAG_PATTERN.exec(tag.trim()) : null;
@@ -25,61 +26,25 @@ export function parseApkReleaseTag(tag) {
   return Number.isSafeInteger(patch) && patch >= FIRST_APK_PATCH ? patch : null;
 }
 
+export function apkDownloadUrl(version) {
+  return `https://github.com/${githubOwner}/${githubRepo}/releases/download/${encodeURIComponent(version)}/${apkAssetName}`;
+}
+
 /**
- * Consulta la API publica de GitHub y devuelve la URL directa de descarga
- * del APK con la mayor version 1.0.x publicada.
+ * La version mas reciente del APK es APP_VERSION (config/app-version.js),
+ * no lo que diga la API de GitHub: los releases de peliculas y series
+ * comparten repositorio y GitHub marca como "Latest" el ultimo que se
+ * publica, lo que hacia que la TV ofreciera "actualizar a 1.42".
  *
- * A proposito NO usamos el endpoint /releases/latest: ese endpoint de
- * GitHub devuelve el release marcado como "Latest", que puede ser una
- * pelicula (por ejemplo 1.37). Tampoco confiamos en el orden por fecha:
- * un release antiguo republicado no debe superar a una version mayor.
+ * Por eso, al sacar un APK nuevo: primero se publica el release 1.0.x con
+ * app-debug.apk adjunto, y despues se sube a la web el APP_VERSION nuevo.
+ * Si se sube antes, el aviso apuntaria a un archivo que todavia no existe.
+ *
+ * Se mantiene async y con el mismo formato de respuesta que antes para no
+ * cambiar a quienes la usan (update-checker.js y tv-app-prompt.js).
  */
-export async function fetchLatestApkDownloadUrl() {
-  let latest = null;
-
-  for (let page = 1; page <= MAX_RELEASE_PAGES; page++) {
-    const apiUrl = `https://api.github.com/repos/${githubOwner}/${githubRepo}/releases?per_page=${RELEASES_PER_PAGE}&page=${page}`;
-    let response;
-    try {
-      response = await fetch(apiUrl, {
-        headers: { Accept: "application/vnd.github+json" },
-      });
-    } catch (error) {
-      if (latest) break;
-      throw error;
-    }
-    if (!response.ok && latest) break;
-    if (!response.ok) {
-      throw new Error(`GitHub releases API respondio ${response.status}`);
-    }
-
-    const releases = await response.json();
-    if (!Array.isArray(releases)) break;
-
-    for (const release of releases) {
-      if (release.draft || release.prerelease) continue;
-      const patch = parseApkReleaseTag(release.tag_name);
-      if (patch === null || (latest && patch <= latest.patch)) continue;
-
-      const assets = Array.isArray(release.assets) ? release.assets : [];
-      const apkAsset = assets.find((asset) =>
-        typeof asset.name === "string"
-        && asset.name.toLowerCase().endsWith(".apk")
-        && typeof asset.browser_download_url === "string"
-      );
-      if (apkAsset) {
-        latest = {
-          patch,
-          downloadUrl: apkAsset.browser_download_url,
-          version: release.tag_name,
-        };
-      }
-    }
-
-    if (releases.length < RELEASES_PER_PAGE) break;
-  }
-
-  return latest
-    ? { downloadUrl: latest.downloadUrl, version: latest.version }
-    : { downloadUrl: null, version: null };
+export async function fetchLatestApkDownloadUrl(version = APP_VERSION) {
+  if (parseApkReleaseTag(version) === null) return { downloadUrl: null, version: null };
+  const tag = version.trim();
+  return { downloadUrl: apkDownloadUrl(tag), version: tag };
 }

@@ -3,6 +3,7 @@ import { DONORS } from "../data/donors.js";
 const DISMISSED_KEY = "colevana:donation-prompt-dismissed-at";
 const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
 const ROTATE_MS = 8000;
+const TV_AUTO_HIDE_MS = 15000;
 
 function readTimestamp(key) {
   try {
@@ -89,6 +90,18 @@ if (document.body?.dataset.page !== "aportes" && now - readTimestamp(DISMISSED_K
   };
   prompt.querySelector(".donation-prompt-close").addEventListener("click", close);
   document.body.append(prompt);
+
+  // En TV no hay mouse y el aviso tapa parte de la pantalla: se cierra solo
+  // a los pocos segundos (y con Atras, ver spatial-nav.js). Se oculta sin
+  // guardarlo como descartado para que vuelva a salir en otra visita.
+  if (document.documentElement.classList.contains("tv-device")) {
+    prompt.classList.add("is-tv");
+    window.setTimeout(() => {
+      if (!prompt.isConnected) return;
+      if (rotationTimer !== null) window.clearInterval(rotationTimer);
+      prompt.remove();
+    }, TV_AUTO_HIDE_MS);
+  }
 
   if (donorRecords.length) {
     let donorIndex = 0;
