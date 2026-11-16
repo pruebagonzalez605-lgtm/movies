@@ -2230,4 +2230,16 @@ export const MOVIES = [
     gradient: ["#10232a", "#506a70"],
     src: "",
   },
+  {
+    code: "218",
+    title: "En el corazón de la bestia",
+    addedAt: "2026-11-16",
+    genre: "thriller",
+    tmdbTitle: "Heart of the Beast",
+    tmdbId: 1263337,
+    tmdbYear: 2026,
+    gradient: ["#1f1a14", "#6b5a3e"],
+    poster: "https://image.tmdb.org/t/p/w500/ya8iLCNyoVpBO7B7JrNJVj3g7tK.jpg",
+    src: "",
+  },
 ];
