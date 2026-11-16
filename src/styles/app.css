@@ -3878,7 +3878,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   min-height: 80px;
   position: sticky;
   top: 0;
-  z-index: 50;
+  /* Por encima de los botones flotantes del reproductor (Episodios, Descargar,
+     Cast, panel de episodios: z-index 55-60), que al hacer scroll pasaban por
+     encima de la cabecera. Debajo del aviso de donaciones (80) y los modales. */
+  z-index: 70;
   border-bottom: 1px solid rgba(255,255,255,.07);
   background: linear-gradient(90deg, rgba(9,11,15,.98), rgba(15,17,22,.96));
   backdrop-filter: blur(18px);
