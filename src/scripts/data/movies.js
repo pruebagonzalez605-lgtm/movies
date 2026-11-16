@@ -2240,6 +2240,6 @@ export const MOVIES = [
     tmdbYear: 2026,
     gradient: ["#1f1a14", "#6b5a3e"],
     poster: "https://image.tmdb.org/t/p/w500/ya8iLCNyoVpBO7B7JrNJVj3g7tK.jpg",
-    src: "",
+    src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.43/CDLB.mp4",
   },
 ];
