@@ -2109,4 +2109,19 @@ export const SERIES = [
       { season: 3, srcs: Array(25).fill("") },
     ],
   },
+  {
+    title: "Uzak Şehir",
+    addedAt: "2026-11-17",
+    genre: "drama",
+    gradient: ["#1f1912", "#7a5a3a"],
+    tmdbShow: "Uzak Şehir",
+    tmdbId: 274556,
+    tmdbYear: 2024,
+    seasons: [
+      { season: 1, srcs: Array(28).fill("") },
+      { season: 2, srcs: Array(35).fill("") },
+      // En emision: 10 capitulos al 16/11/2026, sale uno nuevo cada lunes.
+      { season: 3, srcs: Array(10).fill("") },
+    ],
+  },
 ];
