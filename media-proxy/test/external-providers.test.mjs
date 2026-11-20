@@ -175,3 +175,19 @@ test('playback tries public extraction on every provider before a single iframe 
   assert.deepEqual(resolved, candidates.map(candidate => candidate.url));
   assert.deepEqual(mounted, ['VidSrc']);
 });
+
+test('dailymotion srcs mount the official player without sandbox, and only that route', () => {
+  const start = source.indexOf('function dailymotionEmbedUrl(');
+  const context = vm.createContext({});
+  vm.runInContext(source.slice(start, source.indexOf('\n}', start) + 2), context);
+  const url = context.dailymotionEmbedUrl('dailymotion:xa1ia6g');
+  assert.equal(url, 'https://geo.dailymotion.com/player/xtv3w.html?video=xa1ia6g');
+  assert.equal(getProviderSandbox(url), null);
+  for (const src of ['', 'dailymotion:', 'dailymotion:../x', 'https://github.com/a.mp4', 'dailymotion:xa1ia6g?x=1']) {
+    assert.equal(context.dailymotionEmbedUrl(src), null, src);
+  }
+  for (const other of ['https://geo.dailymotion.com/player/xtv3w.html', 'https://geo.dailymotion.com.evil.example/player/xtv3w.html?video=xa1ia6g',
+    'http://geo.dailymotion.com/player/xtv3w.html?video=xa1ia6g']) {
+    assert.notEqual(getProviderSandbox(other), null, other);
+  }
+});

@@ -7,11 +7,18 @@ export const TMDB_EMBED_PROVIDERS = [
   { name: "VidSrc Link", origin: "https://www.vidsrc.link", movie: "/embed/movie", tv: "/embed/tv" },
 ];
 
+// Reproductor oficial de Dailymotion (src "dailymotion:<id>" en series.js).
+// Es un reproductor de plataforma, sin redirecciones: va sin sandbox para
+// que pueda usar pantalla completa y su propio control de reproduccion.
+const DAILYMOTION_PLAYER = /^\/player\/[a-z0-9]{3,12}\.html$/i;
+
 export function getProviderSandbox(value) {
   // Videasy y los reproductores internos de VidSrc rechazan sandbox incluso
   // con scripts y formularios permitidos. Validar origen y ruta, nunca el nombre.
   try {
     const url = new URL(value);
+    if (url.origin === "https://geo.dailymotion.com" && !url.username && !url.password
+      && DAILYMOTION_PLAYER.test(url.pathname) && /^[a-z0-9]{5,12}$/i.test(url.searchParams.get("video") || "")) return null;
     const provider = TMDB_EMBED_PROVIDERS.find(item => item.origin === url.origin);
     const isMovie = provider && url.pathname.startsWith(`${provider.movie}/`)
       && /^[1-9]\d*\/?$/.test(url.pathname.slice(provider.movie.length + 1));

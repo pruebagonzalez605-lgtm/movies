@@ -11,13 +11,13 @@ import {
   resolveMovieCardPoster,
   resolveSeriesCardPoster,
   slugify,
-} from "./shared/catalog-data.js?v=20261116-1538";
+} from "./shared/catalog-data.js?v=20261120-1409";
 import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { externalEmbedUrl, EXTERNAL_AD_NOTICE } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261116-1538";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261120-1409";
 
 const supabase = createSupabaseService({
   url: "https://iqmxbmodzdtjdfepggae.supabase.co",
@@ -217,6 +217,13 @@ function buildVariantUrl(src, quality) {
   } catch {
     return null;
   }
+}
+
+function dailymotionEmbedUrl(src) {
+  const match = typeof src === "string" ? /^dailymotion:([a-z0-9]{5,12})$/i.exec(src.trim()) : null;
+  // El embed clasico (/embed/video) y geo /player.html responden 403: Dailymotion
+  // solo sirve su reproductor nuevo con un id de player, el mismo de su web.
+  return match ? `https://geo.dailymotion.com/player/xtv3w.html?video=${match[1]}` : null;
 }
 
 async function discoverMediaSources(media) {
@@ -1182,6 +1189,22 @@ async function mountPlayer({ media, title, subtitle, poster, gradient, meta, bac
   }
 
   dom.status.textContent = "Buscando fuente...";
+
+  // src "dailymotion:<id>": capitulos que solo existen subidos a Dailymotion
+  // (p. ej. Uzak Sehir en turco con subtitulos en español). Se usa su
+  // reproductor oficial; el video no se puede bajar ni pasar por el Worker.
+  const dailymotionUrl = dailymotionEmbedUrl(media?.src);
+  if (dailymotionUrl) {
+    const mounted = mountExternalCandidate(dom.mediaSlot, {
+      url: dailymotionUrl,
+      provider: { name: "Dailymotion" },
+      iframeEligible: true,
+    });
+    if (mounted) loadRatingsFor(contentKey);
+    else state.autoplayNextEpisode = false;
+    ensureWebPlayerInteractable();
+    return;
+  }
 
   const sources = await discoverMediaSources(media);
   const hasValidLocalSource = sources.some((s) => s?.src && s.src.trim() !== "");
