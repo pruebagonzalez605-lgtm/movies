@@ -15,7 +15,7 @@ import {
   getItemGenreSync,
   optimizePosterUrl,
   slugify,
-} from "./shared/catalog-data.js?v=20261124-1729";
+} from "./shared/catalog-data.js?v=20261124-1845";
 import { GENRE_BY_ID } from "./config/genres.js";
 import { initKickAuthUI } from "./shared/kick-auth-ui.js";
 import {

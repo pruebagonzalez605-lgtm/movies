@@ -123,3 +123,33 @@ test('full Kick login: PKCE start, state check and a signed session back to the 
   const noCookie = await handleCommunity(new Request(callbackUrl), env, new URL(callbackUrl), fetcher);
   assert.match(noCookie.headers.get('Location'), /#error=login_expired$/);
 });
+
+test('only admins from ADMIN_USERS can delete suggestions, one or all', async () => {
+  const e = { ...env, ADMIN_USERS: 'txc_matheo, otro_admin' };
+  const del = async (query, token, DB = fakeDb()) => {
+    const req = new Request(W + '/community/suggestions' + query, { method: 'DELETE', headers: { Origin: 'https://colevana.com', Authorization: `Bearer ${token}` } });
+    return { res: await handleCommunity(req, { ...e, DB }, new URL(req.url)), DB };
+  };
+  const admin = await session('TXC_Matheo');
+  const user = await session('normal_user');
+  assert.equal((await del('?all=1', user)).res.status, 403);
+  const one = await del('?id=7', admin);
+  assert.equal(one.res.status, 200);
+  assert.deepEqual(one.DB.writes[0], { sql: 'DELETE FROM suggestions WHERE id = ?1', args: [7] });
+  assert.equal((await del('?id=abc', admin)).res.status, 400);
+
+  // "todas": la consulta no lleva parametros, el DB falso la registra aparte.
+  const writes = [];
+  const DB = { prepare: (sql) => ({ run: async () => { writes.push(sql); return { meta: { changes: 3 } }; }, bind: () => ({ run: async () => ({}) }) }) };
+  const all = await del('?all=1', admin, DB);
+  assert.equal(all.res.status, 200);
+  assert.deepEqual(writes, ['DELETE FROM suggestions']);
+  assert.equal((await all.res.json()).deleted, 3);
+
+  const me = async (token) => {
+    const req = new Request(W + '/community/me', { headers: { Authorization: `Bearer ${token}` } });
+    return (await handleCommunity(req, { ...e, DB: fakeDb() }, new URL(req.url))).json();
+  };
+  assert.deepEqual(await me(admin), { username: 'TXC_Matheo', admin: true });
+  assert.equal((await me(user)).admin, false);
+});

@@ -101,7 +101,7 @@ export function safeReturnUrl(raw, env) {
 function communityCors(request, env) {
   const origin = request.headers.get("Origin");
   const headers = {
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
@@ -238,9 +238,10 @@ async function handleRatings(request, env) {
 
 async function handleSuggestions(request, env) {
   if (request.method === "GET") {
-    const { results } = await env.DB.prepare("SELECT kick_username, message, created_at FROM suggestions ORDER BY created_at DESC LIMIT 200").all();
+    const { results } = await env.DB.prepare("SELECT id, kick_username, message, created_at FROM suggestions ORDER BY created_at DESC LIMIT 200").all();
     return json(request, env, 200, results || []);
   }
+  if (request.method === "DELETE") return deleteSuggestions(request, env);
   if (request.method !== "POST") return json(request, env, 405, "method_not_allowed");
   const session = await requireSession(request, env);
   if (!session) return json(request, env, 401, "login_required");
@@ -262,10 +263,33 @@ async function handleSuggestions(request, env) {
   return json(request, env, 200, { ok: true });
 }
 
+/** Admins: lista ADMIN_USERS del Worker (usuarios de Kick separados por coma). */
+export function isAdmin(session, env) {
+  const admins = (env.ADMIN_USERS || "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean);
+  return Boolean(session?.username) && admins.includes(session.username.toLowerCase());
+}
+
+// DELETE /community/suggestions?id=N   -> borra una
+// DELETE /community/suggestions?all=1  -> borra todas
+async function deleteSuggestions(request, env) {
+  const session = await requireSession(request, env);
+  if (!session) return json(request, env, 401, "login_required");
+  if (!isAdmin(session, env)) return json(request, env, 403, "admin_only");
+  const params = new URL(request.url).searchParams;
+  if (params.get("all") === "1") {
+    const result = await env.DB.prepare("DELETE FROM suggestions").run();
+    return json(request, env, 200, { ok: true, deleted: result?.meta?.changes ?? null });
+  }
+  const id = Number(params.get("id"));
+  if (!Number.isSafeInteger(id) || id <= 0) return json(request, env, 400, "invalid_id");
+  const result = await env.DB.prepare("DELETE FROM suggestions WHERE id = ?1").bind(id).run();
+  return json(request, env, 200, { ok: true, deleted: result?.meta?.changes ?? null });
+}
+
 /** Devuelve la respuesta si la ruta es de esta parte, o null. */
 export async function handleCommunity(request, env, url, fetcher = fetch) {
   const { pathname } = url;
-  const isApi = pathname === "/community/ratings" || pathname === "/community/suggestions";
+  const isApi = pathname === "/community/ratings" || pathname === "/community/suggestions" || pathname === "/community/me";
   if (!isApi && pathname !== "/auth/kick/start" && pathname !== "/auth/kick/callback") return null;
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: communityCors(request, env) });
   if (!env.SESSION_SECRET) return json(request, env, 503, "community_not_configured");
@@ -273,9 +297,13 @@ export async function handleCommunity(request, env, url, fetcher = fetch) {
     if (pathname === "/auth/kick/start") return await startKickLogin(request, env, url);
     if (pathname === "/auth/kick/callback") return await finishKickLogin(request, env, url, fetcher);
     if (!env.DB) return json(request, env, 503, "community_not_configured");
-    if (request.method === "POST") {
+    if (request.method === "POST" || request.method === "DELETE") {
       const origin = request.headers.get("Origin");
       if (!origin || !allowedOrigins(env).includes(origin)) return json(request, env, 403, "forbidden_origin");
+    }
+    if (pathname === "/community/me") {
+      const session = await requireSession(request, env);
+      return json(request, env, session ? 200 : 401, session ? { username: session.username, admin: isAdmin(session, env) } : "login_required");
     }
     return pathname === "/community/ratings" ? await handleRatings(request, env) : await handleSuggestions(request, env);
   } catch {
