@@ -1,4 +1,5 @@
 import { cinehaxPath, discoverCinehax } from "./cinehax.js";
+import { handleCommunity } from "./community.js";
 const RELEASE_PATH_MARKER = "/releases/download/";
 const FORWARDED_REQUEST_HEADERS = [
   "range",
@@ -1341,6 +1342,9 @@ export async function handleRequest(request, env = {}, ctx) {
       headers: { ...corsHeaders(request, env), "Content-Type": "text/plain; charset=utf-8" },
     });
   }
+
+  const community = await handleCommunity(request, env, requestUrl);
+  if (community) return community;
 
   if (requestUrl.pathname === "/resolve-stream") {
     return handleResolveStream(request, env, requestUrl, ctx);

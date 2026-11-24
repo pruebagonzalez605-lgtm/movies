@@ -1,11 +1,4 @@
-import { createSupabaseService } from "./services/supabase.js";
-import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
-
-const supabase = createSupabaseService({
-  url: "https://iqmxbmodzdtjdfepggae.supabase.co",
-  anonKey: "sb_publishable_w2GCzCqZJcYMHi8yyCN23Q_IthBqvhF",
-});
-const supabaseRest = `${supabase.config.url}/rest/v1`;
+import { getKickSession, initKickAuthUI, COMMUNITY_API, communityAuthHeaders } from "./shared/kick-auth-ui.js";
 
 const suggestionForm = document.getElementById("suggestionForm");
 const suggestionLoginHint = document.getElementById("suggestionLoginHint");
@@ -28,8 +21,7 @@ function refreshAuthDependentUI() {
 async function loadSuggestions() {
   suggestionList.innerHTML = '<div class="suggestion-empty">Cargando...</div>';
   try {
-    const url = `${supabaseRest}/suggestions?select=kick_username,message,created_at&order=created_at.desc&limit=200`;
-    const res = await fetch(url, { headers: supabase.headers() });
+    const res = await fetch(`${COMMUNITY_API}/community/suggestions`);
     if (!res.ok) throw new Error("fetch_failed");
     const rows = await res.json();
 
@@ -70,20 +62,19 @@ suggestionSubmitBtn?.addEventListener("click", async () => {
   suggestionSubmitBtn.disabled = true;
   suggestionSubmitBtn.textContent = "Enviando...";
   try {
-    const res = await fetch(`${supabaseRest}/suggestions`, {
+    // El usuario lo pone el Worker a partir de la sesion firmada.
+    const res = await fetch(`${COMMUNITY_API}/community/suggestions`, {
       method: "POST",
-      headers: supabase.headers({
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      }),
-      body: JSON.stringify({
-        kick_username: session.username,
-        message: text,
-      }),
+      headers: { "Content-Type": "application/json", ...communityAuthHeaders(session) },
+      body: JSON.stringify({ message: text }),
     });
-    if (!res.ok) throw new Error("insert_failed");
+    if (res.status === 429) throw new Error("Espera un minuto antes de enviar otra sugerencia (máximo 10 por día).");
+    if (res.status === 401) throw new Error("Tu sesión de Kick venció. Vuelve a iniciar sesión.");
+    if (!res.ok) throw new Error("No se pudo enviar la sugerencia.");
     suggestionInput.value = "";
     await loadSuggestions();
+  } catch (error) {
+    window.alert(error?.message || "No se pudo enviar la sugerencia.");
   } finally {
     suggestionSubmitBtn.disabled = false;
     suggestionSubmitBtn.textContent = "Enviar sugerencia";

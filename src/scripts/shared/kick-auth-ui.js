@@ -1,30 +1,15 @@
-const KICK_CLIENT_ID = "01KX013P9HAMCVKK0JHVJP53QV";
-const KICK_REDIRECT_URI = "https://iqmxbmodzdtjdfepggae.supabase.co/functions/v1/kick-oauth-callback";
-const KICK_AUTHORIZE_URL = "https://id.kick.com/oauth/authorize";
+import { MEDIA_CONFIG } from "../config/media.js";
+
+// El login con Kick lo hace el Worker (media-proxy/src/community.js): guarda
+// el client secret, hace PKCE y devuelve una sesion FIRMADA. La web guarda el
+// token completo y lo manda al calificar o sugerir; el Worker solo acepta lo
+// que viene con una firma valida.
 const KICK_SESSION_KEY = "kick_session";
-
-function base64UrlEncodeBytes(bytes) {
-  let binary = "";
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function randomUrlSafeString(byteLength = 64) {
-  const arr = new Uint8Array(byteLength);
-  crypto.getRandomValues(arr);
-  return base64UrlEncodeBytes(arr);
-}
-
-async function sha256Base64Url(input) {
-  const data = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return base64UrlEncodeBytes(new Uint8Array(digest));
-}
+export const COMMUNITY_API = (MEDIA_CONFIG.proxyBaseUrl || "").replace(/\/+$/, "");
 
 function decodeSessionToken(token) {
   try {
+    if (typeof token !== "string" || token.split(".").length !== 2) return null;
     const payloadPart = token.split(".")[0];
     const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
     const binary = atob(normalized);
@@ -43,7 +28,9 @@ export function getKickSession() {
     const raw = localStorage.getItem(KICK_SESSION_KEY);
     if (!raw) return null;
     const session = JSON.parse(raw);
-    if (!session || !session.exp || Date.now() / 1000 > session.exp) {
+    // Las sesiones viejas (antes del login por el Worker) no traen token
+    // firmado: hay que volver a iniciar sesion.
+    if (!session || !session.exp || !session.token || Date.now() / 1000 > session.exp) {
       localStorage.removeItem(KICK_SESSION_KEY);
       return null;
     }
@@ -63,9 +50,10 @@ function consumeAuthRedirect() {
   history.replaceState(null, "", window.location.pathname + window.location.search);
   if (error) return { handled: true, error };
   const payload = decodeSessionToken(token);
-  if (!payload) return { handled: true, error: "invalid_token" };
-  localStorage.setItem(KICK_SESSION_KEY, JSON.stringify(payload));
-  return { handled: true, session: payload };
+  if (!payload || !payload.username) return { handled: true, error: "invalid_token" };
+  const session = { ...payload, token };
+  localStorage.setItem(KICK_SESSION_KEY, JSON.stringify(session));
+  return { handled: true, session };
 }
 
 export function initKickAuthUI({ onChange } = {}) {
@@ -111,25 +99,11 @@ export function initKickAuthUI({ onChange } = {}) {
     if (onChange) onChange(session);
   }
 
-  async function startKickLogin() {
+  function startKickLogin() {
     kickLoginBtn.disabled = true;
     kickLoginBtn.textContent = "Redirigiendo...";
-    try {
-      const stateToken = randomUrlSafeString();
-      const codeChallenge = await sha256Base64Url(stateToken);
-      const params = new URLSearchParams({
-        response_type: "code",
-        client_id: KICK_CLIENT_ID,
-        redirect_uri: KICK_REDIRECT_URI,
-        scope: "user:read",
-        code_challenge: codeChallenge,
-        code_challenge_method: "S256",
-        state: stateToken,
-      });
-      window.location.href = `${KICK_AUTHORIZE_URL}?${params.toString()}`;
-    } catch {
-      showKickGate("No se pudo iniciar el login. Proba de nuevo.");
-    }
+    const returnTo = window.location.href.split("#")[0];
+    window.location.href = `${COMMUNITY_API}/auth/kick/start?return=${encodeURIComponent(returnTo)}`;
   }
 
   function logoutKick() {
@@ -154,4 +128,9 @@ export function initKickAuthUI({ onChange } = {}) {
 
   showKickGate();
   return null;
+}
+
+/** Cabeceras para escribir en /community/*: el Worker valida esta firma. */
+export function communityAuthHeaders(session = getKickSession()) {
+  return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
 }

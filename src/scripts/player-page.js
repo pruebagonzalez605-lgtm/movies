@@ -1,4 +1,3 @@
-import { createSupabaseService } from "./services/supabase.js";
 import { resolveMediaUrl, MEDIA_CONFIG } from "./config/media.js";
 import { tmdbFindTvId } from "./services/tmdb.js";
 import {
@@ -11,20 +10,14 @@ import {
   resolveMovieCardPoster,
   resolveSeriesCardPoster,
   slugify,
-} from "./shared/catalog-data.js?v=20261120-1409";
-import { getKickSession, initKickAuthUI } from "./shared/kick-auth-ui.js";
+} from "./shared/catalog-data.js?v=20261124-1729";
+import { getKickSession, initKickAuthUI, COMMUNITY_API, communityAuthHeaders } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { externalEmbedUrl, EXTERNAL_AD_NOTICE } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261120-1409";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261124-1729";
 
-const supabase = createSupabaseService({
-  url: "https://iqmxbmodzdtjdfepggae.supabase.co",
-  anonKey: "sb_publishable_w2GCzCqZJcYMHi8yyCN23Q_IthBqvhF",
-});
-
-const supabaseRest = `${supabase.config.url}/rest/v1`;
 const MIN_RESUME_SECONDS = 3;
 const END_PROGRESS_MARGIN_SECONDS = 15;
 const QUALITY_SWITCH_TIMEOUT_MS = 20000;
@@ -885,8 +878,8 @@ async function loadRatingsFor(contentKey) {
   renderStarRow(dom.globalStars, 0, false);
 
   try {
-    const url = `${supabaseRest}/ratings?content_key=eq.${encodeURIComponent(contentKey)}&select=rating,kick_username`;
-    const res = await fetch(url, { headers: supabase.headers() });
+    const url = `${COMMUNITY_API}/community/ratings?content_key=${encodeURIComponent(contentKey)}`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error("ratings_failed");
     const rows = await res.json();
     const count = rows.length;
@@ -917,18 +910,14 @@ async function submitRating(value) {
   if (!session || !state.currentContentKey) return;
 
   try {
-    const res = await fetch(`${supabaseRest}/ratings?on_conflict=content_key,kick_username`, {
+    // El usuario lo pone el Worker a partir de la sesion firmada.
+    const res = await fetch(`${COMMUNITY_API}/community/ratings`, {
       method: "POST",
-      headers: supabase.headers({
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      }),
+      headers: { "Content-Type": "application/json", ...communityAuthHeaders(session) },
       body: JSON.stringify({
         content_key: state.currentContentKey,
         content_title: state.currentContentTitle,
-        kick_username: session.username,
         rating: value,
-        updated_at: new Date().toISOString(),
       }),
     });
     if (!res.ok) throw new Error("submit_failed");
