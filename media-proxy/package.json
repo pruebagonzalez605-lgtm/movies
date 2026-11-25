@@ -12,10 +12,10 @@
     "deploy": "npm test && npx wrangler deploy"
   },
   "dependencies": {
-    "@capacitor/android": "^6.1.0",
-    "@capacitor/core": "^6.1.0"
+    "@capacitor/android": "^6.2.3",
+    "@capacitor/core": "^6.2.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.1.0"
+    "@capacitor/cli": "^6.2.3"
   }
 }
