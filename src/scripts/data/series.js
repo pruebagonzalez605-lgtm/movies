@@ -2179,4 +2179,18 @@ export const SERIES = [
       },
     ],
   },
+  {
+    title: "El patrón del mal",
+    addedAt: "2026-11-27",
+    genre: "crimen",
+    gradient: ["#1a1613", "#6e5236"],
+    tmdbShow: "Pablo Escobar: El Patrón del Mal",
+    tmdbId: 43348,
+    tmdbYear: 2012,
+    seasons: [
+      // TMDB cuenta la version colombiana (113 cap.); las fuentes en latino
+      // tienen la version internacional, de 74 capitulos mas largos.
+      { season: 1, srcs: Array(74).fill("") },
+    ],
+  },
 ];

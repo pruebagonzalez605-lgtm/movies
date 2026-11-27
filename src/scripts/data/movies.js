@@ -2242,4 +2242,16 @@ export const MOVIES = [
     poster: "https://image.tmdb.org/t/p/w500/ya8iLCNyoVpBO7B7JrNJVj3g7tK.jpg",
     src: "https://github.com/pruebagonzalez605-lgtm/movies/releases/download/1.43/CDLB.mp4",
   },
+  {
+    code: "219",
+    title: "La virgen de los sicarios",
+    addedAt: "2026-11-27",
+    genre: "crimen",
+    tmdbTitle: "La virgen de los sicarios",
+    tmdbId: 44321,
+    tmdbYear: 2000,
+    gradient: ["#1d1416", "#6b3a3e"],
+    poster: "https://image.tmdb.org/t/p/w500/dA3ihogQs7Ty50ulSYwxzDDdnmt.jpg",
+    src: "",
+  },
 ];
