@@ -1,4 +1,4 @@
-import { MOVIES } from "../data/movies.js?v=20261124-1845";
+import { MOVIES } from "../data/movies.js?v=20261127-1836";
 import {
   GENRE_DEFINITIONS,
   GENRE_BY_ID,
@@ -15,7 +15,7 @@ let tmdbServicePromise = null;
 
 function loadTmdbService() {
   if (!tmdbServicePromise) {
-    tmdbServicePromise = import("../services/tmdb.js?v=20261124-1845")
+    tmdbServicePromise = import("../services/tmdb.js?v=20261127-1836")
       .catch((error) => {
         tmdbServicePromise = null;
         throw error;
@@ -26,7 +26,7 @@ function loadTmdbService() {
 
 function loadSeriesData() {
   if (!seriesDataPromise) {
-    seriesDataPromise = import("../data/series.js?v=20261124-1845")
+    seriesDataPromise = import("../data/series.js?v=20261127-1836")
       .then((module) => module.SERIES)
       .catch((error) => {
         seriesDataPromise = null;
@@ -396,7 +396,7 @@ export async function searchSite(query, options = {}) {
       title: serie.title,
       subtitle: `${serie.seasons.length} temporadas`,
       description: "Abrir esta serie y explorar sus capitulos.",
-      href: "./series.html",
+      href: `./series.html?item=${encodeURIComponent(slugify(serie.title))}`,
       poster: serie.poster || null,
       gradient: serie.gradient || ["#1c1c22", "#141419"],
       code: "Serie",
@@ -414,7 +414,7 @@ export async function searchSite(query, options = {}) {
       title: saga.name,
       subtitle: `${saga.movies.length} peliculas`,
       description: "Abrir esta saga y elegir una pelicula.",
-      href: "./sagas.html",
+      href: `./sagas.html?item=${encodeURIComponent(saga.slug)}`,
       poster: saga.poster && saga.poster !== "..." ? saga.poster : null,
       gradient: saga.gradient || ["#1c1c22", "#141419"],
       code: "Saga",
@@ -425,16 +425,35 @@ export async function searchSite(query, options = {}) {
 
   if (results.length >= limit) return results;
   if (Number.isFinite(options.limit) && results.length) return results;
-  for (const serie of seriesCatalog) {
-    if (results.length >= limit) break;
-    for (const season of serie.seasons) {
-      if (results.length >= limit) break;
-      const episodes = await ensureSeasonEpisodes(serie, season);
-      for (const [index, episode] of episodes.entries()) {
-        if (results.length >= limit) break;
-        const haystack = normalizeText(episode.title || "");
-        if (!queryMatches(haystack, normalizedQuery)) continue;
-        pushResult({
+  if (options.episodes === false) return results;
+  const episodes = await searchEpisodes(query, { limit: limit - results.length });
+  episodes.forEach(pushResult);
+  return results;
+}
+
+/**
+ * Busca en los titulos de los capitulos. Antes se recorria temporada por
+ * temporada con un await cada vez (cientos de consultas a TMDB en serie): en
+ * la TV la pagina de resultados se quedaba minutos en "Buscando...". Ahora va
+ * en paralelo, de a varias temporadas a la vez.
+ */
+export async function searchEpisodes(query, { limit = 40, concurrency = 8 } = {}) {
+  const normalizedQuery = normalizeText(query).trim();
+  if (!normalizedQuery || limit <= 0) return [];
+  const seriesCatalog = await loadSeriesData();
+  const jobs = seriesCatalog.flatMap((serie) => serie.seasons.map((season) => ({ serie, season })));
+  const found = [];
+  let next = 0;
+
+  async function worker() {
+    while (next < jobs.length && found.length < limit) {
+      const { serie, season } = jobs[next++];
+      let episodes = [];
+      try { episodes = await ensureSeasonEpisodes(serie, season); } catch { continue; }
+      episodes.forEach((episode, index) => {
+        if (found.length >= limit) return;
+        if (!queryMatches(normalizeText(episode.title || ""), normalizedQuery)) return;
+        found.push({
           kind: "episode",
           title: `${serie.title} - ${episode.title || `Episodio ${index + 1}`}`,
           subtitle: `Temporada ${season.season} - Episodio ${index + 1}`,
@@ -446,9 +465,10 @@ export async function searchSite(query, options = {}) {
           sourceItem: serie,
           sourceKind: "series",
         });
-      }
+      });
     }
   }
 
-  return results;
+  await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
+  return found;
 }

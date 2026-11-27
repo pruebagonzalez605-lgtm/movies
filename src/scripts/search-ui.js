@@ -2,7 +2,7 @@ let searchModulePromise = null;
 
 function searchSite(query, options) {
   if (!searchModulePromise) {
-    searchModulePromise = import("./shared/catalog-data.js?v=20261124-1845")
+    searchModulePromise = import("./shared/catalog-data.js?v=20261127-1836")
       .catch((error) => {
         searchModulePromise = null;
         throw error;

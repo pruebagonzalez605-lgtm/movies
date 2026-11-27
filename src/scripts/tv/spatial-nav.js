@@ -37,6 +37,38 @@ const ARROW_TO_DIRECTION = {
 
 const TEXT_ENTRY_TAGS = new Set(["INPUT", "TEXTAREA"]);
 
+// En TV el teclado en pantalla se abria con solo pasar por encima de un
+// campo de texto, y luego las flechas movian el teclado en vez de salir del
+// campo. Ahora el campo se puede recorrer como cualquier boton y el teclado
+// solo se abre al pulsar OK sobre el. Mientras el teclado esta abierto, las
+// flechas son del campo (cursor de texto).
+function isEditing(el) {
+  return Boolean(el && TEXT_ENTRY_TAGS.has(el.tagName) && el.dataset.tvEditing === "true");
+}
+
+function lockTextEntry(el) {
+  if (!el || !TEXT_ENTRY_TAGS.has(el.tagName) || el.dataset.tvEditing === "true") return;
+  if (!("tvInputMode" in el.dataset)) el.dataset.tvInputMode = el.getAttribute("inputmode") || "";
+  el.setAttribute("inputmode", "none");
+}
+
+function startEditing(el) {
+  el.dataset.tvEditing = "true";
+  // Cambiar inputmode de "none" a un modo de texto con el campo enfocado es
+  // lo que hace que Android TV muestre el teclado (blur/focus no lo abre).
+  el.setAttribute("inputmode", el.dataset.tvInputMode || (el.type === "search" ? "search" : "text"));
+}
+
+document.addEventListener("focusin", (event) => lockTextEntry(event.target));
+document.addEventListener("focusout", (event) => {
+  const el = event.target;
+  if (el?.dataset?.tvEditing === "true" && document.visibilityState === "visible") {
+    window.setTimeout(() => {
+      if (document.activeElement !== el) { delete el.dataset.tvEditing; lockTextEntry(el); }
+    }, 0);
+  }
+});
+
 function isVisible(el) {
   if (!el || el.closest("[hidden], [inert], [aria-hidden='true']") || el.disabled) return false;
   if (el.closest(".plyr--hide-controls") && el.closest(".plyr__controls")) return false;
@@ -117,6 +149,15 @@ function scoreCandidate(currentRect, currentCenter, candidateRect, direction, st
   }
 
   if (!inCone) return null;
+  // Si se solapan en el eje perpendicular (p. ej. el buscador del menu, mas
+  // ancho que los enlaces de arriba), no se penaliza el desplazamiento: si
+  // no, ganaba un boton mas lejano pero mejor centrado y el buscador quedaba
+  // inalcanzable con el mando.
+  const vertical = direction === "up" || direction === "down";
+  const overlap = vertical
+    ? Math.min(currentRect.right, candidateRect.right) - Math.max(currentRect.left, candidateRect.left)
+    : Math.min(currentRect.bottom, candidateRect.bottom) - Math.max(currentRect.top, candidateRect.top);
+  if (overlap > 0) perpendicular = 0;
   return Math.max(primary, 0) + perpendicular * 1.5;
 }
 
@@ -170,7 +211,7 @@ function focusFirstAvailable() {
 
 function handleBack(event) {
   const active = document.activeElement;
-  if (active && TEXT_ENTRY_TAGS.has(active.tagName)) return; // dejar borrar texto
+  if (isEditing(active)) return; // dejar borrar texto
 
   const openModal = document.querySelector(".catalog-modal.is-open");
   const openSearchDropdown = document.querySelector(".site-search-dropdown.is-open");
@@ -217,7 +258,7 @@ function handleDirectional(event) {
   const active = document.activeElement;
 
   // Dejar que los inputs de texto manejen sus propias flechas (cursor de texto).
-  if (active && TEXT_ENTRY_TAGS.has(active.tagName)) return;
+  if (isEditing(active)) return;
   if (active && active.tagName === "SELECT") return;
 
   if (!active || active === document.body || !isVisible(active) || !getScopeRoot().contains(active)) {
@@ -231,16 +272,47 @@ function handleDirectional(event) {
     event.preventDefault();
     next.focus();
     scrollIntoViewIfNeeded(next);
+  } else if (getOpenOverlay() || document.documentElement.classList.contains("tv-locked-fullscreen")) {
+    // Sin destino dentro del menu/panel o del reproductor a pantalla
+    // completa: el WebView movia el foco por su cuenta hacia la pagina de
+    // abajo (p. ej. al logo, escondido detras del video) y no habia vuelta.
+    event.preventDefault();
+    // Recien mostrados los controles del reproductor, botones como
+    // "Episodios" siguen un instante con la animacion de entrada y aun no
+    // cuentan como visibles: se reintenta una vez.
+    window.setTimeout(() => {
+      if (document.activeElement !== active) return;
+      const retry = findNextFocus(active, direction);
+      if (retry) { retry.focus(); scrollIntoViewIfNeeded(retry); }
+    }, 260);
   }
 }
 
 function observeOverlay(overlayEl, dialogSelector) {
   let returnFocus = null;
-  const observer = new MutationObserver(() => {
+  const onChange = () => {
     if (overlayEl.classList.contains("is-open")) {
       if (!overlayEl.contains(document.activeElement)) returnFocus = document.activeElement;
       const dialog = (dialogSelector && overlayEl.querySelector(dialogSelector)) || overlayEl;
-      const [firstFocusable] = getFocusables(dialog);
+      // Empezar por el contenido (primer capitulo/pelicula), no por "Cerrar":
+      // para cerrar ya esta el boton Atras del mando.
+      const focusables = getFocusables(dialog);
+      const firstFocusable = focusables.find((el) => !el.matches(".catalog-modal-close")) || focusables[0];
+      // Los capitulos llegan de TMDB un momento despues de abrir: si solo
+      // estaba "Cerrar", pasar al primer contenido en cuanto aparezca (y
+      // mientras el usuario no se haya movido).
+      if (firstFocusable?.matches(".catalog-modal-close")) {
+        // Puede que ya esten pero aun con la animacion de entrada (no
+        // cuentan como visibles), o que lleguen despues: se reintenta un rato.
+        let tries = 0;
+        const moveToContent = () => {
+          if (document.activeElement !== firstFocusable || !overlayEl.classList.contains("is-open")) return;
+          const content = getFocusables(dialog).find((el) => !el.matches(".catalog-modal-close"));
+          if (content) { content.focus(); scrollIntoViewIfNeeded(content); return; }
+          if (++tries < 30) window.setTimeout(moveToContent, 250);
+        };
+        window.setTimeout(moveToContent, 150);
+      }
       if (firstFocusable) {
         firstFocusable.focus();
         scrollIntoViewIfNeeded(firstFocusable);
@@ -252,8 +324,11 @@ function observeOverlay(overlayEl, dialogSelector) {
       }
       returnFocus = null;
     }
-  });
-  observer.observe(overlayEl, { attributes: true, attributeFilter: ["class"] });
+  };
+  new MutationObserver(onChange).observe(overlayEl, { attributes: true, attributeFilter: ["class"] });
+  // La ficha del catalogo se crea y se abre en el mismo instante la primera
+  // vez: cuando se empieza a vigilar ya esta abierta y no habra cambio de clase.
+  if (overlayEl.classList.contains("is-open")) onChange();
 }
 
 function watchForModals() {
@@ -321,9 +396,32 @@ function markFocusForFallback() {
   );
 }
 
+// En la primera pagina de la app, Atras cerraba Colevana de golpe (y las
+// siguientes pulsaciones caian en otra app). Ahora el primer Atras avisa y
+// solo el segundo, dentro de unos segundos, deja salir.
+let exitArmedUntil = 0;
+function confirmExit() {
+  if (window.history.length > 1) return false; // hay pagina anterior: volver
+  if (Date.now() < exitArmedUntil) return false; // segundo Atras: salir
+  exitArmedUntil = Date.now() + 3000;
+  let toast = document.getElementById("tvExitToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "tvExitToast";
+    toast.className = "tv-exit-toast";
+    toast.setAttribute("role", "status");
+    toast.textContent = "Pulsa Atrás otra vez para salir de Colevana";
+    document.body.appendChild(toast);
+  }
+  toast.classList.add("is-visible");
+  window.setTimeout(() => toast.classList.remove("is-visible"), 3000);
+  return true;
+}
+
 function init() {
   window.ColevanaHandleBack = () => handleBack({ preventDefault() {} }) === true
-    || window.ColevanaRemote?.hideControls?.() === true;
+    || window.ColevanaRemote?.hideControls?.() === true
+    || confirmExit();
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented) return;
     const key = remoteKey(event);
@@ -333,6 +431,18 @@ function init() {
     }
     if (["Enter", "Select", "Accept"].includes(key)) {
       const active = document.activeElement;
+      if (active && TEXT_ENTRY_TAGS.has(active.tagName) && !isEditing(active)) {
+        event.preventDefault();
+        startEditing(active);
+        return;
+      }
+      // Escribiendo en un buscador: Enter/OK lanza la busqueda (el WebView de
+      // TV no siempre hace el envio implicito del formulario).
+      if (isEditing(active) && active.tagName === "INPUT" && active.form) {
+        event.preventDefault();
+        if (active.value.trim()) active.form.requestSubmit();
+        return;
+      }
       if (active?.matches("button, a, [role='button'], [role='menuitemradio']") && isVisible(active)) {
         event.preventDefault();
         if (!event.repeat) active.click();

@@ -4212,7 +4212,10 @@ html.tv-device .nav-link::after { display: none; }
 html.tv-device body[data-page] .site-nav .nav-link[aria-current="page"] { background: rgba(232,188,114,.12); color: #f5d29c; box-shadow: inset 4px 0 #e8bc72; }
 html.tv-device .site-search { width: 100%; min-width: 0; }
 html.tv-device .site-search-input, html.tv-device .site-search-btn { font-size: 16px; }
-html.tv-device .site-search-dropdown { position: static; }
+html.tv-device .site-search { flex-wrap: wrap; }
+/* Dentro del menu de TV los resultados van debajo del campo, a todo el ancho
+   (antes quedaban aplastados en una columna y el campo desaparecia). */
+html.tv-device .site-search-dropdown { position: static; flex: 1 0 100%; max-height: 48vh; overflow-y: auto; margin-top: 8px; }
 html.tv-device .kick-corner, html.tv-device .kick-login-btn, html.tv-device .kick-user-badge { width: 100%; margin-left: 0; justify-content: center; }
 html.tv-device .kick-login-btn { min-height: 54px; font-size: 16px; }
 html.tv-device .home-feature { min-height: 72vh; }
@@ -4236,6 +4239,13 @@ html.tv-device .catalog-spotlight-card.tv-focus {
   box-shadow: 0 0 0 10px rgba(246, 211, 143, .18), 0 24px 50px -18px rgba(0, 0, 0, .8);
 }
 html.tv-device .tv-focus { outline-width: 4px; outline-color: #f6d38f; }
+/* Ficha de serie/saga en TV: 3 capitulos por fila ocupando el ancho del
+   dialogo (antes 2 columnas fijas y un hueco vacio a la derecha). */
+html.tv-device .catalog-inline-grid:not(.catalog-inline-grid-posters) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Sagas en TV: los titulos se cortaban a 2 lineas ("Dragon Ball Z: La...")
+   y no se sabia que pelicula era. 4 por fila y hasta 4 lineas de titulo. */
+html.tv-device .catalog-inline-grid-posters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+html.tv-device .catalog-inline-card-poster strong { -webkit-line-clamp: 4; font-size: 16px; line-height: 1.25; }
 html.tv-device { scroll-padding-top: 120px; }
 html.tv-device .catalog-main:not(.home-catalog-main) .catalog-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 
@@ -4273,8 +4283,6 @@ html.tv-device .catalog-main:not(.home-catalog-main) .catalog-grid { grid-templa
 .donation-prompt-close { position: absolute; top: 7px; right: 8px; width: 34px; height: 34px; border: 0; border-radius: 50%; color: var(--text-dim); background: transparent; font: inherit; font-size: 25px; line-height: 1; cursor: pointer; }
 .donation-prompt-close:hover, .donation-prompt-close:focus-visible { color: var(--text); background: rgba(255, 255, 255, .1); outline: 2px solid var(--accent); outline-offset: 1px; }
 /* TV: mas chico y con una pista de como cerrarlo con el mando. */
-.donation-prompt.is-tv { width: 360px; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
-.donation-prompt.is-tv .donation-prompt-qr { width: 120px; }
 .donation-prompt.is-tv::after { content: "Pulsa Atrás para cerrar"; grid-column: 1 / -1; color: var(--text-dim); font-size: 11px; text-align: right; }
 @keyframes donation-prompt-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes donation-prompt-view-in { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -4293,20 +4301,23 @@ html.tv-device .catalog-main:not(.home-catalog-main) .catalog-grid { grid-templa
   .donation-prompt-qr { width: 128px; }
   .donation-prompt-copy p:last-child { font-size: 10px; }
 }
+.tv-exit-toast { position: fixed; left: 50%; bottom: 48px; z-index: 10050; padding: 14px 26px; border: 1px solid rgba(246, 211, 143, .6); border-radius: 999px; color: #fff; background: rgba(12, 12, 16, .94); font-size: 16px; font-weight: 700; opacity: 0; transform: translate(-50%, 12px); transition: opacity .2s ease, transform .2s ease; pointer-events: none; }
+.tv-exit-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+/* TV (viewport de 1600px): tamano de un aviso discreto en una esquina. */
 html.tv-device .donation-prompt {
-  grid-template-columns: 220px minmax(0, 1fr);
-  width: min(560px, calc(100vw - 64px));
-  gap: 20px;
-  padding: 20px 56px 20px 20px;
-  border-radius: 20px;
+  grid-template-columns: 150px minmax(0, 1fr);
+  width: 440px;
+  gap: 16px;
+  padding: 16px 48px 16px 16px;
+  border-radius: 16px;
 }
-html.tv-device .donation-prompt-donor-view { grid-template-columns: 82px minmax(0, 1fr); gap: 20px; }
-html.tv-device .donation-prompt-donor-badge { width: 82px; font-size: 36px; }
-html.tv-device .donation-prompt-qr { width: 220px; }
-html.tv-device .donation-prompt-eyebrow { font-size: 15px; }
-html.tv-device .donation-prompt-copy h2 { font-size: 22px; }
-html.tv-device .donation-prompt-copy p:last-child { font-size: 16px; }
-html.tv-device .donation-prompt-close { width: 48px; height: 48px; font-size: 34px; }
+html.tv-device .donation-prompt-donor-view { grid-template-columns: 64px minmax(0, 1fr); gap: 16px; }
+html.tv-device .donation-prompt-donor-badge { width: 64px; font-size: 28px; }
+html.tv-device .donation-prompt-qr { width: 150px; }
+html.tv-device .donation-prompt-eyebrow { font-size: 12px; }
+html.tv-device .donation-prompt-copy h2 { font-size: 18px; }
+html.tv-device .donation-prompt-copy p:last-child { font-size: 13px; }
+html.tv-device .donation-prompt-close { width: 40px; height: 40px; font-size: 28px; }
 .donations-page {
   width: min(1100px, 92vw);
   min-height: calc(100vh - 110px);

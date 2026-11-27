@@ -10,13 +10,13 @@ import {
   resolveMovieCardPoster,
   resolveSeriesCardPoster,
   slugify,
-} from "./shared/catalog-data.js?v=20261124-1845";
+} from "./shared/catalog-data.js?v=20261127-1836";
 import { getKickSession, initKickAuthUI, COMMUNITY_API, communityAuthHeaders } from "./shared/kick-auth-ui.js";
 import { isTvDevice, isNativeAppShell } from "./shared/device.js";
 import { remoteKey, seekVideo } from "./tv/media-controls.js";
 import { createControlsVisibility } from "./tv/controls-visibility.js";
 import { externalEmbedUrl, EXTERNAL_AD_NOTICE } from "./services/external-playback.js";
-import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261124-1845";
+import { TMDB_EMBED_PROVIDERS, buildProviderCandidates, mergeProviderCandidates, getProviderSandbox } from "./services/external-providers.js?v=20261127-1836";
 
 const MIN_RESUME_SECONDS = 3;
 const END_PROGRESS_MARGIN_SECONDS = 15;

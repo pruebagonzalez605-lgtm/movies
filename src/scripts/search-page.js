@@ -6,7 +6,7 @@ let catalogDataPromise = null;
 
 function loadCatalogData() {
   if (!catalogDataPromise) {
-    catalogDataPromise = import("./shared/catalog-data.js?v=20261124-1845")
+    catalogDataPromise = import("./shared/catalog-data.js?v=20261127-1836")
       .catch((error) => {
         catalogDataPromise = null;
         throw error;
@@ -49,6 +49,24 @@ const genreFilter = genreFilterMount
 
 if (genreFilter) genreFilter.element.hidden = true;
 
+// Muchas entradas del catalogo no traen poster: se pide a TMDB como en el
+// resto de paginas (antes los resultados salian con un fondo de color).
+async function loadResultPoster(result, art) {
+  if (!result.sourceItem) return;
+  try {
+    const data = await loadCatalogData();
+    const resolver = result.kind === "movie" || result.kind === "saga"
+      ? data.resolveMovieCardPoster
+      : data.resolveSeriesCardPoster;
+    const posterUrl = optimizePosterUrl(await resolver(result.sourceItem));
+    if (!posterUrl || !art.isConnected) return;
+    art.style.background = "";
+    art.style.backgroundImage = `linear-gradient(180deg, rgba(8,8,12,0.08), rgba(8,8,12,0.78)), url('${posterUrl}')`;
+    art.style.backgroundSize = "cover";
+    art.style.backgroundPosition = "center";
+  } catch { /* se queda el degradado */ }
+}
+
 function renderResultCard(result) {
   const card = document.createElement("a");
   card.className = "search-result-card";
@@ -73,6 +91,7 @@ function renderResultCard(result) {
     art.style.backgroundPosition = "center";
   } else {
     art.style.background = `linear-gradient(160deg, ${result.gradient[0]}, ${result.gradient[1]})`;
+    loadResultPoster(result, art);
   }
 
   return card;
@@ -156,12 +175,18 @@ async function init() {
   introNode.textContent = "Tu buscador revisa peliculas, series, sagas y episodios disponibles dentro del sitio.";
   countNode.textContent = "Buscando...";
 
-  const { searchSite } = await loadCatalogData();
-  const results = await searchSite(query);
-  state.results = results;
+  const { searchSite, searchEpisodes } = await loadCatalogData();
+  // Primero peliculas, series y sagas (al instante); los capitulos llegan
+  // despues, sin dejar la pagina en "Buscando...".
+  state.results = await searchSite(query, { episodes: false });
   state.selected = null;
+  if (state.results.length) renderResults();
+  else countNode.textContent = "Buscando también en capítulos...";
 
-  if (!results.length) {
+  const episodes = await searchEpisodes(query).catch(() => []);
+  state.results = [...state.results, ...episodes];
+
+  if (!state.results.length) {
     countNode.textContent = "No se encontraron coincidencias.";
     resultsNode.innerHTML = "";
     if (genreFilter) genreFilter.element.hidden = true;

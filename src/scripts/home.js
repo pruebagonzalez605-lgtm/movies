@@ -11,7 +11,7 @@ import {
   slugify,
   resolveItemGenre,
   getItemGenreSync,
-} from "./shared/catalog-data.js?v=20261124-1845";
+} from "./shared/catalog-data.js?v=20261127-1836";
 import { genrePillHtml, applyGenrePillToCard } from "./ui/genre-filter.js";
 
 const moviesGrid = document.getElementById("homeMoviesGrid");
